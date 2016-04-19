@@ -1,3 +1,10 @@
+data/crytek-sponza/
+data/dabrovic-sponza/
+data/jakobi
+data/megacity
+data/mitsuba
+data/imrod
+
 # Compiled Object files
 *.slo
 *.lo
@@ -35,3 +42,4 @@ _*.bat
 
 # Qt project files
 CMakeLists.txt.user
+
