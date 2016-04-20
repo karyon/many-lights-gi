@@ -18,7 +18,7 @@
 
 #include "TransparencyMasksGenerator.h"
 #include "NoiseTexture.h"
-#include "OmnidirectionalShadowmap.h"
+#include "Shadowmap.h"
 #include "GroundPlane.h"
 #include "Material.h"
 
@@ -71,7 +71,7 @@ void RasterizationStage::initialize()
     setupMasksTexture();
 
     m_noiseTexture = make_unique<NoiseTexture>(3u, 3u);
-    m_shadowmap = make_unique<OmnidirectionalShadowmap>();
+    m_shadowmap = make_unique<Shadowmap>();
 
     color.data() = globjects::Texture::createDefault(GL_TEXTURE_2D);
     normal.data() = globjects::Texture::createDefault(GL_TEXTURE_2D);
@@ -165,7 +165,7 @@ void RasterizationStage::render()
     auto frameLightOffset = shadowKernel.data()[currentFrame.data() - 1] * lightRadius;
     auto frameLightPosition = lightPosition + glm::vec3(frameLightOffset.x, 0.0f, frameLightOffset.y);
 
-    m_shadowmap->render(frameLightPosition, drawablesMap.data(), *m_groundPlane.get(), presetInformation.data().nearFar.x, presetInformation.data().nearFar.y);
+    auto biasedShadowTransform = m_shadowmap->render(frameLightPosition, drawablesMap.data(), *m_groundPlane.get(), presetInformation.data().nearFar.x, presetInformation.data().nearFar.y);
 
     glViewport(viewport.data()->x(),
                viewport.data()->y(),
@@ -186,7 +186,7 @@ void RasterizationStage::render()
     m_fbo->clearBuffer(GL_COLOR, 1, glm::vec4(0.0f));
     m_fbo->clearBuffer(GL_COLOR, 2, glm::vec4(maxFloat));
     m_fbo->clearBuffer(GL_COLOR, 3, glm::vec4(0.0f));
-    m_fbo->clearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0.0f);
+    m_fbo->clearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
 
     zPrepass();
 
@@ -210,6 +210,7 @@ void RasterizationStage::render()
 
         program->setUniform("groundPlaneColor", presetInformation.data().groundColor);
         program->setUniform("worldLightPos", frameLightPosition);
+        program->setUniform("biasedShadowTransform", biasedShadowTransform);
 
         program->setUniform("cameraEye", camera.data()->eye());
         program->setUniform("modelView", camera.data()->view());
@@ -323,5 +324,5 @@ void RasterizationStage::setupMasksTexture()
 {
     const auto table = TransparencyMasksGenerator::generateDistributions(1);
     m_masksTexture = globjects::Texture::createDefault(GL_TEXTURE_2D);
-    m_masksTexture->image2D(0, GL_R8, table->at(0).size(), table->size(), 0, GL_RED, GL_UNSIGNED_BYTE, table->data());
+    m_masksTexture->image2D(0, GL_R8, GLsizei(table->at(0).size()), GLsizei(table->size()), 0, GL_RED, GL_UNSIGNED_BYTE, table->data());
 }

@@ -8,13 +8,14 @@
 in vec3 v_normal;
 in vec3 v_worldCoord;
 in vec3 v_uv;
+in vec4 v_s;
 
 layout(location = 0) out vec3 outColor;
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec3 outWorldPos;
 layout(location = 3) out float reflects;
 
-uniform samplerCube shadowmap;
+uniform sampler2D shadowmap;
 uniform sampler2D masksTexture;
 uniform sampler3D noiseTexture;
 
@@ -80,7 +81,13 @@ void main()
     vec3 N = normalize(v_normal);
     mat3 tbn = cotangent_frame(N, v_worldCoord, uv);
 
-    float shadowFactor = omnishadowmapComparisonVSM(shadowmap, v_worldCoord, worldLightPos);
+    vec3 scoord = v_s.xyz / v_s.w;
+    scoord.z -= 0.0001;
+
+    float shadowFactor = shadowmapComparisonVSM(shadowmap, scoord.xy, v_worldCoord, worldLightPos);
+    shadowFactor *= step(0.0, sign(v_s.w));
+    //outColor = vec3(shadowFactor);
+    //return;
 
     if (bumpType == BUMP_HEIGHT)
     {

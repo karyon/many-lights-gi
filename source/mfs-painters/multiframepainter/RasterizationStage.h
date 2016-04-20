@@ -28,7 +28,7 @@ namespace gloperate
 
 class NoiseTexture;
 class GroundPlane;
-class OmnidirectionalShadowmap;
+class Shadowmap;
 
 class RasterizationStage : public gloperate::AbstractStage
 {
@@ -67,7 +67,7 @@ protected:
     void render();
     void zPrepass();
 
-    std::unique_ptr<OmnidirectionalShadowmap> m_shadowmap;
+    std::unique_ptr<Shadowmap> m_shadowmap;
     std::unique_ptr<GroundPlane> m_groundPlane;
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
