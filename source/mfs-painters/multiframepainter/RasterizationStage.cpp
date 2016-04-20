@@ -107,7 +107,7 @@ void RasterizationStage::process()
         resizeTextures(viewport.data()->width(), viewport.data()->height());
     }
 
-    currentFrame.data() += 1;
+    //currentFrame.data() += 1;
     for (auto input : this->inputs())
     {
         if (input->hasChanged())
@@ -119,8 +119,8 @@ void RasterizationStage::process()
 
     if (currentFrame.data() > multiFrameCount.data())
     {
-        alwaysProcess(false);
-        return;
+        //alwaysProcess(false);
+        //return;
     }
 
     if (presetInformation.hasChanged())

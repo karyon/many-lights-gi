@@ -12,7 +12,7 @@ MultiFramePipeline::MultiFramePipeline()
 : gloperate::AbstractPipeline("MultiframeSampling")
 , resourceManager(nullptr)
 , multiFrameCount(64)
-, preset(Preset::Jakobi)
+, preset(Preset::CrytekSponza)
 , useReflections(false)
 {
     auto modelLoadingStage = new ModelLoadingStage();
