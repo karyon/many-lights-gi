@@ -18,11 +18,10 @@ public:
     void initialize();
     void process(int multiFrameCount);
 
-    glkernel::kernel3 getSSAOKernel() const;
-    std::vector<glm::vec3> getSSAONoise() const;
+    glkernel::kernel3 getSSAOKernel(unsigned int size) const;
+    std::vector<glm::vec3> getSSAONoise(unsigned int size) const;
 
     glkernel::kernel2 antiAliasingKernel;
     glkernel::kernel2 depthOfFieldKernel;
     glkernel::kernel2 shadowKernel;
-    glkernel::kernel3 reflectionKernel;
 };

@@ -55,6 +55,11 @@ Shadowmap::Shadowmap()
     setupFbo(m_blurredFboTemp, m_colorTextureBlurTemp, nullptr, size);
 }
 
+Shadowmap::~Shadowmap()
+{
+
+}
+
 void Shadowmap::setupFbo(globjects::Framebuffer * fbo, globjects::Texture * colorBuffer, globjects::Texture * depthBuffer, int size)
 {
     colorBuffer->bind();

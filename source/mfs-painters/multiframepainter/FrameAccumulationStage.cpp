@@ -17,10 +17,6 @@ using namespace gl;
 
 FrameAccumulationStage::FrameAccumulationStage()
 {
-    addInput("viewport", viewport);
-    addInput("frame", frame);
-    addInput("depth", depth);
-    addInput("currentFrame", currentFrame);
 }
 
 void FrameAccumulationStage::initialize()
@@ -28,8 +24,8 @@ void FrameAccumulationStage::initialize()
     accumulation = globjects::Texture::createDefault(GL_TEXTURE_2D);
 
     m_fbo = new globjects::Framebuffer();
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, accumulation.data());
-    m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depth.data());
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, accumulation);
+    m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depth);
 
     m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/accumulation.frag")
@@ -38,38 +34,31 @@ void FrameAccumulationStage::initialize()
 
 void FrameAccumulationStage::process()
 {
-    if (viewport.hasChanged())
-    {
-        resizeTexture(viewport.data()->width(), viewport.data()->height());
-    }
+    //TODO only when needed
+    resizeTexture(viewport->width(), viewport->height());
 
-    if (currentFrame.data() == 1)
-    {
-        m_fbo->clearBuffer(GL_COLOR, 0, glm::vec4(0.0f));
-    }
+    m_fbo->clearBuffer(GL_COLOR, 0, glm::vec4(0.0f));
 
     glDepthMask(GL_FALSE);
     m_fbo->bind();
     m_fbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
 
-    accumulation.data()->bindActive(0);
-    frame.data()->bindActive(1);
+    accumulation->bindActive(0);
+    frame->bindActive(1);
     m_screenAlignedQuad->program()->setUniform("accumBuffer", 0);
     m_screenAlignedQuad->program()->setUniform("frameBuffer", 1);
-    m_screenAlignedQuad->program()->setUniform("weight", 1.0f / currentFrame.data());
+    m_screenAlignedQuad->program()->setUniform("weight", 1.0f / currentFrame);
 
     m_screenAlignedQuad->draw();
-    accumulation.data()->unbindActive(0);
-    frame.data()->unbindActive(1);
+    accumulation->unbindActive(0);
+    frame->unbindActive(1);
 
     m_fbo->unbind();
     glDepthMask(GL_TRUE);
-
-    invalidateOutputs();
 }
 
 void FrameAccumulationStage::resizeTexture(int width, int height)
 {
-    accumulation.data()->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+    accumulation->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
     m_fbo->printStatus(true);
 }

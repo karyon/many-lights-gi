@@ -8,11 +8,6 @@
 #include <glkernel/sort.hpp>
 #include <glkernel/shuffle.hpp>
 
-namespace
-{
-    const unsigned int s_ssaoKernelSize = 16;
-    const unsigned int s_ssaoNoiseSize = 128;
-}
 
 KernelGenerationStage::KernelGenerationStage()
 {
@@ -41,20 +36,13 @@ void KernelGenerationStage::process(int multiFrameCount)
     glkernel::sample::poisson_square(shadowSamples);
     glkernel::scale::range(shadowSamples, -1.f, 1.f);
     glkernel::sort::distance(shadowSamples, { 0.f, 0.f });
-
-    auto& reflectionSamples = reflectionKernel;
-    reflectionSamples = { static_cast<uint16_t>(multiFrameCount) };
-    glkernel::sample::stratified(reflectionSamples);
-    glkernel::scale::range(reflectionSamples, -1.f, 1.f);
-    glkernel::sort::distance(reflectionSamples, { 0.f, 0.f, 0.f });
-    reflectionSamples[0] = glm::vec3(0.0f);
 }
 
 
 
-glkernel::kernel3 KernelGenerationStage::getSSAOKernel() const
+glkernel::kernel3 KernelGenerationStage::getSSAOKernel(unsigned int size) const
 {
-    glkernel::kernel3 ssaoSamples = glkernel::kernel3{ static_cast<uint16_t>(s_ssaoKernelSize) };
+    glkernel::kernel3 ssaoSamples = glkernel::kernel3{ static_cast<uint16_t>(size) };
     glkernel::sample::best_candidate(ssaoSamples);
     glkernel::scale::range(ssaoSamples, -1.0f, 1.0f);
     for (auto& elem : ssaoSamples)
@@ -66,13 +54,13 @@ glkernel::kernel3 KernelGenerationStage::getSSAOKernel() const
     return ssaoSamples;
 }
 
-std::vector<glm::vec3> KernelGenerationStage::getSSAONoise() const
+std::vector<glm::vec3> KernelGenerationStage::getSSAONoise(unsigned int size) const
 {
     auto kernel = std::vector<glm::vec3>();
 
-    for (auto y = 0u; y < s_ssaoNoiseSize; ++y)
+    for (auto y = 0u; y < size; ++y)
     {
-        for (auto x = 0u; x < s_ssaoNoiseSize; ++x)
+        for (auto x = 0u; x < size; ++x)
         {
             auto c = glm::circularRand(1.f);
             auto v = glm::vec3(c.x, c.y, 0.0f);

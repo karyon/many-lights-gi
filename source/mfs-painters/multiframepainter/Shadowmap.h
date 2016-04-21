@@ -25,6 +25,7 @@ class Shadowmap
 {
 public:
     Shadowmap();
+    ~Shadowmap();
 
     glm::mat4 render(const glm::vec3 &eye, const IdDrawablesMap& drawablesMap, const GroundPlane& groundPlane, float nearPlane, float farPlane) const;
     void setBlurSize(int blurSize);

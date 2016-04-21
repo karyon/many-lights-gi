@@ -12,26 +12,22 @@ using namespace gl;
 
 BlitStage::BlitStage()
 {
-    addInput("accumulation", accumulation);
-    addInput("depth", depth);
-    addInput("viewport", viewport);
 }
 
 void BlitStage::initialize()
 {
-    alwaysProcess(true);
     m_fbo = new globjects::Framebuffer();
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, accumulation.data());
-    m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depth.data());
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, accumulation);
+    m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depth);
 }
 
 void BlitStage::process()
 {
     auto rect = std::array<GLint, 4>{{
-        viewport.data()->x(),
-        viewport.data()->y(),
-        viewport.data()->width(),
-        viewport.data()->height()
+        viewport->x(),
+        viewport->y(),
+        viewport->width(),
+        viewport->height()
     }};
 
     auto defaultFbo = globjects::Framebuffer::defaultFBO();

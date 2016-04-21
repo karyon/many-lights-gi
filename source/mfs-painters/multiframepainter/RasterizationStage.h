@@ -2,10 +2,6 @@
 
 #include <globjects/base/ref_ptr.h>
 
-#include <gloperate/pipeline/AbstractStage.h>
-#include <gloperate/pipeline/InputSlot.h>
-#include <gloperate/pipeline/Data.h>
-
 #include <glkernel/Kernel.h>
 
 #include "TypeDefinitions.h"
@@ -31,36 +27,37 @@ class GroundPlane;
 class Shadowmap;
 class ModelLoadingStage;
 class KernelGenerationStage;
+class PostprocessingStage;
+class FrameAccumulationStage;
+class BlitStage;
 
-class RasterizationStage : public gloperate::AbstractStage
+class RasterizationStage
 {
 public:
-    RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage);
+    RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage, PostprocessingStage& postProcessingStage, FrameAccumulationStage& frameAccumulationStage, BlitStage& blitStage);
+    ~RasterizationStage();
 
-    virtual void initialize() override;
+    void initialize();
+    void process();
 
-    gloperate::InputSlot<gloperate::AbstractPerspectiveProjectionCapability *> projection;
-    gloperate::InputSlot<gloperate::AbstractViewportCapability *> viewport;
-    gloperate::InputSlot<gloperate::AbstractCameraCapability *> camera;
-    gloperate::InputSlot<int> multiFrameCount;
-    gloperate::InputSlot<bool> useReflections;
-    gloperate::InputSlot<bool> useDOF;
-    gloperate::InputSlot<glm::vec3> lightPosition;
+    gloperate::AbstractPerspectiveProjectionCapability * projection;
+    gloperate::AbstractViewportCapability * viewport;
+    gloperate::AbstractCameraCapability * camera;
+    int multiFrameCount;
+    bool useDOF;
+    glm::vec3 lightPosition;
 
-    gloperate::Data<int> currentFrame;
-    gloperate::Data<globjects::ref_ptr<globjects::Texture>> color;
-    gloperate::Data<globjects::ref_ptr<globjects::Texture>> normal;
-    gloperate::Data<globjects::ref_ptr<globjects::Texture>> worldPos;
-    gloperate::Data<globjects::ref_ptr<globjects::Texture>> reflectMask;
-    gloperate::Data<globjects::ref_ptr<globjects::Texture>> depth;
+    int currentFrame;
+    globjects::ref_ptr<globjects::Texture> color;
+    globjects::ref_ptr<globjects::Texture> normal;
+    globjects::ref_ptr<globjects::Texture> worldPos;
+    globjects::ref_ptr<globjects::Texture> depth;
 
 
 protected:
-    virtual void process() override;
 
     void resizeTextures(int width, int height);
     static void setupGLState();
-    void setupMasksTexture();
     void render();
     void zPrepass();
 
@@ -71,9 +68,10 @@ protected:
     globjects::ref_ptr<globjects::Program> m_program;
     globjects::ref_ptr<globjects::Program> m_zOnlyProgram;
 
-    globjects::ref_ptr<globjects::Texture> m_masksTexture;
-    std::unique_ptr<NoiseTexture> m_noiseTexture;
     ModelLoadingStage& m_modelLoadingStage;
     KernelGenerationStage& m_kernelGenerationStage;
+    PostprocessingStage& m_postProcessingStage;
+    FrameAccumulationStage& m_frameAccumulationStage;
+    BlitStage& m_blitStage;
     PresetInformation m_presetInformation;
 };

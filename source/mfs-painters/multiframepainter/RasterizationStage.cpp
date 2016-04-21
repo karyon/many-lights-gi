@@ -16,13 +16,15 @@
 
 #include <gloperate/primitives/PolygonalDrawable.h>
 
-#include "TransparencyMasksGenerator.h"
 #include "NoiseTexture.h"
 #include "Shadowmap.h"
 #include "GroundPlane.h"
 #include "Material.h"
 #include "ModelLoadingStage.h"
 #include "KernelGenerationStage.h"
+#include "PostprocessingStage.h"
+#include "FrameAccumulationStage.h"
+#include "BlitStage.h"
 
 using namespace gl;
 using gloperate::make_unique;
@@ -42,47 +44,36 @@ namespace
     };
 }
 
-RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage)
+RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage, PostprocessingStage& postProcessingStage, FrameAccumulationStage& frameAccumulationStage, BlitStage& blitStage)
 : m_modelLoadingStage(modelLoadingStage)
 , m_kernelGenerationStage(kernelGenerationStage)
+, m_postProcessingStage(postProcessingStage)
+, m_frameAccumulationStage(frameAccumulationStage)
+, m_blitStage(blitStage)
+, m_shadowmap(nullptr)
 {
-    currentFrame.data() = 1;
-
-    addInput("projection", projection);
-    addInput("viewport", viewport);
-    addInput("camera", camera);
-    addInput("useReflections", useReflections);
-    addInput("useDOF", useDOF);
-    addInput("multiframeCount", multiFrameCount);
-
-    addOutput("currentFrame", currentFrame);
-    addOutput("color", color);
-    addOutput("normal", normal);
-    addOutput("depth", depth);
-    addOutput("worldPos", worldPos);
-    addOutput("reflectMask", reflectMask);
+    currentFrame = 1;
+}
+RasterizationStage::~RasterizationStage()
+{
 }
 
 void RasterizationStage::initialize()
 {
     setupGLState();
-    setupMasksTexture();
 
-    m_noiseTexture = make_unique<NoiseTexture>(3u, 3u);
     m_shadowmap = make_unique<Shadowmap>();
 
-    color.data() = globjects::Texture::createDefault(GL_TEXTURE_2D);
-    normal.data() = globjects::Texture::createDefault(GL_TEXTURE_2D);
-    worldPos.data() = globjects::Texture::createDefault(GL_TEXTURE_2D);
-    reflectMask.data() = globjects::Texture::createDefault(GL_TEXTURE_2D);
-    depth.data() = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    color = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    normal = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    worldPos = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    depth = globjects::Texture::createDefault(GL_TEXTURE_2D);
 
     m_fbo = new globjects::Framebuffer();
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, color.data());
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT1, normal.data());
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT2, worldPos.data());
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT3, reflectMask.data());
-    m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depth.data());
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, color);
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT1, normal);
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT2, worldPos);
+    m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depth);
 
     m_program = new globjects::Program();
     m_program->attach(
@@ -100,53 +91,53 @@ void RasterizationStage::initialize()
     m_modelLoadingStage.process();
     m_kernelGenerationStage.initialize();
     m_presetInformation = m_modelLoadingStage.getCurrentPreset();
+
+    m_postProcessingStage.initialize();
+    m_postProcessingStage.color = color;
+    m_postProcessingStage.normal = normal;
+    m_postProcessingStage.worldPos = worldPos;
+    m_postProcessingStage.depth = depth;
+    m_postProcessingStage.presetInformation = m_presetInformation;
+
+    m_frameAccumulationStage.frame = m_postProcessingStage.postprocessedFrame;
+    m_frameAccumulationStage.depth = m_postProcessingStage.depth;
+    m_frameAccumulationStage.initialize();
+
+    m_blitStage.accumulation = m_frameAccumulationStage.accumulation;
+    m_blitStage.depth = m_frameAccumulationStage.depth;
+    m_blitStage.initialize();
+
+
+
+    camera->setEye(m_presetInformation.camEye);
+    camera->setCenter(m_presetInformation.camCenter);
+    projection->setZNear(m_presetInformation.nearFar.x);
+    projection->setZFar(m_presetInformation.nearFar.y);
 }
 
 void RasterizationStage::process()
 {
-    if (viewport.hasChanged())
-    {
-        resizeTextures(viewport.data()->width(), viewport.data()->height());
-    }
-
-    //currentFrame.data() += 1;
-    for (auto input : this->inputs())
-    {
-        if (input->hasChanged())
-        {
-            currentFrame.data() = 1;
-            alwaysProcess(true);
-        }
-    }
-
-    if (currentFrame.data() > multiFrameCount.data())
-    {
-        //alwaysProcess(false);
-        //return;
-    }
-
-    camera.data()->setEye(m_presetInformation.camEye);
-    camera.data()->setCenter(m_presetInformation.camCenter);
-    projection.data()->setZNear(m_presetInformation.nearFar.x);
-    projection.data()->setZFar(m_presetInformation.nearFar.y);
+    //TODO only when needed
+    resizeTextures(viewport->width(), viewport->height());
 
     m_groundPlane = make_unique<GroundPlane>(m_presetInformation.groundHeight);
 
     render();
 
-    invalidateOutputs();
+    m_postProcessingStage.process();
+    m_frameAccumulationStage.process();
+    m_blitStage.process();
 }
 
 void RasterizationStage::resizeTextures(int width, int height)
 {
-    color.data()->image2D(0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-    normal.data()->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
-    worldPos.data()->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
-    reflectMask.data()->image2D(0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
-    depth.data()->image2D(0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    color->image2D(0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    normal->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+    worldPos->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+    depth->image2D(0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     
-    worldPos.data()->setParameter(GLenum::GL_TEXTURE_MAG_FILTER, GLenum::GL_NEAREST);
-    worldPos.data()->setParameter(GLenum::GL_TEXTURE_MIN_FILTER, GLenum::GL_NEAREST);
+    worldPos->setParameter(GLenum::GL_TEXTURE_MAG_FILTER, GLenum::GL_NEAREST);
+    worldPos->setParameter(GLenum::GL_TEXTURE_MIN_FILTER, GLenum::GL_NEAREST);
 
     m_fbo->printStatus(true);
 }
@@ -161,15 +152,15 @@ void RasterizationStage::render()
     auto lightPosition = m_presetInformation.lightPosition;
     auto lightRadius = m_presetInformation.lightMaxShift;
 
-    auto frameLightOffset = m_kernelGenerationStage.shadowKernel[currentFrame.data() - 1] * lightRadius;
+    auto frameLightOffset = m_kernelGenerationStage.shadowKernel[currentFrame - 1] * lightRadius;
     auto frameLightPosition = lightPosition + glm::vec3(frameLightOffset.x, 0.0f, frameLightOffset.y);
 
     auto biasedShadowTransform = m_shadowmap->render(frameLightPosition, m_modelLoadingStage.getDrawablesMap(), *m_groundPlane.get(), m_presetInformation.nearFar.x, m_presetInformation.nearFar.y);
 
-    glViewport(viewport.data()->x(),
-               viewport.data()->y(),
-               viewport.data()->width(),
-               viewport.data()->height());
+    glViewport(viewport->x(),
+               viewport->y(),
+               viewport->width(),
+               viewport->height());
 
     m_fbo->bind();
     m_fbo->setDrawBuffers({
@@ -191,10 +182,10 @@ void RasterizationStage::render()
 
     m_program->use();
 
-    auto subpixelSample = m_kernelGenerationStage.antiAliasingKernel[currentFrame.data() - 1];
-    auto viewportSize = glm::vec2(viewport.data()->width(), viewport.data()->height());
-    auto focalPoint = m_kernelGenerationStage.depthOfFieldKernel[currentFrame.data() - 1] * m_presetInformation.focalPoint;
-    focalPoint *= useDOF.data();
+    auto subpixelSample = m_kernelGenerationStage.antiAliasingKernel[currentFrame - 1];
+    auto viewportSize = glm::vec2(viewport->width(), viewport->height());
+    auto focalPoint = m_kernelGenerationStage.depthOfFieldKernel[currentFrame - 1] * m_presetInformation.focalPoint;
+    focalPoint *= useDOF;
 
     for (auto program : std::vector<globjects::Program*>{ m_program, m_groundPlane->program() })
     {
@@ -211,22 +202,18 @@ void RasterizationStage::render()
         program->setUniform("worldLightPos", frameLightPosition);
         program->setUniform("biasedShadowTransform", biasedShadowTransform);
 
-        program->setUniform("cameraEye", camera.data()->eye());
-        program->setUniform("modelView", camera.data()->view());
-        program->setUniform("projection", projection.data()->projection());
+        program->setUniform("cameraEye", camera->eye());
+        program->setUniform("modelView", camera->view());
+        program->setUniform("projection", projection->projection());
 
         // offset needs to be doubled, because ndc range is [-1;1] and not [0;1]
         program->setUniform("ndcOffset", 2.0f * subpixelSample / viewportSize);
-
-        program->setUniform("masksOffset", static_cast<float>(currentFrame.data()) / TransparencyMasksGenerator::s_numMasks);
 
         program->setUniform("cocPoint", focalPoint);
         program->setUniform("focalDist", m_presetInformation.focalDist);
     }
 
     m_shadowmap->distanceTexture()->bindActive(ShadowSampler);
-    m_masksTexture->bindActive(MaskSampler);
-    m_noiseTexture->bindActive(NoiseSampler);
 
     for (auto& pair : m_modelLoadingStage.getDrawablesMap())
     {
@@ -317,11 +304,4 @@ void RasterizationStage::setupGLState()
     glDepthFunc(GL_LESS);
     glDepthMask(GL_TRUE);
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-}
-
-void RasterizationStage::setupMasksTexture()
-{
-    const auto table = TransparencyMasksGenerator::generateDistributions(1);
-    m_masksTexture = globjects::Texture::createDefault(GL_TEXTURE_2D);
-    m_masksTexture->image2D(0, GL_R8, GLsizei(table->at(0).size()), GLsizei(table->size()), 0, GL_RED, GL_UNSIGNED_BYTE, table->data());
 }

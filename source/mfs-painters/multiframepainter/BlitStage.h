@@ -2,9 +2,6 @@
 
 #include <globjects/base/ref_ptr.h>
 
-#include <gloperate/pipeline/AbstractStage.h>
-#include <gloperate/pipeline/InputSlot.h>
-
 
 namespace globjects
 {
@@ -17,21 +14,21 @@ namespace gloperate
     class AbstractViewportCapability;
 }
 
-class BlitStage : public gloperate::AbstractStage
+class BlitStage
 {
 public:
     BlitStage();
 
-    virtual void initialize() override;
+    void initialize();
+    void process();
 
-    gloperate::InputSlot<gloperate::AbstractViewportCapability *> viewport;
+    gloperate::AbstractViewportCapability * viewport;
 
-    gloperate::InputSlot<globjects::ref_ptr<globjects::Texture>> accumulation;
-    gloperate::InputSlot<globjects::ref_ptr<globjects::Texture>> depth;
+    globjects::ref_ptr<globjects::Texture> accumulation;
+    globjects::ref_ptr<globjects::Texture> depth;
 
 
 protected:
-    virtual void process() override;
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
 };

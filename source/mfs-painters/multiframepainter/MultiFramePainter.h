@@ -3,10 +3,11 @@
 #include <chrono>
 #include <memory>
 
-#include <gloperate/pipeline/PipelinePainter.h>
+#include <gloperate/painter/Painter.h>
 
 #include "mfs-painters-api.h"
-#include "MultiFramePipeline.h"
+
+#include "Preset.h"
 
 
 namespace gloperate 
@@ -16,10 +17,18 @@ namespace gloperate
     class AbstractViewportCapability;
     class AbstractPerspectiveProjectionCapability;
     class AbstractCameraCapability;
+    class ResourceManager;
 }
 
+class ModelLoadingStage;
+class KernelGenerationStage;
+class RasterizationStage;
+class PostprocessingStage;
+class FrameAccumulationStage;
+class BlitStage;
 
-class MFS_PAINTERS_API MultiFramePainter : public gloperate::PipelinePainter
+
+class MFS_PAINTERS_API MultiFramePainter : public gloperate::Painter
 {
 public:
     MultiFramePainter(gloperate::ResourceManager & resourceManager, const cpplocate::ModuleInfo & moduleInfo);
@@ -28,13 +37,18 @@ public:
     int multiframeCount() const;
     float framesPerSecond() const;
 
+
+    gloperate::ResourceManager& resourceManager;
+    int multiFrameCount;
+    Preset preset;
+    bool useDOF;
+
 protected:
     virtual void onInitialize() override;
     virtual void onPaint() override;
 
 
 protected:
-    MultiFramePipeline m_pipeline;
 
     float m_fps;
     std::chrono::time_point<std::chrono::steady_clock> m_lastTimepoint;
@@ -46,4 +60,11 @@ protected:
     gloperate::AbstractCameraCapability * m_cameraCapability;
 
     int m_multiFrameCount;
+
+    std::unique_ptr<ModelLoadingStage> modelLoadingStage;
+    std::unique_ptr<KernelGenerationStage> kernelGenerationStage;
+    std::unique_ptr<RasterizationStage> rasterizationStage;
+    std::unique_ptr<PostprocessingStage> postprocessingStage;
+    std::unique_ptr<FrameAccumulationStage> frameAccumulationStage;
+    std::unique_ptr<BlitStage> blitStage;
 };

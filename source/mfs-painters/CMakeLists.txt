@@ -41,7 +41,6 @@ set(headers
     ${include_path}/multiframepainter/mfs-painters-api.h
 
     ${include_path}/multiframepainter/MultiFramePainter.h
-    ${include_path}/multiframepainter/MultiFramePipeline.h
     ${include_path}/multiframepainter/ModelLoadingStage.h
     ${include_path}/multiframepainter/KernelGenerationStage.h
     ${include_path}/multiframepainter/RasterizationStage.h
@@ -54,7 +53,6 @@ set(headers
     ${include_path}/multiframepainter/Preset.h
     ${include_path}/multiframepainter/OmnidirectionalShadowmap.h
     ${include_path}/multiframepainter/Shadowmap.h
-    ${include_path}/multiframepainter/TransparencyMasksGenerator.h
     ${include_path}/multiframepainter/NoiseTexture.h
     ${include_path}/multiframepainter/Material.h
 
@@ -65,7 +63,6 @@ set(sources
     ${source_path}/plugin.cpp
 
     ${source_path}/multiframepainter/MultiFramePainter.cpp
-    ${source_path}/multiframepainter/MultiFramePipeline.cpp
     ${source_path}/multiframepainter/ModelLoadingStage.cpp
     ${source_path}/multiframepainter/KernelGenerationStage.cpp
     ${source_path}/multiframepainter/RasterizationStage.cpp
@@ -76,7 +73,6 @@ set(sources
     ${source_path}/multiframepainter/GroundPlane.cpp
     ${source_path}/multiframepainter/OmnidirectionalShadowmap.cpp
     ${source_path}/multiframepainter/Shadowmap.cpp
-    ${source_path}/multiframepainter/TransparencyMasksGenerator.cpp
     ${source_path}/multiframepainter/NoiseTexture.cpp
     ${source_path}/multiframepainter/Material.cpp
 

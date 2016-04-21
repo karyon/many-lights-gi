@@ -15,16 +15,69 @@
 #include <gloperate/painter/CameraCapability.h>
 
 
+#include "ModelLoadingStage.h"
+#include "KernelGenerationStage.h"
+#include "RasterizationStage.h"
+#include "PostprocessingStage.h"
+#include "FrameAccumulationStage.h"
+#include "BlitStage.h"
+
+
 using namespace reflectionzeug;
 using namespace globjects;
 using namespace gloperate;
 
 
 MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cpplocate::ModuleInfo & moduleInfo)
-: PipelinePainter("MultiFramePainter", resourceManager, moduleInfo, m_pipeline)
-, m_pipeline(resourceManager)
+: Painter("MultiFramePainter", resourceManager, moduleInfo)
 , m_multiFrameCount(64)
+, resourceManager(resourceManager)
+, multiFrameCount(64)
+, preset(Preset::CrytekSponza)
 {
+
+
+    // Setup painter
+    m_targetFramebufferCapability = addCapability(new gloperate::TargetFramebufferCapability());
+    m_viewportCapability = addCapability(new gloperate::ViewportCapability());
+    m_projectionCapability = addCapability(new gloperate::PerspectiveProjectionCapability(m_viewportCapability));
+    m_cameraCapability = addCapability(new gloperate::CameraCapability());
+
+
+    modelLoadingStage = std::make_unique<ModelLoadingStage>();
+    kernelGenerationStage = std::make_unique<KernelGenerationStage>();
+    postprocessingStage = std::make_unique<PostprocessingStage>(*kernelGenerationStage);
+    frameAccumulationStage = std::make_unique<FrameAccumulationStage>();
+    blitStage = std::make_unique<BlitStage>();
+    rasterizationStage = std::make_unique<RasterizationStage>(*modelLoadingStage, *kernelGenerationStage, *postprocessingStage, *frameAccumulationStage, *blitStage);
+
+    modelLoadingStage->resourceManager = &resourceManager;
+    modelLoadingStage->preset = preset;
+
+    rasterizationStage->projection = m_projectionCapability;
+    rasterizationStage->camera = m_cameraCapability;
+    rasterizationStage->viewport = m_viewportCapability;
+    rasterizationStage->multiFrameCount = multiFrameCount;
+    rasterizationStage->useDOF = useDOF;
+
+    postprocessingStage->viewport = m_viewportCapability;
+    postprocessingStage->camera = m_cameraCapability;
+    postprocessingStage->projection = m_projectionCapability;
+    postprocessingStage->color = rasterizationStage->color;
+    postprocessingStage->normal = rasterizationStage->normal;
+    postprocessingStage->depth = rasterizationStage->depth;
+    postprocessingStage->worldPos = rasterizationStage->worldPos;
+
+    frameAccumulationStage->viewport = m_viewportCapability;
+    frameAccumulationStage->currentFrame = rasterizationStage->currentFrame;
+    frameAccumulationStage->frame = postprocessingStage->postprocessedFrame;
+    frameAccumulationStage->depth = rasterizationStage->depth;
+
+    blitStage->viewport = m_viewportCapability;
+    blitStage->accumulation = frameAccumulationStage->accumulation;
+    blitStage->depth = rasterizationStage->depth;
+
+
     // Get data path
     std::string dataPath = moduleInfo.value("dataPath");
     dataPath = iozeug::FilePath(dataPath).path();
@@ -36,27 +89,6 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
     {
         dataPath = "data/";
     }
-
-    m_pipeline.resourceManager.setData(&resourceManager);
-
-    // Setup painter
-    m_targetFramebufferCapability = addCapability(new gloperate::TargetFramebufferCapability());
-    m_viewportCapability = addCapability(new gloperate::ViewportCapability());
-    m_projectionCapability = addCapability(new gloperate::PerspectiveProjectionCapability(m_viewportCapability));
-    m_cameraCapability = addCapability(new gloperate::CameraCapability());
-
-    m_pipeline.viewport.setData(m_viewportCapability);
-    m_pipeline.projection.setData(m_projectionCapability);
-    m_pipeline.camera.setData(m_cameraCapability);
-
-    m_cameraCapability->changed.connect([this](){ m_pipeline.camera.invalidate(); });
-    m_viewportCapability->changed.connect([this]() { m_pipeline.viewport.invalidate(); });
-    m_projectionCapability->changed.connect([this]() { m_pipeline.projection.invalidate(); });
-
-    addProperty(createProperty("Preset", m_pipeline.preset));
-    addProperty(createProperty("MultiframeCount", m_pipeline.multiFrameCount));
-    addProperty(createProperty("Reflections", m_pipeline.useReflections));
-    addProperty(createProperty("DepthOfField", m_pipeline.useDOF));
 }
 
 MultiFramePainter::~MultiFramePainter()
@@ -76,8 +108,7 @@ float MultiFramePainter::framesPerSecond() const
 void MultiFramePainter::onInitialize()
 {
     gloperate::registerNamedStrings("data/shaders", "glsl", true);
-
-    PipelinePainter::onInitialize();
+    rasterizationStage->initialize();
 }
 
 void MultiFramePainter::onPaint()
@@ -88,6 +119,5 @@ void MultiFramePainter::onPaint()
     auto duration = duration_cast<milliseconds>(now - m_lastTimepoint);
     m_fps = 1000.0f / duration.count();
     m_lastTimepoint = now;
-
-    PipelinePainter::onPaint();
+    rasterizationStage->process();
 }

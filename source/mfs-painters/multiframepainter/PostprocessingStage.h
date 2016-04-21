@@ -4,9 +4,6 @@
 
 #include <globjects/base/ref_ptr.h>
 
-#include <gloperate/pipeline/AbstractStage.h>
-#include <gloperate/pipeline/InputSlot.h>
-
 #include "TypeDefinitions.h"
 
 namespace globjects
@@ -26,43 +23,38 @@ namespace gloperate
 
 class KernelGenerationStage;
 
-class PostprocessingStage : public gloperate::AbstractStage
+class PostprocessingStage
 {
 public:
     PostprocessingStage(KernelGenerationStage& kernelGenerationStage);
 
-    virtual void initialize() override;
+    void initialize();
+    void process();
 
-    gloperate::InputSlot<gloperate::AbstractPerspectiveProjectionCapability *> projection;
-    gloperate::InputSlot<gloperate::AbstractViewportCapability *> viewport;
-    gloperate::InputSlot<gloperate::AbstractCameraCapability *> camera;
-    gloperate::InputSlot<PresetInformation> presetInformation;
-    gloperate::InputSlot<bool> useReflections;
-    gloperate::InputSlot<int> ssaoKernelSize;
-    gloperate::InputSlot<int> ssaoNoiseSize;
-    gloperate::InputSlot<int> currentFrame;
+    gloperate::AbstractPerspectiveProjectionCapability * projection;
+    gloperate::AbstractViewportCapability * viewport;
+    gloperate::AbstractCameraCapability * camera;
+    PresetInformation presetInformation;
+    int ssaoKernelSize;
+    int ssaoNoiseSize;
 
-    gloperate::InputSlot<globjects::ref_ptr<globjects::Texture>> color;
-    gloperate::InputSlot<globjects::ref_ptr<globjects::Texture>> normal;
-    gloperate::InputSlot<globjects::ref_ptr<globjects::Texture>> depth;
-    gloperate::InputSlot<globjects::ref_ptr<globjects::Texture>> worldPos;
-    gloperate::InputSlot<globjects::ref_ptr<globjects::Texture>> reflectMask;
+    globjects::ref_ptr<globjects::Texture> color;
+    globjects::ref_ptr<globjects::Texture> normal;
+    globjects::ref_ptr<globjects::Texture> depth;
+    globjects::ref_ptr<globjects::Texture> worldPos;
 
-    gloperate::Data<globjects::ref_ptr<globjects::Texture>> postprocessedFrame;
+    globjects::ref_ptr<globjects::Texture> postprocessedFrame;
 
 protected:
-    virtual void process() override;
 
     void resizeTexture(int width, int height);
     void generateNoiseTexture();
     void generateKernelTexture();
-    void generateReflectionKernelTexture();
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_screenAlignedQuad;
 
     globjects::ref_ptr<globjects::Texture> m_ssaoKernelTexture;
     globjects::ref_ptr<globjects::Texture> m_ssaoNoiseTexture;
-    globjects::ref_ptr<globjects::Texture> m_reflectionKernelTexture;
     KernelGenerationStage& m_kernelGenerationStage;
 };

@@ -2,9 +2,6 @@
 
 #include <globjects/base/ref_ptr.h>
 
-#include <gloperate/pipeline/AbstractStage.h>
-#include <gloperate/pipeline/InputSlot.h>
-
 
 namespace globjects
 {
@@ -18,24 +15,24 @@ namespace gloperate
     class ScreenAlignedQuad;
 }
 
-class FrameAccumulationStage : public gloperate::AbstractStage
+class FrameAccumulationStage
 {
 public:
     FrameAccumulationStage();
 
-    virtual void initialize() override;
+    void initialize();
+    void process();
 
-    gloperate::InputSlot<gloperate::AbstractViewportCapability *> viewport;
-    gloperate::InputSlot<int> currentFrame;
+    gloperate::AbstractViewportCapability * viewport;
+    int currentFrame;
 
-    gloperate::InputSlot<globjects::ref_ptr<globjects::Texture>> frame;
-    gloperate::InputSlot<globjects::ref_ptr<globjects::Texture>> depth;
+    globjects::ref_ptr<globjects::Texture> frame;
+    globjects::ref_ptr<globjects::Texture> depth;
 
-    gloperate::Data<globjects::ref_ptr<globjects::Texture>> accumulation;
+    globjects::ref_ptr<globjects::Texture> accumulation;
 
 
 protected:
-    virtual void process() override;
 
     void resizeTexture(int width, int height);
 
