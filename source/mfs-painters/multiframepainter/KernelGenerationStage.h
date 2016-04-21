@@ -2,11 +2,6 @@
 
 #include <glkernel/Kernel.h>
 
-#include <globjects/base/ref_ptr.h>
-
-#include <gloperate/pipeline/AbstractStage.h>
-#include <gloperate/pipeline/InputSlot.h>
-
 #include "TypeDefinitions.h"
 
 namespace globjects
@@ -15,35 +10,19 @@ namespace globjects
     class Texture;
 }
 
-namespace gloperate
-{
-    class AbstractViewportCapability;
-    class AbstractPerspectiveProjectionCapability;
-    class AbstractCameraCapability;
-
-    class ScreenAlignedQuad;
-}
-
-class KernelGenerationStage : public gloperate::AbstractStage
+class KernelGenerationStage
 {
 public:
     KernelGenerationStage();
 
-    virtual void initialize() override;
-    virtual void process() override;
+    void initialize();
+    void process(int multiFrameCount);
 
-    gloperate::InputSlot<int> multiFrameCount;
+    glkernel::kernel3 getSSAOKernel() const;
+    std::vector<glm::vec3> getSSAONoise() const;
 
-    gloperate::Data<glkernel::kernel2> antiAliasingKernel;
-    gloperate::Data<glkernel::kernel2> depthOfFieldKernel;
-    gloperate::Data<glkernel::kernel2> shadowKernel;
-    gloperate::Data<glkernel::kernel3> ssaoKernel;
-    gloperate::Data<glkernel::kernel3> reflectionKernel;
-
-    gloperate::Data<std::vector<glm::vec3>> ssaoNoise;
-    gloperate::Data<int> ssaoKernelSize;
-    gloperate::Data<int> ssaoNoiseSize;
-
-    gloperate::Data<globjects::ref_ptr<globjects::Texture>> postprocessedFrame;
-
+    glkernel::kernel2 antiAliasingKernel;
+    glkernel::kernel2 depthOfFieldKernel;
+    glkernel::kernel2 shadowKernel;
+    glkernel::kernel3 reflectionKernel;
 };

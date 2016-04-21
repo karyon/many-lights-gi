@@ -23,6 +23,7 @@ using namespace gloperate;
 MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cpplocate::ModuleInfo & moduleInfo)
 : PipelinePainter("MultiFramePainter", resourceManager, moduleInfo, m_pipeline)
 , m_pipeline(resourceManager)
+, m_multiFrameCount(64)
 {
     // Get data path
     std::string dataPath = moduleInfo.value("dataPath");
@@ -64,7 +65,7 @@ MultiFramePainter::~MultiFramePainter()
 
 int MultiFramePainter::multiframeCount() const
 {
-    return m_pipeline.getOutput<int>("currentFrame")->data();
+    return m_multiFrameCount;
 }
 
 float MultiFramePainter::framesPerSecond() const

@@ -22,6 +22,7 @@
 #include "GroundPlane.h"
 #include "Material.h"
 #include "ModelLoadingStage.h"
+#include "KernelGenerationStage.h"
 
 using namespace gl;
 using gloperate::make_unique;
@@ -41,8 +42,9 @@ namespace
     };
 }
 
-RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage)
+RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage)
 : m_modelLoadingStage(modelLoadingStage)
+, m_kernelGenerationStage(kernelGenerationStage)
 {
     currentFrame.data() = 1;
 
@@ -52,9 +54,6 @@ RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage)
     addInput("useReflections", useReflections);
     addInput("useDOF", useDOF);
     addInput("multiframeCount", multiFrameCount);
-    addInput("antiAliasingKernel", antiAliasingKernel);
-    addInput("depthOfFieldKernel", depthOfFieldKernel);
-    addInput("shadowKernel", shadowKernel);
 
     addOutput("currentFrame", currentFrame);
     addOutput("color", color);
@@ -99,6 +98,7 @@ void RasterizationStage::initialize()
     );
 
     m_modelLoadingStage.process();
+    m_kernelGenerationStage.initialize();
     m_presetInformation = m_modelLoadingStage.getCurrentPreset();
 }
 
@@ -161,7 +161,7 @@ void RasterizationStage::render()
     auto lightPosition = m_presetInformation.lightPosition;
     auto lightRadius = m_presetInformation.lightMaxShift;
 
-    auto frameLightOffset = shadowKernel.data()[currentFrame.data() - 1] * lightRadius;
+    auto frameLightOffset = m_kernelGenerationStage.shadowKernel[currentFrame.data() - 1] * lightRadius;
     auto frameLightPosition = lightPosition + glm::vec3(frameLightOffset.x, 0.0f, frameLightOffset.y);
 
     auto biasedShadowTransform = m_shadowmap->render(frameLightPosition, m_modelLoadingStage.getDrawablesMap(), *m_groundPlane.get(), m_presetInformation.nearFar.x, m_presetInformation.nearFar.y);
@@ -191,9 +191,9 @@ void RasterizationStage::render()
 
     m_program->use();
 
-    auto subpixelSample = antiAliasingKernel.data()[currentFrame.data() - 1];
+    auto subpixelSample = m_kernelGenerationStage.antiAliasingKernel[currentFrame.data() - 1];
     auto viewportSize = glm::vec2(viewport.data()->width(), viewport.data()->height());
-    auto focalPoint = depthOfFieldKernel.data()[currentFrame.data() - 1] * m_presetInformation.focalPoint;
+    auto focalPoint = m_kernelGenerationStage.depthOfFieldKernel[currentFrame.data() - 1] * m_presetInformation.focalPoint;
     focalPoint *= useDOF.data();
 
     for (auto program : std::vector<globjects::Program*>{ m_program, m_groundPlane->program() })

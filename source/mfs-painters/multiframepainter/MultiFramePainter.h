@@ -1,12 +1,12 @@
 #pragma once
 
 #include <chrono>
+#include <memory>
 
 #include <gloperate/pipeline/PipelinePainter.h>
 
 #include "mfs-painters-api.h"
 #include "MultiFramePipeline.h"
-#include "ModelLoadingStage.h"
 
 
 namespace gloperate 
@@ -45,5 +45,5 @@ protected:
     gloperate::AbstractPerspectiveProjectionCapability * m_projectionCapability;
     gloperate::AbstractCameraCapability * m_cameraCapability;
 
-    ModelLoadingStage m_modelLoadingStage;
+    int m_multiFrameCount;
 };

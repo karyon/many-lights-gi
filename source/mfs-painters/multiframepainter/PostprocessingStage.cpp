@@ -13,9 +13,12 @@
 #include <gloperate/painter/AbstractPerspectiveProjectionCapability.h>
 #include <gloperate/painter/AbstractCameraCapability.h>
 
+#include "KernelGenerationStage.h"
+
 using namespace gl;
 
-PostprocessingStage::PostprocessingStage()
+PostprocessingStage::PostprocessingStage(KernelGenerationStage& kernelGenerationStage)
+: m_kernelGenerationStage(kernelGenerationStage)
 {
     addInput("projection", projection);
     addInput("viewport", viewport);
@@ -26,9 +29,6 @@ PostprocessingStage::PostprocessingStage()
     addInput("reflectMask", reflectMask);
     addInput("presetInformation", presetInformation);
     addInput("useReflections", useReflections);
-    addInput("reflectionKernel", reflectionKernel);
-    addInput("ssaoKernel", ssaoKernel);
-    addInput("ssaoNoise", ssaoNoise);
     addInput("ssaoKernelSize", ssaoKernelSize);
     addInput("ssaoNoiseSize", ssaoNoiseSize);
     addInput("currentFrame", currentFrame);
@@ -57,15 +57,10 @@ void PostprocessingStage::process()
         resizeTexture(viewport.data()->width(), viewport.data()->height());
     }
 
-    if (ssaoNoise.hasChanged())
-    {
-        generateNoiseTexture();
-    }
+    //TODO only if changed
+    generateNoiseTexture();
 
-    if (reflectionKernel.hasChanged())
-    {
-        generateReflectionKernelTexture();
-    }
+    generateReflectionKernelTexture();
 
     generateKernelTexture();
 
@@ -116,7 +111,7 @@ void PostprocessingStage::resizeTexture(int width, int height)
 
 void PostprocessingStage::generateNoiseTexture()
 {
-    auto& noise = ssaoNoise.data();
+    auto& noise = m_kernelGenerationStage.getSSAONoise();
     auto size = static_cast<int>(std::sqrt(noise.size()));
 
     auto texture = new globjects::Texture(gl::GL_TEXTURE_2D);
@@ -132,7 +127,7 @@ void PostprocessingStage::generateNoiseTexture()
 
 void PostprocessingStage::generateKernelTexture()
 {
-    auto kernel = ssaoKernel.data();
+    auto kernel = m_kernelGenerationStage.getSSAOKernel();
 
     auto texture = new globjects::Texture(gl::GL_TEXTURE_1D);
     texture->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
@@ -146,7 +141,7 @@ void PostprocessingStage::generateKernelTexture()
 
 void PostprocessingStage::generateReflectionKernelTexture()
 {
-    auto kernel = reflectionKernel.data();
+    auto kernel = m_kernelGenerationStage.reflectionKernel;
 
     auto texture = new globjects::Texture(gl::GL_TEXTURE_1D);
     texture->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);

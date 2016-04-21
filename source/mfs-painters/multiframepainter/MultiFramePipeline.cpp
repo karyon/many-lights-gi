@@ -17,15 +17,13 @@ MultiFramePipeline::MultiFramePipeline(gloperate::ResourceManager& resourceManag
 {
     auto modelLoadingStage = new ModelLoadingStage();
     auto kernelGenerationStage = new KernelGenerationStage();
-    auto rasterizationStage = new RasterizationStage(*modelLoadingStage);
-    auto postprocessingStage = new PostprocessingStage();
+    auto rasterizationStage = new RasterizationStage(*modelLoadingStage, *kernelGenerationStage);
+    auto postprocessingStage = new PostprocessingStage(*kernelGenerationStage);
     auto frameAccumulationStage = new FrameAccumulationStage();
     auto blitStage = new BlitStage();
 
     modelLoadingStage->resourceManager = &resourceManager;
     modelLoadingStage->preset = preset;
-
-    kernelGenerationStage->multiFrameCount = multiFrameCount;
 
     rasterizationStage->projection = projection;
     rasterizationStage->camera = camera;
@@ -33,20 +31,12 @@ MultiFramePipeline::MultiFramePipeline(gloperate::ResourceManager& resourceManag
     rasterizationStage->multiFrameCount = multiFrameCount;
     rasterizationStage->useReflections = useReflections;
     rasterizationStage->useDOF = useDOF;
-    rasterizationStage->antiAliasingKernel = kernelGenerationStage->antiAliasingKernel;
-    rasterizationStage->depthOfFieldKernel = kernelGenerationStage->depthOfFieldKernel;
-    rasterizationStage->shadowKernel = kernelGenerationStage->shadowKernel;
 
     postprocessingStage->viewport = viewport;
     postprocessingStage->camera = camera;
     postprocessingStage->projection = projection;
     postprocessingStage->useReflections = useReflections;
     postprocessingStage->currentFrame = rasterizationStage->currentFrame;
-    postprocessingStage->reflectionKernel = kernelGenerationStage->reflectionKernel;
-    postprocessingStage->ssaoKernel = kernelGenerationStage->ssaoKernel;
-    postprocessingStage->ssaoNoise = kernelGenerationStage->ssaoNoise;
-    postprocessingStage->ssaoKernelSize = kernelGenerationStage->ssaoKernelSize;
-    postprocessingStage->ssaoNoiseSize = kernelGenerationStage->ssaoNoiseSize;
     postprocessingStage->color = rasterizationStage->color;
     postprocessingStage->normal = rasterizationStage->normal;
     postprocessingStage->depth = rasterizationStage->depth;
@@ -62,5 +52,5 @@ MultiFramePipeline::MultiFramePipeline(gloperate::ResourceManager& resourceManag
     blitStage->accumulation = frameAccumulationStage->accumulation;
     blitStage->depth = rasterizationStage->depth;
 
-    addStages(kernelGenerationStage, rasterizationStage, postprocessingStage, frameAccumulationStage, blitStage);
+    addStages(rasterizationStage, postprocessingStage, frameAccumulationStage, blitStage);
 }

@@ -24,10 +24,12 @@ namespace gloperate
     class ScreenAlignedQuad;
 }
 
+class KernelGenerationStage;
+
 class PostprocessingStage : public gloperate::AbstractStage
 {
 public:
-    PostprocessingStage();
+    PostprocessingStage(KernelGenerationStage& kernelGenerationStage);
 
     virtual void initialize() override;
 
@@ -36,9 +38,6 @@ public:
     gloperate::InputSlot<gloperate::AbstractCameraCapability *> camera;
     gloperate::InputSlot<PresetInformation> presetInformation;
     gloperate::InputSlot<bool> useReflections;
-    gloperate::InputSlot<glkernel::kernel3> reflectionKernel;
-    gloperate::InputSlot<glkernel::kernel3> ssaoKernel;
-    gloperate::InputSlot<std::vector<glm::vec3>> ssaoNoise;
     gloperate::InputSlot<int> ssaoKernelSize;
     gloperate::InputSlot<int> ssaoNoiseSize;
     gloperate::InputSlot<int> currentFrame;
@@ -65,4 +64,5 @@ protected:
     globjects::ref_ptr<globjects::Texture> m_ssaoKernelTexture;
     globjects::ref_ptr<globjects::Texture> m_ssaoNoiseTexture;
     globjects::ref_ptr<globjects::Texture> m_reflectionKernelTexture;
+    KernelGenerationStage& m_kernelGenerationStage;
 };

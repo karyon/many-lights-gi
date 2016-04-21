@@ -3,9 +3,6 @@
 #include <vector>
 #include <memory>
 
-#include <gloperate/pipeline/AbstractStage.h>
-#include <gloperate/pipeline/InputSlot.h>
-#include <gloperate/pipeline/Data.h>
 #include <gloperate/primitives/PolygonalDrawable.h>
 
 #include "TypeDefinitions.h"
