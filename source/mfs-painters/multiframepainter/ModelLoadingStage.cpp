@@ -8,7 +8,6 @@
 
 #include <globjects/Texture.h>
 
-#include <gloperate/primitives/PolygonalDrawable.h>
 #include <gloperate/primitives/PolygonalGeometry.h>
 #include <gloperate/primitives/Scene.h>
 #include <gloperate/resources/ResourceManager.h>
@@ -55,26 +54,20 @@ namespace
 
 ModelLoadingStage::ModelLoadingStage()
 {
-    addInput("resouceManager", resourceManager);
-    addInput("preset", preset);
-
-    addOutput("drawablesMap", drawablesMap);
-    addOutput("presetInformation", presetInformation);
-    addOutput("materialMap", materialMap);
 }
 
 void ModelLoadingStage::process()
 {
-    drawablesMap.data() = IdDrawablesMap{};
-    materialMap.data() = IdMaterialMap{};
+    m_drawablesMap = make_unique<IdDrawablesMap>();
+    m_materialMap = make_unique<IdMaterialMap>();
     m_textures = StringTextureMap{};
 
     glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &m_maxAnisotropy);
 
-    auto modelFilename = getFilename(preset.data());
+    auto modelFilename = getFilename(preset);
     auto dir = getDirectory(modelFilename);
 
-    presetInformation.data() = getPresetInformation(preset.data());
+    m_presetInformation = make_unique<PresetInformation>(getPresetInformation(preset));
 
     const aiScene* assimpScene = aiImportFile(
         modelFilename.c_str(),
@@ -97,25 +90,23 @@ void ModelLoadingStage::process()
     for (unsigned int m = 0; m < assimpScene->mNumMaterials; m++)
     {
         auto mat = loadMaterial(assimpScene->mMaterials[m], dir);
-        materialMap.data()[m] = mat;
-        drawablesMap.data()[m] = PolygonalDrawables{};
+        (*m_materialMap)[m] = mat;
+        (*m_drawablesMap)[m] = PolygonalDrawables{};
     }
 
     auto scene = convertScene(assimpScene);
     for (auto mesh : scene->meshes())
     {
-        auto& drawables = drawablesMap.data()[mesh->materialIndex()];
+        auto& drawables = m_drawablesMap->at(mesh->materialIndex());
         drawables.push_back(make_unique<gloperate::PolygonalDrawable>(*mesh));
     }
 
     aiReleaseImport(assimpScene);
-
-    invalidateOutputs();
 }
 
 globjects::ref_ptr<globjects::Texture> ModelLoadingStage::loadTexture(const std::string& filename) const
 {
-    globjects::ref_ptr<globjects::Texture> tex = resourceManager.data()->load<globjects::Texture>(filename);
+    globjects::ref_ptr<globjects::Texture> tex = resourceManager->load<globjects::Texture>(filename);
     tex->setParameter(GL_TEXTURE_WRAP_R, GL_REPEAT);
     tex->setParameter(GL_TEXTURE_WRAP_S, GL_REPEAT);
     tex->setParameter(GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -259,4 +250,17 @@ gloperate::PolygonalGeometry * ModelLoadingStage::convertGeometry(const aiMesh *
     geometry->setMaterialIndex(mesh->mMaterialIndex);
 
     return geometry;
+}
+
+const PresetInformation& ModelLoadingStage::getCurrentPreset() const
+{
+    return *m_presetInformation.get();
+}
+const IdDrawablesMap& ModelLoadingStage::getDrawablesMap() const
+{
+    return *m_drawablesMap.get();
+}
+const IdMaterialMap& ModelLoadingStage::getMaterialMap() const
+{
+    return *m_materialMap.get();
 }

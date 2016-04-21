@@ -22,6 +22,7 @@ using namespace gloperate;
 
 MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cpplocate::ModuleInfo & moduleInfo)
 : PipelinePainter("MultiFramePainter", resourceManager, moduleInfo, m_pipeline)
+, m_pipeline(resourceManager)
 {
     // Get data path
     std::string dataPath = moduleInfo.value("dataPath");

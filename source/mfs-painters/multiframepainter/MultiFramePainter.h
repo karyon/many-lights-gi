@@ -6,6 +6,7 @@
 
 #include "mfs-painters-api.h"
 #include "MultiFramePipeline.h"
+#include "ModelLoadingStage.h"
 
 
 namespace gloperate 
@@ -43,4 +44,6 @@ protected:
     gloperate::AbstractViewportCapability * m_viewportCapability;
     gloperate::AbstractPerspectiveProjectionCapability * m_projectionCapability;
     gloperate::AbstractCameraCapability * m_cameraCapability;
+
+    ModelLoadingStage m_modelLoadingStage;
 };

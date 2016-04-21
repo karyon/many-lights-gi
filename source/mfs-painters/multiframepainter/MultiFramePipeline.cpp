@@ -8,7 +8,7 @@
 #include "BlitStage.h"
 
 
-MultiFramePipeline::MultiFramePipeline()
+MultiFramePipeline::MultiFramePipeline(gloperate::ResourceManager& resourceManager)
 : gloperate::AbstractPipeline("MultiframeSampling")
 , resourceManager(nullptr)
 , multiFrameCount(64)
@@ -17,12 +17,12 @@ MultiFramePipeline::MultiFramePipeline()
 {
     auto modelLoadingStage = new ModelLoadingStage();
     auto kernelGenerationStage = new KernelGenerationStage();
-    auto rasterizationStage = new RasterizationStage();
+    auto rasterizationStage = new RasterizationStage(*modelLoadingStage);
     auto postprocessingStage = new PostprocessingStage();
     auto frameAccumulationStage = new FrameAccumulationStage();
     auto blitStage = new BlitStage();
 
-    modelLoadingStage->resourceManager = resourceManager;
+    modelLoadingStage->resourceManager = &resourceManager;
     modelLoadingStage->preset = preset;
 
     kernelGenerationStage->multiFrameCount = multiFrameCount;
@@ -33,9 +33,6 @@ MultiFramePipeline::MultiFramePipeline()
     rasterizationStage->multiFrameCount = multiFrameCount;
     rasterizationStage->useReflections = useReflections;
     rasterizationStage->useDOF = useDOF;
-    rasterizationStage->drawablesMap = modelLoadingStage->drawablesMap;
-    rasterizationStage->materialMap = modelLoadingStage->materialMap;
-    rasterizationStage->presetInformation = modelLoadingStage->presetInformation;
     rasterizationStage->antiAliasingKernel = kernelGenerationStage->antiAliasingKernel;
     rasterizationStage->depthOfFieldKernel = kernelGenerationStage->depthOfFieldKernel;
     rasterizationStage->shadowKernel = kernelGenerationStage->shadowKernel;
@@ -43,7 +40,6 @@ MultiFramePipeline::MultiFramePipeline()
     postprocessingStage->viewport = viewport;
     postprocessingStage->camera = camera;
     postprocessingStage->projection = projection;
-    postprocessingStage->presetInformation = modelLoadingStage->presetInformation;
     postprocessingStage->useReflections = useReflections;
     postprocessingStage->currentFrame = rasterizationStage->currentFrame;
     postprocessingStage->reflectionKernel = kernelGenerationStage->reflectionKernel;
@@ -66,5 +62,5 @@ MultiFramePipeline::MultiFramePipeline()
     blitStage->accumulation = frameAccumulationStage->accumulation;
     blitStage->depth = rasterizationStage->depth;
 
-    addStages(modelLoadingStage, kernelGenerationStage, rasterizationStage, postprocessingStage, frameAccumulationStage, blitStage);
+    addStages(kernelGenerationStage, rasterizationStage, postprocessingStage, frameAccumulationStage, blitStage);
 }

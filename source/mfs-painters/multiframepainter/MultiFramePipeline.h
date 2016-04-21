@@ -15,7 +15,7 @@ namespace gloperate
 class MultiFramePipeline : public gloperate::AbstractPipeline
 {
 public:
-    MultiFramePipeline();
+    MultiFramePipeline(gloperate::ResourceManager& resourceManager);
 
     gloperate::Data<gloperate::ResourceManager *> resourceManager;
     gloperate::Data<int> multiFrameCount;

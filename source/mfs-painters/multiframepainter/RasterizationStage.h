@@ -29,11 +29,12 @@ namespace gloperate
 class NoiseTexture;
 class GroundPlane;
 class Shadowmap;
+class ModelLoadingStage;
 
 class RasterizationStage : public gloperate::AbstractStage
 {
 public:
-    RasterizationStage();
+    RasterizationStage(ModelLoadingStage& modelLoadingStage);
 
     virtual void initialize() override;
 
@@ -43,12 +44,10 @@ public:
     gloperate::InputSlot<glkernel::kernel2> antiAliasingKernel;
     gloperate::InputSlot<glkernel::kernel2> depthOfFieldKernel;
     gloperate::InputSlot<glkernel::kernel2> shadowKernel;
-    gloperate::InputSlot<IdDrawablesMap> drawablesMap;
-    gloperate::InputSlot<IdMaterialMap> materialMap;
     gloperate::InputSlot<int> multiFrameCount;
-    gloperate::InputSlot<PresetInformation> presetInformation;
     gloperate::InputSlot<bool> useReflections;
     gloperate::InputSlot<bool> useDOF;
+    gloperate::InputSlot<glm::vec3> lightPosition;
 
     gloperate::Data<int> currentFrame;
     gloperate::Data<globjects::ref_ptr<globjects::Texture>> color;
@@ -76,4 +75,6 @@ protected:
 
     globjects::ref_ptr<globjects::Texture> m_masksTexture;
     std::unique_ptr<NoiseTexture> m_noiseTexture;
+    ModelLoadingStage& m_modelLoadingStage;
+    PresetInformation m_presetInformation;
 };

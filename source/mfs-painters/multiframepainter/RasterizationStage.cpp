@@ -21,6 +21,7 @@
 #include "Shadowmap.h"
 #include "GroundPlane.h"
 #include "Material.h"
+#include "ModelLoadingStage.h"
 
 using namespace gl;
 using gloperate::make_unique;
@@ -40,16 +41,14 @@ namespace
     };
 }
 
-RasterizationStage::RasterizationStage()
+RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage)
+: m_modelLoadingStage(modelLoadingStage)
 {
     currentFrame.data() = 1;
 
     addInput("projection", projection);
     addInput("viewport", viewport);
     addInput("camera", camera);
-    addInput("drawablesMap", drawablesMap);
-    addInput("presetInformation", presetInformation);
-    addInput("materialMap", materialMap);
     addInput("useReflections", useReflections);
     addInput("useDOF", useDOF);
     addInput("multiframeCount", multiFrameCount);
@@ -98,6 +97,9 @@ void RasterizationStage::initialize()
         globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/model.vert"),
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/empty.frag")
     );
+
+    m_modelLoadingStage.process();
+    m_presetInformation = m_modelLoadingStage.getCurrentPreset();
 }
 
 void RasterizationStage::process()
@@ -123,15 +125,12 @@ void RasterizationStage::process()
         //return;
     }
 
-    if (presetInformation.hasChanged())
-    {
-        camera.data()->setEye(presetInformation.data().camEye);
-        camera.data()->setCenter(presetInformation.data().camCenter);
-        projection.data()->setZNear(presetInformation.data().nearFar.x);
-        projection.data()->setZFar(presetInformation.data().nearFar.y);
+    camera.data()->setEye(m_presetInformation.camEye);
+    camera.data()->setCenter(m_presetInformation.camCenter);
+    projection.data()->setZNear(m_presetInformation.nearFar.x);
+    projection.data()->setZFar(m_presetInformation.nearFar.y);
 
-        m_groundPlane = make_unique<GroundPlane>(presetInformation.data().groundHeight);
-    }
+    m_groundPlane = make_unique<GroundPlane>(m_presetInformation.groundHeight);
 
     render();
 
@@ -156,16 +155,16 @@ void RasterizationStage::render()
 {
     for (auto program : std::vector<globjects::Program*>{ m_program, m_shadowmap->program() })
     {
-        program->setUniform("alpha", presetInformation.data().alpha);
+        program->setUniform("alpha", m_presetInformation.alpha);
     }
 
-    auto lightPosition = presetInformation.data().lightPosition;
-    auto lightRadius = presetInformation.data().lightMaxShift;
+    auto lightPosition = m_presetInformation.lightPosition;
+    auto lightRadius = m_presetInformation.lightMaxShift;
 
     auto frameLightOffset = shadowKernel.data()[currentFrame.data() - 1] * lightRadius;
     auto frameLightPosition = lightPosition + glm::vec3(frameLightOffset.x, 0.0f, frameLightOffset.y);
 
-    auto biasedShadowTransform = m_shadowmap->render(frameLightPosition, drawablesMap.data(), *m_groundPlane.get(), presetInformation.data().nearFar.x, presetInformation.data().nearFar.y);
+    auto biasedShadowTransform = m_shadowmap->render(frameLightPosition, m_modelLoadingStage.getDrawablesMap(), *m_groundPlane.get(), m_presetInformation.nearFar.x, m_presetInformation.nearFar.y);
 
     glViewport(viewport.data()->x(),
                viewport.data()->y(),
@@ -182,7 +181,7 @@ void RasterizationStage::render()
 
     auto maxFloat = std::numeric_limits<float>::max();
 
-    m_fbo->clearBuffer(GL_COLOR, 0, glm::vec4(presetInformation.data().groundColor, 1.0f));
+    m_fbo->clearBuffer(GL_COLOR, 0, glm::vec4(m_presetInformation.groundColor, 1.0f));
     m_fbo->clearBuffer(GL_COLOR, 1, glm::vec4(0.0f));
     m_fbo->clearBuffer(GL_COLOR, 2, glm::vec4(maxFloat));
     m_fbo->clearBuffer(GL_COLOR, 3, glm::vec4(0.0f));
@@ -194,7 +193,7 @@ void RasterizationStage::render()
 
     auto subpixelSample = antiAliasingKernel.data()[currentFrame.data() - 1];
     auto viewportSize = glm::vec2(viewport.data()->width(), viewport.data()->height());
-    auto focalPoint = depthOfFieldKernel.data()[currentFrame.data() - 1] * presetInformation.data().focalPoint;
+    auto focalPoint = depthOfFieldKernel.data()[currentFrame.data() - 1] * m_presetInformation.focalPoint;
     focalPoint *= useDOF.data();
 
     for (auto program : std::vector<globjects::Program*>{ m_program, m_groundPlane->program() })
@@ -208,7 +207,7 @@ void RasterizationStage::render()
         program->setUniform("opacityTexture", OpacitySampler);
         program->setUniform("bumpTexture", BumpSampler);
 
-        program->setUniform("groundPlaneColor", presetInformation.data().groundColor);
+        program->setUniform("groundPlaneColor", m_presetInformation.groundColor);
         program->setUniform("worldLightPos", frameLightPosition);
         program->setUniform("biasedShadowTransform", biasedShadowTransform);
 
@@ -222,19 +221,19 @@ void RasterizationStage::render()
         program->setUniform("masksOffset", static_cast<float>(currentFrame.data()) / TransparencyMasksGenerator::s_numMasks);
 
         program->setUniform("cocPoint", focalPoint);
-        program->setUniform("focalDist", presetInformation.data().focalDist);
+        program->setUniform("focalDist", m_presetInformation.focalDist);
     }
 
     m_shadowmap->distanceTexture()->bindActive(ShadowSampler);
     m_masksTexture->bindActive(MaskSampler);
     m_noiseTexture->bindActive(NoiseSampler);
 
-    for (auto& pair : drawablesMap.data())
+    for (auto& pair : m_modelLoadingStage.getDrawablesMap())
     {
         auto materialId = pair.first;
         auto& drawables = pair.second;
 
-        auto& material = materialMap.data().at(materialId);
+        auto& material = m_modelLoadingStage.getMaterialMap().at(materialId);
 
         bool hasDiffuseTex = material.hasTexture(TextureType::Diffuse);
         bool hasBumpTex = material.hasTexture(TextureType::Bump);
@@ -269,7 +268,7 @@ void RasterizationStage::render()
         auto bumpType = BumpType::None;
         if (hasBumpTex)
         {
-            bumpType = presetInformation.data().bumpType;
+            bumpType = m_presetInformation.bumpType;
             auto tex = material.textureMap().at(TextureType::Bump);
             tex->bindActive(BumpSampler);
         }
@@ -299,7 +298,7 @@ void RasterizationStage::zPrepass()
 {
     m_zOnlyProgram->use();
 
-    for (auto& pair : drawablesMap.data())
+    for (auto& pair : m_modelLoadingStage.getDrawablesMap())
     {
         auto& drawables = pair.second;
 
