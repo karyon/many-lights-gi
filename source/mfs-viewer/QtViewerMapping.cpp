@@ -1,6 +1,8 @@
 
 #include "QtViewerMapping.h"
 
+#include <iostream>
+
 #include <glbinding/gl/enum.h>
 
 #include <gloperate/base/RenderTargetType.h>
@@ -20,6 +22,8 @@
 #include <gloperate/navigation/CoordinateProvider.h>
 
 #include <gloperate-qt/viewer/QtOpenGLWindow.h>
+
+#include<globjects/base/File.h>
 
 
 using namespace gloperate;
@@ -124,6 +128,11 @@ void QtViewerMapping::mapKeyboardEvent(KeyboardEvent * event)
             break;
         case KeyRight:
             m_navigation->rotate(glm::radians(-10.0f), 0.0f);
+            break;
+        // Shader reload
+        case KeyF5:
+            globjects::File::reloadAll();
+            std::cout << "Shaders reloaded" << std::endl;
             break;
         default:
             break;

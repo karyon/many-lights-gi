@@ -25,9 +25,10 @@
 #include <gloperate-qt/viewer/QtKeyEventProvider.h>
 #include <gloperate-qt/viewer/QtMouseEventProvider.h>
 #include <gloperate-qt/viewer/QtWheelEventProvider.h>
-#include <gloperate-qt/viewer/DefaultMapping.h>
 
 #include <multiframepainter/MultiFramePainter.h>
+
+#include "QtViewerMapping.h"
 
 using namespace widgetzeug;
 using namespace gloperate;
@@ -206,7 +207,7 @@ void Viewer::setupCanvas()
     m_canvas->installEventFilter(wheelProvider);
 
     // Create input mapping for gloperate interaction techniques
-    m_mapping.reset(new gloperate_qt::DefaultMapping(m_canvas.get()));
+    m_mapping.reset(new QtViewerMapping(m_canvas.get()));
     m_mapping->addProvider(keyProvider);
     m_mapping->addProvider(mouseProvider);
     m_mapping->addProvider(wheelProvider);

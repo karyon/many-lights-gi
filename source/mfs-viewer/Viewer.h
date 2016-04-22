@@ -22,9 +22,10 @@ namespace gloperate
 namespace gloperate_qt
 {
     class QtOpenGLWindow;
-    class DefaultMapping;
     class ScriptEnvironment;
 }
+
+class QtViewerMapping;
 
 
 class Viewer : public QMainWindow
@@ -55,7 +56,7 @@ protected:
     std::unique_ptr<gloperate::ResourceManager>      m_resourceManager;
 
     std::unique_ptr<gloperate::Painter>              m_painter;
-    std::unique_ptr<gloperate_qt::DefaultMapping>    m_mapping;
+    std::unique_ptr<QtViewerMapping>                 m_mapping;
 
     std::unique_ptr<gloperate_qt::QtOpenGLWindow>    m_canvas;
     std::unique_ptr<widgetzeug::MessageStatusWidget> m_messagesStatus;
