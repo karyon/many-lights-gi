@@ -89,6 +89,8 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
     {
         dataPath = "data/";
     }
+
+    rasterizationStage->initProperties(*this);
 }
 
 MultiFramePainter::~MultiFramePainter()

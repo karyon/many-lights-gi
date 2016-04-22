@@ -16,6 +16,8 @@
 
 #include <gloperate/primitives/PolygonalDrawable.h>
 
+#include <reflectionzeug/property/extensions/GlmProperties.h>
+
 #include "NoiseTexture.h"
 #include "Shadowmap.h"
 #include "GroundPlane.h"
@@ -25,6 +27,7 @@
 #include "PostprocessingStage.h"
 #include "FrameAccumulationStage.h"
 #include "BlitStage.h"
+#include "MultiFramePainter.h"
 
 using namespace gl;
 using gloperate::make_unique;
@@ -56,6 +59,15 @@ RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage, Ker
 }
 RasterizationStage::~RasterizationStage()
 {
+}
+
+void RasterizationStage::initProperties(MultiFramePainter& painter)
+{
+    painter.addProperty<glm::vec3>("LightPosition",
+        [this]() { return m_lightPosition; },
+        [this](const glm::vec3 & pos) {
+            m_lightPosition = pos;
+        });
 }
 
 void RasterizationStage::initialize()
@@ -113,6 +125,9 @@ void RasterizationStage::initialize()
     camera->setCenter(m_presetInformation.camCenter);
     projection->setZNear(m_presetInformation.nearFar.x);
     projection->setZFar(m_presetInformation.nearFar.y);
+
+    m_lightPosition = m_presetInformation.lightPosition;
+    m_lightDirection = { 0.0, -1.0, 0.0 };
 }
 
 void RasterizationStage::process()
@@ -149,13 +164,12 @@ void RasterizationStage::render()
         program->setUniform("alpha", m_presetInformation.alpha);
     }
 
-    auto lightPosition = m_presetInformation.lightPosition;
     auto lightRadius = m_presetInformation.lightMaxShift;
 
     auto frameLightOffset = m_kernelGenerationStage.shadowKernel[currentFrame - 1] * lightRadius;
-    auto frameLightPosition = lightPosition + glm::vec3(frameLightOffset.x, 0.0f, frameLightOffset.y);
+    auto frameLightPosition = m_lightPosition + glm::vec3(frameLightOffset.x, 0.0f, frameLightOffset.y);
 
-    auto biasedShadowTransform = m_shadowmap->render(frameLightPosition, m_modelLoadingStage.getDrawablesMap(), *m_groundPlane.get(), m_presetInformation.nearFar.x, m_presetInformation.nearFar.y);
+    auto biasedShadowTransform = m_shadowmap->render(frameLightPosition, m_lightDirection, m_modelLoadingStage.getDrawablesMap(), *m_groundPlane.get(), m_presetInformation.nearFar);
 
     glViewport(viewport->x(),
                viewport->y(),

@@ -87,12 +87,10 @@ void Shadowmap::setupFbo(globjects::Framebuffer * fbo, globjects::Texture * colo
     fbo->unbind();
 }
 
-glm::mat4 Shadowmap::render(const glm::vec3 &eye, const IdDrawablesMap& drawablesMap, const GroundPlane& groundPlane, float nearPlane, float farPlane) const
+glm::mat4 Shadowmap::render(const glm::vec3 &eye, const glm::vec3 &direction, const IdDrawablesMap& drawablesMap, const GroundPlane& groundPlane, const glm::vec2& nearFar) const
 {
-
-
-	auto projection = glm::perspective(glm::radians(90.0f), 1.0f, nearPlane, farPlane);
-	auto view = glm::lookAt(eye, eye + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	auto projection = glm::perspective(glm::radians(90.0f), 1.0f, nearFar.x, nearFar.y);
+	auto view = glm::lookAt(eye, eye + direction, glm::vec3(0.0f, 1.0f, 0.0f));
 
 
     glEnable(GL_DEPTH_TEST);

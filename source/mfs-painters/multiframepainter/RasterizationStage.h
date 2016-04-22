@@ -2,8 +2,6 @@
 
 #include <globjects/base/ref_ptr.h>
 
-#include <glkernel/Kernel.h>
-
 #include "TypeDefinitions.h"
 
 namespace globjects
@@ -30,12 +28,15 @@ class KernelGenerationStage;
 class PostprocessingStage;
 class FrameAccumulationStage;
 class BlitStage;
+class MultiFramePainter;
 
 class RasterizationStage
 {
 public:
     RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage, PostprocessingStage& postProcessingStage, FrameAccumulationStage& frameAccumulationStage, BlitStage& blitStage);
     ~RasterizationStage();
+
+    void initProperties(MultiFramePainter& painter);
 
     void initialize();
     void process();
@@ -45,7 +46,6 @@ public:
     gloperate::AbstractCameraCapability * camera;
     int multiFrameCount;
     bool useDOF;
-    glm::vec3 lightPosition;
 
     int currentFrame;
     globjects::ref_ptr<globjects::Texture> color;
@@ -74,4 +74,6 @@ protected:
     FrameAccumulationStage& m_frameAccumulationStage;
     BlitStage& m_blitStage;
     PresetInformation m_presetInformation;
+    glm::vec3 m_lightPosition;
+    glm::vec3 m_lightDirection;
 };

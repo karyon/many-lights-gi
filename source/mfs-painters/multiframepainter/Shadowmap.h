@@ -27,7 +27,7 @@ public:
     Shadowmap();
     ~Shadowmap();
 
-    glm::mat4 render(const glm::vec3 &eye, const IdDrawablesMap& drawablesMap, const GroundPlane& groundPlane, float nearPlane, float farPlane) const;
+    glm::mat4 render(const glm::vec3 &eye, const glm::vec3 &direction, const IdDrawablesMap& drawablesMap, const GroundPlane& groundPlane, const glm::vec2& nearFar) const;
     void setBlurSize(int blurSize);
 
     globjects::Program * program() const;
