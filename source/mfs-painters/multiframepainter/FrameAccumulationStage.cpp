@@ -34,8 +34,8 @@ void FrameAccumulationStage::initialize()
 
 void FrameAccumulationStage::process()
 {
-    //TODO only when needed
-    resizeTexture(viewport->width(), viewport->height());
+    if (viewport->hasChanged())
+        resizeTexture(viewport->width(), viewport->height());
 
     m_fbo->clearBuffer(GL_COLOR, 0, glm::vec4(0.0f));
 

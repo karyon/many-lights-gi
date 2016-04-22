@@ -122,4 +122,7 @@ void MultiFramePainter::onPaint()
     m_fps = 1000.0f / duration.count();
     m_lastTimepoint = now;
     rasterizationStage->process();
+    m_viewportCapability->setChanged(false);
+    m_cameraCapability->setChanged(false);
+    m_projectionCapability->setChanged(false);
 }

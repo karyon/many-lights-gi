@@ -119,8 +119,6 @@ void RasterizationStage::initialize()
     m_blitStage.depth = m_frameAccumulationStage.depth;
     m_blitStage.initialize();
 
-
-
     camera->setEye(m_presetInformation.camEye);
     camera->setCenter(m_presetInformation.camCenter);
     projection->setZNear(m_presetInformation.nearFar.x);
@@ -128,14 +126,14 @@ void RasterizationStage::initialize()
 
     m_lightPosition = m_presetInformation.lightPosition;
     m_lightDirection = { 0.0, -1.0, 0.0 };
+
+    m_groundPlane = make_unique<GroundPlane>(m_presetInformation.groundHeight);
 }
 
 void RasterizationStage::process()
 {
-    //TODO only when needed
-    resizeTextures(viewport->width(), viewport->height());
-
-    m_groundPlane = make_unique<GroundPlane>(m_presetInformation.groundHeight);
+    if (viewport->hasChanged())
+        resizeTextures(viewport->width(), viewport->height());
 
     render();
 

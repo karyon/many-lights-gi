@@ -38,18 +38,19 @@ void PostprocessingStage::initialize()
     m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/postprocessing.frag")
     );
+
+    generateNoiseTexture();
+    createKernelTexture();
 }
 
 void PostprocessingStage::process()
 {
     const auto screenSize = glm::vec2(viewport->width(), viewport->height());
-    //TODO only if changed
-    resizeTexture(viewport->width(), viewport->height());
 
-    //TODO only if changed
-    generateNoiseTexture();
+    if (viewport->hasChanged())
+        resizeTexture(viewport->width(), viewport->height());
 
-    generateKernelTexture();
+    updateKernelTexture();
 
     m_fbo->bind();
     m_fbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
@@ -105,16 +106,20 @@ void PostprocessingStage::generateNoiseTexture()
     m_ssaoNoiseTexture = texture;
 }
 
-void PostprocessingStage::generateKernelTexture()
+void PostprocessingStage::createKernelTexture()
 {
-    auto kernel = m_kernelGenerationStage.getSSAOKernel(s_ssaoKernelSize);
-
     auto texture = new globjects::Texture(gl::GL_TEXTURE_1D);
     texture->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
     texture->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
     texture->setParameter(gl::GL_TEXTURE_WRAP_S, gl::GL_MIRRORED_REPEAT);
 
-    texture->image1D(0, gl::GL_RGBA32F, kernel.size(), 0, gl::GL_RGB, gl::GL_FLOAT, kernel.data());
-
     m_ssaoKernelTexture = texture;
 }
+
+void PostprocessingStage::updateKernelTexture()
+{
+    auto kernel = m_kernelGenerationStage.getSSAOKernel(s_ssaoKernelSize);
+
+    m_ssaoKernelTexture->image1D(0, gl::GL_RGBA32F, kernel.size(), 0, gl::GL_RGB, gl::GL_FLOAT, kernel.data());
+}
+

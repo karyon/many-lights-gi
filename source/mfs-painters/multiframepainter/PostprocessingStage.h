@@ -49,7 +49,8 @@ protected:
 
     void resizeTexture(int width, int height);
     void generateNoiseTexture();
-    void generateKernelTexture();
+    void createKernelTexture();
+    void updateKernelTexture();
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_screenAlignedQuad;
