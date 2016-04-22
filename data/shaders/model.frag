@@ -17,7 +17,6 @@ layout(location = 3) out float reflects;
 
 uniform sampler2D shadowmap;
 uniform sampler2D masksTexture;
-uniform sampler3D noiseTexture;
 
 uniform sampler2D diffuseTexture;
 uniform bool useDiffuseTexture;
@@ -73,10 +72,8 @@ void main()
         curAlpha = texture(opacityTexture, uv).r;
     }
 
-    if (fragmentDiscard(curAlpha, 0, masksTexture, rand(noiseTexture, v_worldCoord, masksOffset)))
-    {
+    if (curAlpha < 0.5)
         discard;
-    }
 
     vec3 N = normalize(v_normal);
     mat3 tbn = cotangent_frame(N, v_worldCoord, uv);

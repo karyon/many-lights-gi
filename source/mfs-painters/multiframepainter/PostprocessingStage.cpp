@@ -50,7 +50,7 @@ void PostprocessingStage::process()
     if (viewport->hasChanged())
         resizeTexture(viewport->width(), viewport->height());
 
-    updateKernelTexture();
+    //updateKernelTexture();
 
     m_fbo->bind();
     m_fbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
@@ -114,6 +114,7 @@ void PostprocessingStage::createKernelTexture()
     texture->setParameter(gl::GL_TEXTURE_WRAP_S, gl::GL_MIRRORED_REPEAT);
 
     m_ssaoKernelTexture = texture;
+    updateKernelTexture();
 }
 
 void PostprocessingStage::updateKernelTexture()
