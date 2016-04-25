@@ -81,7 +81,8 @@ float ssao(float depth, vec3 normal)
         ao += rangeCheck * ndcRangeCheck * float(sd > s.z);
     }
 
-    return 1.0 - (ao * samplerSizes[1]);
+    const float ssaoIntensity = 2.0;
+    return pow(1.0 - (ao * samplerSizes[1]), ssaoIntensity);
 }
 
 void main()
