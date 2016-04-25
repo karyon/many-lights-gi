@@ -49,12 +49,12 @@ glkernel::kernel3 KernelGenerationStage::getSSAOKernel(unsigned int size) const
     {
         auto& elem = ssaoSamples[i];
         elem.z = glm::abs(elem.z);
-        elem.z = std::max(0.1f, elem.z);
         elem = glm::normalize(elem);
         // taken from http://john-chapman-graphics.blogspot.de/2013/01/ssao-tutorial.html
         float scale = float(i) / float(ssaoSamples.size());
-        scale = glm::mix(0.1f, 1.0f, scale * scale);
-        ssaoSamples[i] *= scale;
+        scale = scale * scale;
+        elem *= scale;
+        elem.z = std::max(0.1f, elem.z);
     }
     return ssaoSamples;
 }
