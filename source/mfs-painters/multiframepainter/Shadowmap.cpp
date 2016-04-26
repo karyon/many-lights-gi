@@ -42,55 +42,65 @@ Shadowmap::Shadowmap()
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/cubemapblur.frag"));
 
     m_fbo = new globjects::Framebuffer();
-    m_colorTexture = globjects::Texture::createDefault();
-    m_depthTexture = globjects::Texture::createDefault();
-    setupFbo(m_fbo, m_colorTexture, m_depthTexture, size);
+    m_VSMBuffer = globjects::Texture::createDefault();
+    m_depthBuffer = globjects::Texture::createDefault();
+    m_fluxBuffer = globjects::Texture::createDefault();
+    m_normalTexture = globjects::Texture::createDefault();
+    setupFbo(*m_fbo, *m_VSMBuffer, *m_depthBuffer, *m_fluxBuffer, *m_normalTexture, size);
 
     m_blurredFbo = new globjects::Framebuffer();
     m_colorTextureBlur = globjects::Texture::createDefault();
-    setupFbo(m_blurredFbo, m_colorTextureBlur, nullptr, size);
+    setupSimpleFbo(*m_blurredFbo, *m_colorTextureBlur, size);
 
     m_blurredFboTemp = new globjects::Framebuffer();
     m_colorTextureBlurTemp = globjects::Texture::createDefault();
-    setupFbo(m_blurredFboTemp, m_colorTextureBlurTemp, nullptr, size);
+    setupSimpleFbo(*m_blurredFboTemp, *m_colorTextureBlurTemp, size);
 }
 
 Shadowmap::~Shadowmap()
 {
 
 }
-
-void Shadowmap::setupFbo(globjects::Framebuffer * fbo, globjects::Texture * colorBuffer, globjects::Texture * depthBuffer, int size)
+void Shadowmap::setupSimpleFbo(globjects::Framebuffer& fbo, globjects::Texture& VSMBuffer, int size)
 {
-    colorBuffer->bind();
+    VSMBuffer.bind();
+    VSMBuffer.setParameter(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    VSMBuffer.setParameter(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glm::vec4 color(0.0, 0.0, 1.0, 0.0); // third channel is alpha
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (float*)&color);
 
+    VSMBuffer.image2D(0, GL_RGBA32F, size, size, 0, GL_RGB, GL_FLOAT, nullptr);
+    VSMBuffer.unbind();
+    fbo.attachTexture(GL_COLOR_ATTACHMENT0, &VSMBuffer);
+}
+void Shadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Texture& VSMBuffer, globjects::Texture& depthBuffer, globjects::Texture& fluxBuffer, globjects::Texture& normalBuffer, int size)
+{
+    setupSimpleFbo(fbo, VSMBuffer, size);
 
-	colorBuffer->setParameter(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-	colorBuffer->setParameter(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-	glm::vec4 color(0.0, 0.0, 1.0, 0.0); // third channel is alpha
-	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (float*)&color);
+    fluxBuffer.bind();
+    fluxBuffer.image2D(0, GL_RGB8, size, size, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    fluxBuffer.unbind();
+    fbo.attachTexture(GL_COLOR_ATTACHMENT1, &fluxBuffer);
 
-	colorBuffer->image2D(0, GL_RGBA32F, size, size, 0, GL_RGB, GL_FLOAT, nullptr);
-    colorBuffer->unbind();
-    fbo->attachTexture(GL_COLOR_ATTACHMENT0, colorBuffer);
+    normalBuffer.bind();
+    normalBuffer.image2D(0, GL_RGBA32F, size, size, 0, GL_RGB, GL_FLOAT, nullptr);
+    normalBuffer.unbind();
+    fbo.attachTexture(GL_COLOR_ATTACHMENT2, &normalBuffer);
 
-    if (depthBuffer)
-    {
-        depthBuffer->bind();
-		depthBuffer->image2D(0, GL_DEPTH_COMPONENT, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-        depthBuffer->unbind();
-        fbo->attachTexture(GL_DEPTH_ATTACHMENT, depthBuffer);
-    }
+    depthBuffer.bind();
+	depthBuffer.image2D(0, GL_DEPTH_COMPONENT, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    depthBuffer.unbind();
+    fbo.attachTexture(GL_DEPTH_ATTACHMENT, &depthBuffer);
 
-    fbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
-    fbo->checkStatus();
-    fbo->unbind();
+    fbo.setDrawBuffer(GL_COLOR_ATTACHMENT0);
+    fbo.checkStatus();
+    fbo.unbind();
 }
 
 glm::mat4 Shadowmap::render(const glm::vec3 &eye, const glm::vec3 &direction, const IdDrawablesMap& drawablesMap, const GroundPlane& groundPlane, const glm::vec2& nearFar) const
 {
 	auto projection = glm::perspective(glm::radians(90.0f), 1.0f, nearFar.x, nearFar.y);
-	auto view = glm::lookAt(eye, eye + direction, glm::vec3(0.0f, 1.0f, 0.0f));
+	auto view = glm::lookAt(eye, eye + direction, glm::vec3(1.0f, 0.0f, 0.0f));
 
 
     glEnable(GL_DEPTH_TEST);
@@ -171,5 +181,5 @@ globjects::Program* Shadowmap::program() const
 
 globjects::Texture * Shadowmap::distanceTexture() const
 {
-    return m_colorTexture;
+    return m_VSMBuffer;
 }

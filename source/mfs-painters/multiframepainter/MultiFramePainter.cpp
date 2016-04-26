@@ -44,39 +44,14 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
     m_cameraCapability = addCapability(new gloperate::CameraCapability());
 
 
-    modelLoadingStage = std::make_unique<ModelLoadingStage>();
+    modelLoadingStage = std::make_unique<ModelLoadingStage>(preset);
     kernelGenerationStage = std::make_unique<KernelGenerationStage>();
-    postprocessingStage = std::make_unique<PostprocessingStage>(*kernelGenerationStage);
+    postprocessingStage = std::make_unique<PostprocessingStage>(*kernelGenerationStage, modelLoadingStage->getCurrentPreset());
     frameAccumulationStage = std::make_unique<FrameAccumulationStage>();
     blitStage = std::make_unique<BlitStage>();
-    rasterizationStage = std::make_unique<RasterizationStage>(*modelLoadingStage, *kernelGenerationStage, *postprocessingStage, *frameAccumulationStage, *blitStage);
+    rasterizationStage = std::make_unique<RasterizationStage>(*modelLoadingStage, *kernelGenerationStage);
 
     modelLoadingStage->resourceManager = &resourceManager;
-    modelLoadingStage->preset = preset;
-
-    rasterizationStage->projection = m_projectionCapability;
-    rasterizationStage->camera = m_cameraCapability;
-    rasterizationStage->viewport = m_viewportCapability;
-    rasterizationStage->multiFrameCount = multiFrameCount;
-    rasterizationStage->useDOF = useDOF;
-
-    postprocessingStage->viewport = m_viewportCapability;
-    postprocessingStage->camera = m_cameraCapability;
-    postprocessingStage->projection = m_projectionCapability;
-    postprocessingStage->color = rasterizationStage->color;
-    postprocessingStage->normal = rasterizationStage->normal;
-    postprocessingStage->depth = rasterizationStage->depth;
-    postprocessingStage->worldPos = rasterizationStage->worldPos;
-
-    frameAccumulationStage->viewport = m_viewportCapability;
-    frameAccumulationStage->currentFrame = rasterizationStage->currentFrame;
-    frameAccumulationStage->frame = postprocessingStage->postprocessedFrame;
-    frameAccumulationStage->depth = rasterizationStage->depth;
-
-    blitStage->viewport = m_viewportCapability;
-    blitStage->accumulation = frameAccumulationStage->accumulation;
-    blitStage->depth = rasterizationStage->depth;
-
 
     // Get data path
     std::string dataPath = moduleInfo.value("dataPath");
@@ -110,7 +85,37 @@ float MultiFramePainter::framesPerSecond() const
 void MultiFramePainter::onInitialize()
 {
     gloperate::registerNamedStrings("data/shaders", "glsl", true);
+
+    kernelGenerationStage->initialize();
+
+    rasterizationStage->projection = m_projectionCapability;
+    rasterizationStage->camera = m_cameraCapability;
+    rasterizationStage->viewport = m_viewportCapability;
+    rasterizationStage->multiFrameCount = multiFrameCount;
+    rasterizationStage->useDOF = useDOF;
     rasterizationStage->initialize();
+
+    postprocessingStage->viewport = m_viewportCapability;
+    postprocessingStage->camera = m_cameraCapability;
+    postprocessingStage->projection = m_projectionCapability;
+    postprocessingStage->diffuseBuffer = rasterizationStage->diffuseBuffer;
+    postprocessingStage->specularBuffer = rasterizationStage->specularBuffer;
+    postprocessingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
+    postprocessingStage->normalBuffer = rasterizationStage->normalBuffer;
+    postprocessingStage->depthBuffer = rasterizationStage->depthBuffer;
+    postprocessingStage->worldPosBuffer = rasterizationStage->worldPosBuffer;
+    postprocessingStage->initialize();
+
+    frameAccumulationStage->viewport = m_viewportCapability;
+    frameAccumulationStage->currentFrame = rasterizationStage->currentFrame;
+    frameAccumulationStage->frame = postprocessingStage->postprocessedFrame;
+    frameAccumulationStage->depth = postprocessingStage->depthBuffer;
+    frameAccumulationStage->initialize();
+
+    blitStage->viewport = m_viewportCapability;
+    blitStage->accumulation = frameAccumulationStage->accumulation;
+    blitStage->depth = frameAccumulationStage->depth;
+    blitStage->initialize();
 }
 
 void MultiFramePainter::onPaint()
@@ -121,7 +126,12 @@ void MultiFramePainter::onPaint()
     auto duration = duration_cast<milliseconds>(now - m_lastTimepoint);
     m_fps = 1000.0f / duration.count();
     m_lastTimepoint = now;
+
     rasterizationStage->process();
+    postprocessingStage->process();
+    frameAccumulationStage->process();
+    blitStage->process();
+
     m_viewportCapability->setChanged(false);
     m_cameraCapability->setChanged(false);
     m_projectionCapability->setChanged(false);

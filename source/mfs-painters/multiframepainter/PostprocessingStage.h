@@ -26,7 +26,7 @@ class KernelGenerationStage;
 class PostprocessingStage
 {
 public:
-    PostprocessingStage(KernelGenerationStage& kernelGenerationStage);
+    PostprocessingStage(KernelGenerationStage& kernelGenerationStage, const PresetInformation& presetInformation);
 
     void initialize();
     void process();
@@ -34,14 +34,15 @@ public:
     gloperate::AbstractPerspectiveProjectionCapability * projection;
     gloperate::AbstractViewportCapability * viewport;
     gloperate::AbstractCameraCapability * camera;
-    PresetInformation presetInformation;
     int ssaoKernelSize;
     int ssaoNoiseSize;
 
-    globjects::ref_ptr<globjects::Texture> color;
-    globjects::ref_ptr<globjects::Texture> normal;
-    globjects::ref_ptr<globjects::Texture> depth;
-    globjects::ref_ptr<globjects::Texture> worldPos;
+    globjects::ref_ptr<globjects::Texture> diffuseBuffer;
+    globjects::ref_ptr<globjects::Texture> specularBuffer;
+    globjects::ref_ptr<globjects::Texture> faceNormalBuffer;
+    globjects::ref_ptr<globjects::Texture> normalBuffer;
+    globjects::ref_ptr<globjects::Texture> depthBuffer;
+    globjects::ref_ptr<globjects::Texture> worldPosBuffer;
 
     globjects::ref_ptr<globjects::Texture> postprocessedFrame;
 
@@ -58,4 +59,5 @@ protected:
     globjects::ref_ptr<globjects::Texture> m_ssaoKernelTexture;
     globjects::ref_ptr<globjects::Texture> m_ssaoNoiseTexture;
     KernelGenerationStage& m_kernelGenerationStage;
+    const PresetInformation& m_presetInformation;
 };

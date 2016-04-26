@@ -24,9 +24,6 @@
 #include "Material.h"
 #include "ModelLoadingStage.h"
 #include "KernelGenerationStage.h"
-#include "PostprocessingStage.h"
-#include "FrameAccumulationStage.h"
-#include "BlitStage.h"
 #include "MultiFramePainter.h"
 
 using namespace gl;
@@ -47,13 +44,11 @@ namespace
     };
 }
 
-RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage, PostprocessingStage& postProcessingStage, FrameAccumulationStage& frameAccumulationStage, BlitStage& blitStage)
+RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage)
 : m_modelLoadingStage(modelLoadingStage)
 , m_kernelGenerationStage(kernelGenerationStage)
-, m_postProcessingStage(postProcessingStage)
-, m_frameAccumulationStage(frameAccumulationStage)
-, m_blitStage(blitStage)
 , m_shadowmap(nullptr)
+, m_presetInformation(modelLoadingStage.getCurrentPreset())
 {
     currentFrame = 1;
 }
@@ -68,6 +63,11 @@ void RasterizationStage::initProperties(MultiFramePainter& painter)
         [this](const glm::vec3 & pos) {
             m_lightPosition = pos;
         });
+    painter.addProperty<glm::vec3>("LightDirection",
+        [this]() { return m_lightDirection; },
+        [this](const glm::vec3 & dir) {
+            m_lightDirection = dir;
+        });
 }
 
 void RasterizationStage::initialize()
@@ -76,16 +76,20 @@ void RasterizationStage::initialize()
 
     m_shadowmap = make_unique<Shadowmap>();
 
-    color = globjects::Texture::createDefault(GL_TEXTURE_2D);
-    normal = globjects::Texture::createDefault(GL_TEXTURE_2D);
-    worldPos = globjects::Texture::createDefault(GL_TEXTURE_2D);
-    depth = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    diffuseBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    specularBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    faceNormalBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    normalBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    worldPosBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    depthBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
 
     m_fbo = new globjects::Framebuffer();
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, color);
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT1, normal);
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT2, worldPos);
-    m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depth);
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, diffuseBuffer);
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT1, specularBuffer);
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT2, faceNormalBuffer);
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT3, normalBuffer);
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT4, worldPosBuffer);
+    m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depthBuffer);
 
     m_program = new globjects::Program();
     m_program->attach(
@@ -101,33 +105,16 @@ void RasterizationStage::initialize()
     );
 
     m_modelLoadingStage.process();
-    m_kernelGenerationStage.initialize();
-    m_presetInformation = m_modelLoadingStage.getCurrentPreset();
 
-    m_postProcessingStage.initialize();
-    m_postProcessingStage.color = color;
-    m_postProcessingStage.normal = normal;
-    m_postProcessingStage.worldPos = worldPos;
-    m_postProcessingStage.depth = depth;
-    m_postProcessingStage.presetInformation = m_presetInformation;
-
-    m_frameAccumulationStage.frame = m_postProcessingStage.postprocessedFrame;
-    m_frameAccumulationStage.depth = m_postProcessingStage.depth;
-    m_frameAccumulationStage.initialize();
-
-    m_blitStage.accumulation = m_frameAccumulationStage.accumulation;
-    m_blitStage.depth = m_frameAccumulationStage.depth;
-    m_blitStage.initialize();
+    m_groundPlane = make_unique<GroundPlane>(m_presetInformation.groundHeight);
 
     camera->setEye(m_presetInformation.camEye);
     camera->setCenter(m_presetInformation.camCenter);
     projection->setZNear(m_presetInformation.nearFar.x);
     projection->setZFar(m_presetInformation.nearFar.y);
 
-    m_lightPosition = m_presetInformation.lightPosition;
-    m_lightDirection = { 0.0, -1.0, 0.0 };
-
-    m_groundPlane = make_unique<GroundPlane>(m_presetInformation.groundHeight);
+    m_lightPosition = { 450.0, 1870.0, -250.0 };
+    m_lightDirection = { 0.0, -1.0, 0.25 };
 }
 
 void RasterizationStage::process()
@@ -136,21 +123,19 @@ void RasterizationStage::process()
         resizeTextures(viewport->width(), viewport->height());
 
     render();
-
-    m_postProcessingStage.process();
-    m_frameAccumulationStage.process();
-    m_blitStage.process();
 }
 
 void RasterizationStage::resizeTextures(int width, int height)
 {
-    color->image2D(0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-    normal->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
-    worldPos->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
-    depth->image2D(0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    diffuseBuffer->image2D(0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    specularBuffer->image2D(0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    faceNormalBuffer->image2D(0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
+    normalBuffer->image2D(0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
+    worldPosBuffer->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+    depthBuffer->image2D(0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
     
-    worldPos->setParameter(GLenum::GL_TEXTURE_MAG_FILTER, GLenum::GL_NEAREST);
-    worldPos->setParameter(GLenum::GL_TEXTURE_MIN_FILTER, GLenum::GL_NEAREST);
+    worldPosBuffer->setParameter(GLenum::GL_TEXTURE_MAG_FILTER, GLenum::GL_NEAREST);
+    worldPosBuffer->setParameter(GLenum::GL_TEXTURE_MIN_FILTER, GLenum::GL_NEAREST);
 
     m_fbo->printStatus(true);
 }
@@ -179,15 +164,17 @@ void RasterizationStage::render()
         GL_COLOR_ATTACHMENT0,
         GL_COLOR_ATTACHMENT1,
         GL_COLOR_ATTACHMENT2,
-        GL_COLOR_ATTACHMENT3
+        GL_COLOR_ATTACHMENT3,
+        GL_COLOR_ATTACHMENT4
     });
 
     auto maxFloat = std::numeric_limits<float>::max();
 
     m_fbo->clearBuffer(GL_COLOR, 0, glm::vec4(m_presetInformation.groundColor, 1.0f));
     m_fbo->clearBuffer(GL_COLOR, 1, glm::vec4(0.0f));
-    m_fbo->clearBuffer(GL_COLOR, 2, glm::vec4(maxFloat));
+    m_fbo->clearBuffer(GL_COLOR, 2, glm::vec4(0.0f));
     m_fbo->clearBuffer(GL_COLOR, 3, glm::vec4(0.0f));
+    m_fbo->clearBuffer(GL_COLOR, 4, glm::vec4(maxFloat));
     m_fbo->clearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
 
     zPrepass();

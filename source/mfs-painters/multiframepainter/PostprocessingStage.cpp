@@ -23,8 +23,9 @@ namespace
     const unsigned int s_ssaoNoiseSize = 128;
 }
 
-PostprocessingStage::PostprocessingStage(KernelGenerationStage& kernelGenerationStage)
+PostprocessingStage::PostprocessingStage(KernelGenerationStage& kernelGenerationStage, const PresetInformation& presetInformation)
 : m_kernelGenerationStage(kernelGenerationStage)
+, m_presetInformation(presetInformation)
 {
 }
 
@@ -55,12 +56,12 @@ void PostprocessingStage::process()
     m_fbo->bind();
     m_fbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
 
-    color->bindActive(0);
-    normal->bindActive(1);
-    depth->bindActive(2);
+    diffuseBuffer->bindActive(0);
+    faceNormalBuffer->bindActive(1);
+    depthBuffer->bindActive(2);
     m_ssaoKernelTexture->bindActive(3);
     m_ssaoNoiseTexture->bindActive(4);
-    worldPos->bindActive(5);
+    worldPosBuffer->bindActive(5);
 
     m_screenAlignedQuad->program()->setUniform("colorSampler", 0);
     m_screenAlignedQuad->program()->setUniform("normalSampler", 1);
@@ -69,7 +70,7 @@ void PostprocessingStage::process()
     m_screenAlignedQuad->program()->setUniform("ssaoNoiseSampler", 4);
     m_screenAlignedQuad->program()->setUniform("worldPosSampler", 5);
 
-    m_screenAlignedQuad->program()->setUniform("ssaoRadius", presetInformation.lightMaxShift);
+    m_screenAlignedQuad->program()->setUniform("ssaoRadius", m_presetInformation.lightMaxShift);
     m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
     m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
     m_screenAlignedQuad->program()->setUniform("normalMatrix", camera->normal());

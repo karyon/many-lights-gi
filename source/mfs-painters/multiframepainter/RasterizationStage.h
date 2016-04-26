@@ -25,15 +25,12 @@ class GroundPlane;
 class Shadowmap;
 class ModelLoadingStage;
 class KernelGenerationStage;
-class PostprocessingStage;
-class FrameAccumulationStage;
-class BlitStage;
 class MultiFramePainter;
 
 class RasterizationStage
 {
 public:
-    RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage, PostprocessingStage& postProcessingStage, FrameAccumulationStage& frameAccumulationStage, BlitStage& blitStage);
+    RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage);
     ~RasterizationStage();
 
     void initProperties(MultiFramePainter& painter);
@@ -48,10 +45,12 @@ public:
     bool useDOF;
 
     int currentFrame;
-    globjects::ref_ptr<globjects::Texture> color;
-    globjects::ref_ptr<globjects::Texture> normal;
-    globjects::ref_ptr<globjects::Texture> worldPos;
-    globjects::ref_ptr<globjects::Texture> depth;
+    globjects::ref_ptr<globjects::Texture> diffuseBuffer;
+    globjects::ref_ptr<globjects::Texture> specularBuffer;
+    globjects::ref_ptr<globjects::Texture> normalBuffer;
+    globjects::ref_ptr<globjects::Texture> faceNormalBuffer;
+    globjects::ref_ptr<globjects::Texture> worldPosBuffer;
+    globjects::ref_ptr<globjects::Texture> depthBuffer;
 
 
 protected:
@@ -70,10 +69,7 @@ protected:
 
     ModelLoadingStage& m_modelLoadingStage;
     KernelGenerationStage& m_kernelGenerationStage;
-    PostprocessingStage& m_postProcessingStage;
-    FrameAccumulationStage& m_frameAccumulationStage;
-    BlitStage& m_blitStage;
-    PresetInformation m_presetInformation;
+    const PresetInformation& m_presetInformation;
     glm::vec3 m_lightPosition;
     glm::vec3 m_lightDirection;
 };

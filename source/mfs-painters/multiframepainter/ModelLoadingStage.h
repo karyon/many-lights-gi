@@ -28,7 +28,7 @@ class aiMaterial;
 class ModelLoadingStage
 {
 public:
-    ModelLoadingStage();
+    ModelLoadingStage(Preset preset);
 
     gloperate::ResourceManager* resourceManager;
     Preset preset;

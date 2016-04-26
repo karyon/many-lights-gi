@@ -52,8 +52,10 @@ namespace
     }
 }
 
-ModelLoadingStage::ModelLoadingStage()
+ModelLoadingStage::ModelLoadingStage(Preset preset)
+: preset(preset)
 {
+	m_presetInformation = make_unique<PresetInformation>(getPresetInformation(preset));
 }
 
 void ModelLoadingStage::process()
@@ -67,7 +69,6 @@ void ModelLoadingStage::process()
     auto modelFilename = getFilename(preset);
     auto dir = getDirectory(modelFilename);
 
-    m_presetInformation = make_unique<PresetInformation>(getPresetInformation(preset));
 
     const aiScene* assimpScene = aiImportFile(
         modelFilename.c_str(),

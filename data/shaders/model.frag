@@ -10,10 +10,11 @@ in vec3 v_worldCoord;
 in vec3 v_uv;
 in vec4 v_s;
 
-layout(location = 0) out vec3 outColor;
-layout(location = 1) out vec3 outNormal;
-layout(location = 2) out vec3 outWorldPos;
-layout(location = 3) out float reflects;
+layout(location = 0) out vec3 outDiffuse;
+layout(location = 1) out vec3 outSpecular;
+layout(location = 2) out vec3 outFaceNormal;
+layout(location = 3) out vec3 outNormal;
+layout(location = 4) out vec3 outWorldPos;
 
 uniform sampler2D shadowmap;
 uniform sampler2D masksTexture;
@@ -78,14 +79,6 @@ void main()
     vec3 N = normalize(v_normal);
     mat3 tbn = cotangent_frame(N, v_worldCoord, uv);
 
-    vec3 scoord = v_s.xyz / v_s.w;
-    scoord.z -= 0.0001;
-
-    float shadowFactor = shadowmapComparisonVSM(shadowmap, scoord.xy, v_worldCoord, worldLightPos);
-    shadowFactor *= step(0.0, sign(v_s.w));
-    //outColor = vec3(shadowFactor);
-    //return;
-
     if (bumpType == BUMP_HEIGHT)
     {
         float A = textureOffset(bumpTexture, uv, ivec2( 1, 0)).x;
@@ -103,39 +96,20 @@ void main()
         N = normalize(tbn * normalSample);
     }
 
+    outNormal = N;
+
     vec3 diffuseColor = vec3(1.0);
     if (useDiffuseTexture)
     {
-        diffuseColor = texture(diffuseTexture, uv).rgb;
+        outDiffuse = texture(diffuseTexture, uv).rgb;
     }
 
     vec3 specularColor = vec3(0.0);
     if (useSpecularTexture)
     {
-        specularColor = texture(specularTexture, uv).rgb;
+        outSpecular = texture(specularTexture, uv).rgb;
     }
 
-    vec3 emissiveColor = vec3(0.0);
-    if (useEmissiveTexture)
-    {
-        emissiveColor = texture(emissiveTexture, uv).rgb;
-    }
-
-    vec3 L = normalize(worldLightPos - v_worldCoord);
-    vec3 V = normalize(cameraEye - v_worldCoord);
-    vec3 H = normalize(L + V);
-    float ndotl = dot(N, L);
-    float ndotH = dot(N, H);
-
-    vec3 ambientTerm = ambientFactor * diffuseColor;
-    vec3 diffuseTerm = diffuseColor * max(0.0, ndotl) * shadowFactor;
-    vec3 specularTerm = specularFactor * specularColor * pow(max(0.0, ndotH), 20.0) * shadowFactor;
-    vec3 emissiveTerm = emissiveFactor * emissiveColor;
-
-    outColor = ambientTerm + diffuseTerm + specularTerm + emissiveTerm;
-    outColor = clamp(outColor, 0.0, 1.0);
-
-    outNormal = v_normal;
+    outFaceNormal = v_normal;
     outWorldPos = v_worldCoord;
-    reflects = clamp(shininess / 100.0, 0.0, 1.0);
 }
