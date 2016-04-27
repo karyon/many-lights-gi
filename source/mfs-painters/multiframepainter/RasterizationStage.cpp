@@ -47,7 +47,6 @@ namespace
 RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage)
 : m_modelLoadingStage(modelLoadingStage)
 , m_kernelGenerationStage(kernelGenerationStage)
-, m_shadowmap(nullptr)
 , m_presetInformation(modelLoadingStage.getCurrentPreset())
 {
     currentFrame = 1;
@@ -58,23 +57,11 @@ RasterizationStage::~RasterizationStage()
 
 void RasterizationStage::initProperties(MultiFramePainter& painter)
 {
-    painter.addProperty<glm::vec3>("LightPosition",
-        [this]() { return m_lightPosition; },
-        [this](const glm::vec3 & pos) {
-            m_lightPosition = pos;
-        });
-    painter.addProperty<glm::vec3>("LightDirection",
-        [this]() { return m_lightDirection; },
-        [this](const glm::vec3 & dir) {
-            m_lightDirection = dir;
-        });
 }
 
 void RasterizationStage::initialize()
 {
     setupGLState();
-
-    m_shadowmap = make_unique<Shadowmap>();
 
     diffuseBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
     specularBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
@@ -112,9 +99,6 @@ void RasterizationStage::initialize()
     camera->setCenter(m_presetInformation.camCenter);
     projection->setZNear(m_presetInformation.nearFar.x);
     projection->setZFar(m_presetInformation.nearFar.y);
-
-    m_lightPosition = { 450.0, 1870.0, -250.0 };
-    m_lightDirection = { 0.0, -1.0, 0.25 };
 }
 
 void RasterizationStage::process()
@@ -142,17 +126,8 @@ void RasterizationStage::resizeTextures(int width, int height)
 
 void RasterizationStage::render()
 {
-    for (auto program : std::vector<globjects::Program*>{ m_program, m_shadowmap->program() })
-    {
-        program->setUniform("alpha", m_presetInformation.alpha);
-    }
+    m_program->setUniform("alpha", m_presetInformation.alpha);
 
-    auto lightRadius = m_presetInformation.lightMaxShift;
-
-    auto frameLightOffset = m_kernelGenerationStage.shadowKernel[currentFrame - 1] * lightRadius;
-    auto frameLightPosition = m_lightPosition + glm::vec3(frameLightOffset.x, 0.0f, frameLightOffset.y);
-
-    auto biasedShadowTransform = m_shadowmap->render(frameLightPosition, m_lightDirection, m_modelLoadingStage.getDrawablesMap(), *m_groundPlane.get(), m_presetInformation.nearFar);
 
     glViewport(viewport->x(),
                viewport->y(),
@@ -198,8 +173,6 @@ void RasterizationStage::render()
         program->setUniform("bumpTexture", BumpSampler);
 
         program->setUniform("groundPlaneColor", m_presetInformation.groundColor);
-        program->setUniform("worldLightPos", frameLightPosition);
-        program->setUniform("biasedShadowTransform", biasedShadowTransform);
 
         program->setUniform("cameraEye", camera->eye());
         program->setUniform("modelView", camera->view());
@@ -211,8 +184,6 @@ void RasterizationStage::render()
         program->setUniform("cocPoint", focalPoint);
         program->setUniform("focalDist", m_presetInformation.focalDist);
     }
-
-    m_shadowmap->distanceTexture()->bindActive(ShadowSampler);
 
     for (auto& pair : m_modelLoadingStage.getDrawablesMap())
     {

@@ -19,15 +19,13 @@ namespace gloperate
 }
 
 
-class GroundPlane;
-
 class Shadowmap
 {
 public:
     Shadowmap();
     ~Shadowmap();
 
-    glm::mat4 render(const glm::vec3 &eye, const glm::vec3 &direction, const IdDrawablesMap& drawablesMap, const GroundPlane& groundPlane, const glm::vec2& nearFar) const;
+    glm::mat4 render(const glm::vec3 &eye, const glm::vec3 &direction, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const;
     void setBlurSize(int blurSize);
 
     globjects::Program * program() const;

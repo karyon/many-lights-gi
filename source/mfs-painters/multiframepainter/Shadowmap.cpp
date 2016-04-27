@@ -19,8 +19,6 @@
 #include <gloperate/primitives/VertexDrawable.h>
 #include <gloperate/primitives/PolygonalDrawable.h>
 
-#include "GroundPlane.h"
-
 using namespace gl;
 
 namespace
@@ -97,7 +95,7 @@ void Shadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Texture& VSMBuf
     fbo.unbind();
 }
 
-glm::mat4 Shadowmap::render(const glm::vec3 &eye, const glm::vec3 &direction, const IdDrawablesMap& drawablesMap, const GroundPlane& groundPlane, const glm::vec2& nearFar) const
+glm::mat4 Shadowmap::render(const glm::vec3 &eye, const glm::vec3 &direction, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const
 {
 	auto projection = glm::perspective(glm::radians(90.0f), 1.0f, nearFar.x, nearFar.y);
 	auto view = glm::lookAt(eye, eye + direction, glm::vec3(1.0f, 0.0f, 0.0f));
@@ -136,8 +134,6 @@ glm::mat4 Shadowmap::render(const glm::vec3 &eye, const glm::vec3 &direction, co
             drawable->draw();
         }
     }
-
-    groundPlane.draw(m_shadowmapProgram);
 
     m_shadowmapProgram->release();
 

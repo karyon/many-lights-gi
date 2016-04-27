@@ -18,6 +18,7 @@
 #include "ModelLoadingStage.h"
 #include "KernelGenerationStage.h"
 #include "RasterizationStage.h"
+#include "DeferredShadingStage.h"
 #include "PostprocessingStage.h"
 #include "FrameAccumulationStage.h"
 #include "BlitStage.h"
@@ -35,8 +36,6 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
 , multiFrameCount(64)
 , preset(Preset::CrytekSponza)
 {
-
-
     // Setup painter
     m_targetFramebufferCapability = addCapability(new gloperate::TargetFramebufferCapability());
     m_viewportCapability = addCapability(new gloperate::ViewportCapability());
@@ -47,6 +46,7 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
     modelLoadingStage = std::make_unique<ModelLoadingStage>(preset);
     kernelGenerationStage = std::make_unique<KernelGenerationStage>();
     postprocessingStage = std::make_unique<PostprocessingStage>(*kernelGenerationStage, modelLoadingStage->getCurrentPreset());
+    deferredShadingStage = std::make_unique<DeferredShadingStage>(*modelLoadingStage.get());
     frameAccumulationStage = std::make_unique<FrameAccumulationStage>();
     blitStage = std::make_unique<BlitStage>();
     rasterizationStage = std::make_unique<RasterizationStage>(*modelLoadingStage, *kernelGenerationStage);
@@ -66,6 +66,7 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
     }
 
     rasterizationStage->initProperties(*this);
+    deferredShadingStage->initProperties(*this);
 }
 
 MultiFramePainter::~MultiFramePainter()
@@ -94,6 +95,17 @@ void MultiFramePainter::onInitialize()
     rasterizationStage->multiFrameCount = multiFrameCount;
     rasterizationStage->useDOF = useDOF;
     rasterizationStage->initialize();
+
+    deferredShadingStage->viewport = m_viewportCapability;
+    deferredShadingStage->camera = m_cameraCapability;
+    deferredShadingStage->projection = m_projectionCapability;
+    deferredShadingStage->diffuseBuffer = rasterizationStage->diffuseBuffer;
+    deferredShadingStage->specularBuffer = rasterizationStage->specularBuffer;
+    deferredShadingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
+    deferredShadingStage->normalBuffer = rasterizationStage->normalBuffer;
+    deferredShadingStage->depthBuffer = rasterizationStage->depthBuffer;
+    deferredShadingStage->worldPosBuffer = rasterizationStage->worldPosBuffer;
+    deferredShadingStage->initialize();
 
     postprocessingStage->viewport = m_viewportCapability;
     postprocessingStage->camera = m_cameraCapability;
@@ -128,6 +140,7 @@ void MultiFramePainter::onPaint()
     m_lastTimepoint = now;
 
     rasterizationStage->process();
+    deferredShadingStage->process();
     postprocessingStage->process();
     frameAccumulationStage->process();
     blitStage->process();

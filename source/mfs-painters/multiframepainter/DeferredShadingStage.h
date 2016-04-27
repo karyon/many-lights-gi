@@ -1,38 +1,39 @@
 #pragma once
 
+#include <memory>
+
+#include <glkernel/Kernel.h>
+
 #include <globjects/base/ref_ptr.h>
 
 #include "TypeDefinitions.h"
 
 namespace globjects
 {
-    class Program;
-    class Texture;
     class Framebuffer;
+    class Texture;
+    class Program;
 }
 
 namespace gloperate
 {
-    class AbstractPerspectiveProjectionCapability;
     class AbstractViewportCapability;
+    class AbstractPerspectiveProjectionCapability;
     class AbstractCameraCapability;
 
-    class PolygonalDrawable;
+    class ScreenAlignedQuad;
 }
 
-class NoiseTexture;
-class GroundPlane;
 class Shadowmap;
 class ModelLoadingStage;
-class KernelGenerationStage;
 class MultiFramePainter;
 
-class RasterizationStage
+class DeferredShadingStage
 {
 public:
-    RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage);
-    ~RasterizationStage();
-
+    DeferredShadingStage(ModelLoadingStage& modelLoadingStage);
+    ~DeferredShadingStage();
+    
     void initProperties(MultiFramePainter& painter);
 
     void initialize();
@@ -41,32 +42,24 @@ public:
     gloperate::AbstractPerspectiveProjectionCapability * projection;
     gloperate::AbstractViewportCapability * viewport;
     gloperate::AbstractCameraCapability * camera;
-    int multiFrameCount;
-    bool useDOF;
 
-    int currentFrame;
     globjects::ref_ptr<globjects::Texture> diffuseBuffer;
     globjects::ref_ptr<globjects::Texture> specularBuffer;
-    globjects::ref_ptr<globjects::Texture> normalBuffer;
     globjects::ref_ptr<globjects::Texture> faceNormalBuffer;
-    globjects::ref_ptr<globjects::Texture> worldPosBuffer;
+    globjects::ref_ptr<globjects::Texture> normalBuffer;
     globjects::ref_ptr<globjects::Texture> depthBuffer;
+    globjects::ref_ptr<globjects::Texture> worldPosBuffer;
 
+    globjects::ref_ptr<globjects::Texture> shadedFrame;
 
 protected:
-
-    void resizeTextures(int width, int height);
-    static void setupGLState();
-    void render();
-    void zPrepass();
-
-    std::unique_ptr<GroundPlane> m_groundPlane;
+    void resizeTexture(int width, int height);
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
+    globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_screenAlignedQuad;
     globjects::ref_ptr<globjects::Program> m_program;
-    globjects::ref_ptr<globjects::Program> m_zOnlyProgram;
-
+    glm::vec3 m_lightPosition;
+    glm::vec3 m_lightDirection;
+    std::unique_ptr<Shadowmap> m_shadowmap;
     ModelLoadingStage& m_modelLoadingStage;
-    KernelGenerationStage& m_kernelGenerationStage;
-    const PresetInformation& m_presetInformation;
 };

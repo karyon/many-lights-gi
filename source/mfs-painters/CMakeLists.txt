@@ -44,6 +44,7 @@ set(headers
     ${include_path}/multiframepainter/ModelLoadingStage.h
     ${include_path}/multiframepainter/KernelGenerationStage.h
     ${include_path}/multiframepainter/RasterizationStage.h
+    ${include_path}/multiframepainter/DeferredShadingStage.h
     ${include_path}/multiframepainter/PostprocessingStage.h
     ${include_path}/multiframepainter/FrameAccumulationStage.h
     ${include_path}/multiframepainter/BlitStage.h
@@ -67,6 +68,7 @@ set(sources
     ${source_path}/multiframepainter/KernelGenerationStage.cpp
     ${source_path}/multiframepainter/RasterizationStage.cpp
     ${source_path}/multiframepainter/PostprocessingStage.cpp
+    ${source_path}/multiframepainter/DeferredShadingStage.cpp
     ${source_path}/multiframepainter/FrameAccumulationStage.cpp
     ${source_path}/multiframepainter/BlitStage.cpp
 
