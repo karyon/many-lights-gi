@@ -133,9 +133,6 @@ void OmnidirectionalShadowmap::render(const glm::vec3 &eye, const IdDrawablesMap
         return std::move(transforms);
     };
 
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(GL_TRUE);
-
     glViewport(0, 0, size, size);
 
     m_fbo->bind();
