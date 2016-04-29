@@ -110,8 +110,7 @@ void MultiFramePainter::onInitialize()
     postprocessingStage->viewport = m_viewportCapability;
     postprocessingStage->camera = m_cameraCapability;
     postprocessingStage->projection = m_projectionCapability;
-    postprocessingStage->diffuseBuffer = rasterizationStage->diffuseBuffer;
-    postprocessingStage->specularBuffer = rasterizationStage->specularBuffer;
+    postprocessingStage->diffuseBuffer = deferredShadingStage->shadedFrame;
     postprocessingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
     postprocessingStage->normalBuffer = rasterizationStage->normalBuffer;
     postprocessingStage->depthBuffer = rasterizationStage->depthBuffer;

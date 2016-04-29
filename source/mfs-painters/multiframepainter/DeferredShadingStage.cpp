@@ -1,6 +1,7 @@
 #include "DeferredShadingStage.h"
 
 #include <glbinding/gl/enum.h>
+#include <glbinding/gl/functions.h>
 
 #include <glkernel/Kernel.h>
 
@@ -81,6 +82,13 @@ void DeferredShadingStage::process()
     auto biasedShadowTransform = m_shadowmap->render(m_lightPosition, m_lightDirection, m_modelLoadingStage.getDrawablesMap(), nearFar);
 
 
+
+    gl::glViewport(viewport->x(),
+        viewport->y(),
+        viewport->width(),
+        viewport->height());
+
+
     const auto screenSize = glm::vec2(viewport->width(), viewport->height());
 
     if (viewport->hasChanged())
@@ -109,11 +117,13 @@ void DeferredShadingStage::process()
     m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
     m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
     m_screenAlignedQuad->program()->setUniform("normalMatrix", camera->normal());
-    m_screenAlignedQuad->program()->setUniform("view", camera->view());
+    m_screenAlignedQuad->program()->setUniform("viewMatrix", camera->view());
+    m_screenAlignedQuad->program()->setUniform("viewInvertedMatrix", camera->viewInverted());
     m_screenAlignedQuad->program()->setUniform("worldLightPos", m_lightPosition);
     m_screenAlignedQuad->program()->setUniform("biasedLightViewProjectionMatrix", biasedShadowTransform);
     m_screenAlignedQuad->program()->setUniform("cameraEye", camera->eye());
-    m_screenAlignedQuad->program()->setUniform("farZ", projection->zFar());
+    m_screenAlignedQuad->program()->setUniform("zFar", projection->zFar());
+    m_screenAlignedQuad->program()->setUniform("zNear", projection->zNear());
     m_screenAlignedQuad->program()->setUniform("screenSize", screenSize);
 
     m_screenAlignedQuad->draw();
@@ -123,6 +133,6 @@ void DeferredShadingStage::process()
 
 void DeferredShadingStage::resizeTexture(int width, int height)
 {
-    shadedFrame->image2D(0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    shadedFrame->image2D(0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
     m_fbo->printStatus(true);
 }

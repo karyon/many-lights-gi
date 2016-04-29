@@ -22,8 +22,10 @@ uniform mat4 projectionInverseMatrix;
 uniform mat4 biasedLightViewProjectionMatrix;
 uniform vec3 worldLightPos;
 uniform vec3 cameraEye;
-uniform mat4 view;
-uniform float farZ;
+uniform mat4 viewMatrix;
+uniform mat4 viewInvertedMatrix;
+uniform float zFar;
+uniform float zNear;
 uniform vec2 screenSize;
 
 const float ambientFactor = 0.25;
@@ -33,7 +35,7 @@ const float specularFactor = 0.75;
 float linearDepth(const in vec2 uv)
 {
     float d = texture(depthSampler, uv, 0).x;
-    return projectionMatrix[3][2] / (d + projectionMatrix[2][2]);
+    return projectionMatrix[3][2] / (d + -(zFar / (zFar - zNear)));
 }
 
 void main()
@@ -41,8 +43,8 @@ void main()
     float d = linearDepth(v_uv);
     vec3 N = normalize(texture(normalSampler, v_uv, 0).xyz);
 
-    vec3 worldCoord = d * normalize(v_viewRay);
-
+    vec3 viewCoord = d * v_viewRay / zFar / 2.0; // unclear why the 2.0 is necessary
+    vec3 worldCoord = (viewInvertedMatrix * vec4(viewCoord, 1.0)).xyz;
 
     vec3 L = normalize(worldLightPos - worldCoord);
     vec3 V = normalize(cameraEye - worldCoord);
@@ -50,7 +52,9 @@ void main()
     float ndotl = dot(N, L);
     float ndotH = dot(N, H);
 
-    vec4 scoord = vec4(worldCoord, 1.0) * biasedLightViewProjectionMatrix;
+    vec4 scoord = biasedLightViewProjectionMatrix * vec4(worldCoord, 1.0);
+
+
     float shadowFactor = shadowmapComparisonVSM(shadowmap, scoord.xy/scoord.w, worldCoord, worldLightPos);
     shadowFactor *= step(0.0, sign(scoord.w));
 
@@ -61,5 +65,5 @@ void main()
     vec3 diffuseTerm = diffuseColor * max(0.0, ndotl) * shadowFactor;
     vec3 specularTerm = specularFactor * specularColor * pow(max(0.0, ndotH), 20.0) * shadowFactor;
 
-    outColor = vec3(v_uv, 0.0);
+    outColor = ambientTerm + diffuseTerm + specularTerm;
 }
