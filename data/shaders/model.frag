@@ -36,6 +36,7 @@ uniform float alpha;
 uniform vec3 worldLightPos;
 uniform vec3 cameraEye;
 
+#define BUMP_NONE 0
 #define BUMP_HEIGHT 1
 #define BUMP_NORMAL 2
 
@@ -77,34 +78,35 @@ void main()
         discard;
 
     vec3 N = normalize(v_normal);
-    mat3 tbn = cotangent_frame(N, v_worldCoord, uv);
 
-    if (bumpType == BUMP_HEIGHT)
+    if (bumpType != BUMP_NONE)
     {
-        float A = textureOffset(bumpTexture, uv, ivec2( 1, 0)).x;
-        float B = textureOffset(bumpTexture, uv, ivec2(-1, 0)).x;
-        float C = textureOffset(bumpTexture, uv, ivec2( 0, 1)).x;
-        float D = textureOffset(bumpTexture, uv, ivec2( 0,-1)).x;
+        mat3 tbn = cotangent_frame(N, v_worldCoord, uv);
+        if (bumpType == BUMP_HEIGHT)
+        {
+            float A = textureOffset(bumpTexture, uv, ivec2( 1, 0)).x;
+            float B = textureOffset(bumpTexture, uv, ivec2(-1, 0)).x;
+            float C = textureOffset(bumpTexture, uv, ivec2( 0, 1)).x;
+            float D = textureOffset(bumpTexture, uv, ivec2( 0,-1)).x;
 
-        vec3 normalBump = vec3(B-A, D-C, 0.1);
-        normalBump = tbn * normalBump;
-        N = normalize(normalBump);
-    }
-    else if (bumpType == BUMP_NORMAL)
-    {
-        vec3 normalSample = texture(bumpTexture, uv).rgb * 2.0 - 1.0;
-        N = normalize(tbn * normalSample);
+            vec3 normalBump = vec3(B-A, D-C, 0.1);
+            normalBump = tbn * normalBump;
+            N = normalize(normalBump);
+        }
+        else if (bumpType == BUMP_NORMAL)
+        {
+            vec3 normalSample = texture(bumpTexture, uv).rgb * 2.0 - 1.0;
+            N = normalize(tbn * normalSample);
+        }
     }
 
     outNormal = N;
 
-    vec3 diffuseColor = vec3(1.0);
     if (useDiffuseTexture)
     {
         outDiffuse = texture(diffuseTexture, uv).rgb;
     }
 
-    vec3 specularColor = vec3(0.0);
     if (useSpecularTexture)
     {
         outSpecular = texture(specularTexture, uv).rgb;

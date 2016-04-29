@@ -94,5 +94,5 @@ void main()
         outColor = texture(colorSampler, v_uv).rgb;
 
     float ssao = ssao(d, normal);
-    outColor = texture(colorSampler, v_uv).rgb * ssao;
+    outColor = vec3(texture(colorSampler, v_uv).rgb * ssao);
 }
