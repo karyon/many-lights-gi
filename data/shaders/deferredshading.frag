@@ -13,7 +13,6 @@ uniform sampler2D specularSampler;
 uniform sampler2D faceNormalSampler;
 uniform sampler2D normalSampler;
 uniform sampler2D depthSampler;
-uniform sampler2D worldPosSampler;
 uniform sampler2D shadowmap;
 
 uniform mat3 normalMatrix;
@@ -41,7 +40,7 @@ float linearDepth(const in vec2 uv)
 void main()
 {
     float d = linearDepth(v_uv);
-    vec3 N = normalize(texture(normalSampler, v_uv, 0).xyz);
+    vec3 N = texture(normalSampler, v_uv, 0).xyz * 2.0 - 1.0;
 
     vec3 viewCoord = d * v_viewRay / zFar / 2.0; // unclear why the 2.0 is necessary
     vec3 worldCoord = (viewInvertedMatrix * vec4(viewCoord, 1.0)).xyz;

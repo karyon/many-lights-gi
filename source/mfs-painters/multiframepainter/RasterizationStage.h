@@ -49,7 +49,6 @@ public:
     globjects::ref_ptr<globjects::Texture> specularBuffer;
     globjects::ref_ptr<globjects::Texture> normalBuffer;
     globjects::ref_ptr<globjects::Texture> faceNormalBuffer;
-    globjects::ref_ptr<globjects::Texture> worldPosBuffer;
     globjects::ref_ptr<globjects::Texture> depthBuffer;
 
 

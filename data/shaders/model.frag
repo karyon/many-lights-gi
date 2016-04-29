@@ -14,7 +14,6 @@ layout(location = 0) out vec3 outDiffuse;
 layout(location = 1) out vec3 outSpecular;
 layout(location = 2) out vec3 outFaceNormal;
 layout(location = 3) out vec3 outNormal;
-layout(location = 4) out vec3 outWorldPos;
 
 uniform sampler2D shadowmap;
 uniform sampler2D masksTexture;
@@ -100,7 +99,7 @@ void main()
         }
     }
 
-    outNormal = N;
+    outNormal = N * 0.5 + 0.5;
 
     if (useDiffuseTexture)
     {
@@ -112,6 +111,5 @@ void main()
         outSpecular = texture(specularTexture, uv).rgb;
     }
 
-    outFaceNormal = v_normal;
-    outWorldPos = v_worldCoord;
+    outFaceNormal = v_normal * 0.5 + 0.5;
 }

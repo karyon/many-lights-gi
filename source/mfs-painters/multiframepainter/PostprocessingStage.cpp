@@ -61,14 +61,12 @@ void PostprocessingStage::process()
     depthBuffer->bindActive(2);
     m_ssaoKernelTexture->bindActive(3);
     m_ssaoNoiseTexture->bindActive(4);
-    worldPosBuffer->bindActive(5);
 
     m_screenAlignedQuad->program()->setUniform("colorSampler", 0);
     m_screenAlignedQuad->program()->setUniform("normalSampler", 1);
     m_screenAlignedQuad->program()->setUniform("depthSampler", 2);
     m_screenAlignedQuad->program()->setUniform("ssaoKernelSampler", 3);
     m_screenAlignedQuad->program()->setUniform("ssaoNoiseSampler", 4);
-    m_screenAlignedQuad->program()->setUniform("worldPosSampler", 5);
 
     m_screenAlignedQuad->program()->setUniform("ssaoRadius", m_presetInformation.lightMaxShift);
     m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());

@@ -9,7 +9,6 @@ uniform sampler2D normalSampler;
 uniform sampler2D depthSampler;
 uniform sampler1D ssaoKernelSampler;
 uniform sampler2D ssaoNoiseSampler;
-uniform sampler2D worldPosSampler;
 
 uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
@@ -88,7 +87,7 @@ float ssao(float depth, vec3 normal)
 void main()
 {
     float d = linearDepth(v_uv);
-    vec3 normal = normalize(texture(normalSampler, v_uv, 0).xyz);
+    vec3 normal = texture(normalSampler, v_uv, 0).xyz * 2.0 - 1.0;
 
     if (d > farZ)
         outColor = texture(colorSampler, v_uv).rgb;

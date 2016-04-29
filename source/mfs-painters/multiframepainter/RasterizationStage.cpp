@@ -67,7 +67,6 @@ void RasterizationStage::initialize()
     specularBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
     faceNormalBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
     normalBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
-    worldPosBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
     depthBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
 
     m_fbo = new globjects::Framebuffer();
@@ -75,7 +74,6 @@ void RasterizationStage::initialize()
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT1, specularBuffer);
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT2, faceNormalBuffer);
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT3, normalBuffer);
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT4, worldPosBuffer);
     m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depthBuffer);
 
     m_program = new globjects::Program();
@@ -113,13 +111,9 @@ void RasterizationStage::resizeTextures(int width, int height)
 {
     diffuseBuffer->image2D(0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
     specularBuffer->image2D(0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-    faceNormalBuffer->image2D(0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
-    normalBuffer->image2D(0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
-    worldPosBuffer->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+    faceNormalBuffer->image2D(0, GL_RGB10_A2, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
+    normalBuffer->image2D(0, GL_RGB10_A2, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
     depthBuffer->image2D(0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-    
-    worldPosBuffer->setParameter(GLenum::GL_TEXTURE_MAG_FILTER, GLenum::GL_NEAREST);
-    worldPosBuffer->setParameter(GLenum::GL_TEXTURE_MIN_FILTER, GLenum::GL_NEAREST);
 
     m_fbo->printStatus(true);
 }
@@ -139,8 +133,7 @@ void RasterizationStage::render()
         GL_COLOR_ATTACHMENT0,
         GL_COLOR_ATTACHMENT1,
         GL_COLOR_ATTACHMENT2,
-        GL_COLOR_ATTACHMENT3,
-        GL_COLOR_ATTACHMENT4
+        GL_COLOR_ATTACHMENT3
     });
 
     auto maxFloat = std::numeric_limits<float>::max();

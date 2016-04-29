@@ -104,7 +104,6 @@ void MultiFramePainter::onInitialize()
     deferredShadingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
     deferredShadingStage->normalBuffer = rasterizationStage->normalBuffer;
     deferredShadingStage->depthBuffer = rasterizationStage->depthBuffer;
-    deferredShadingStage->worldPosBuffer = rasterizationStage->worldPosBuffer;
     deferredShadingStage->initialize();
 
     postprocessingStage->viewport = m_viewportCapability;
@@ -114,7 +113,6 @@ void MultiFramePainter::onInitialize()
     postprocessingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
     postprocessingStage->normalBuffer = rasterizationStage->normalBuffer;
     postprocessingStage->depthBuffer = rasterizationStage->depthBuffer;
-    postprocessingStage->worldPosBuffer = rasterizationStage->worldPosBuffer;
     postprocessingStage->initialize();
 
     frameAccumulationStage->viewport = m_viewportCapability;
