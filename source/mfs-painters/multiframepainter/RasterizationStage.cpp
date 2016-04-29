@@ -18,9 +18,7 @@
 
 #include <reflectionzeug/property/extensions/GlmProperties.h>
 
-#include "NoiseTexture.h"
 #include "Shadowmap.h"
-#include "GroundPlane.h"
 #include "Material.h"
 #include "ModelLoadingStage.h"
 #include "KernelGenerationStage.h"
@@ -90,8 +88,6 @@ void RasterizationStage::initialize()
 
     m_modelLoadingStage.process();
 
-    m_groundPlane = make_unique<GroundPlane>(m_presetInformation.groundHeight);
-
     camera->setEye(m_presetInformation.camEye);
     camera->setCenter(m_presetInformation.camCenter);
     projection->setZNear(m_presetInformation.nearFar.x);
@@ -119,9 +115,6 @@ void RasterizationStage::resizeTextures(int width, int height)
 
 void RasterizationStage::render()
 {
-    m_program->setUniform("alpha", m_presetInformation.alpha);
-
-
     glViewport(viewport->x(),
                viewport->y(),
                viewport->width(),
@@ -149,7 +142,7 @@ void RasterizationStage::render()
     auto focalPoint = m_kernelGenerationStage.depthOfFieldKernel[currentFrame - 1] * m_presetInformation.focalPoint;
     focalPoint *= useDOF;
 
-    for (auto program : std::vector<globjects::Program*>{ m_program, m_groundPlane->program(), m_zOnlyProgram })
+    for (auto program : std::vector<globjects::Program*>{ m_program, m_zOnlyProgram })
     {
         program->setUniform("shadowmap", ShadowSampler);
         program->setUniform("masksTexture", MaskSampler);
@@ -239,8 +232,6 @@ void RasterizationStage::render()
     }
 
     m_program->release();
-
-    m_groundPlane->draw();
 
     m_fbo->unbind();
 }

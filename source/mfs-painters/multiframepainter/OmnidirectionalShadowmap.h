@@ -18,14 +18,12 @@ namespace gloperate
     class VertexDrawable;
 }
 
-class GroundPlane;
-
 class OmnidirectionalShadowmap
 {
 public:
     OmnidirectionalShadowmap();
 
-    void render(const glm::vec3 &eye, const IdDrawablesMap& drawablesMap, const GroundPlane& groundPlane, float nearPlane, float farPlane) const;
+    void render(const glm::vec3 &eye, const IdDrawablesMap& drawablesMap, float nearPlane, float farPlane) const;
     void setBlurSize(int blurSize);
 
     globjects::Program * program() const;

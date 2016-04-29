@@ -31,7 +31,6 @@ uniform int bumpType;
 
 uniform float shininess;
 uniform float masksOffset;
-uniform float alpha;
 uniform vec3 worldLightPos;
 uniform vec3 cameraEye;
 
@@ -67,14 +66,12 @@ void main()
 {
     vec2 uv = v_uv.xy;
 
-    float curAlpha = alpha;
     if (useOpacityTexture)
     {
-        curAlpha = texture(opacityTexture, uv).r;
+        float curAlpha = texture(opacityTexture, uv).r;
+        if (curAlpha < 0.5)
+            discard;
     }
-
-    if (curAlpha < 0.5)
-        discard;
 
     vec3 N = normalize(v_normal);
 

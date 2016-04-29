@@ -76,18 +76,14 @@ void DeferredShadingStage::initialize()
 
 void DeferredShadingStage::process()
 {
-
-    m_shadowmap->program()->setUniform("alpha", m_modelLoadingStage.getCurrentPreset().alpha);
     auto nearFar = glm::vec2(projection->zNear(), projection->zFar());
     auto biasedShadowTransform = m_shadowmap->render(m_lightPosition, m_lightDirection, m_modelLoadingStage.getDrawablesMap(), nearFar);
-
 
 
     gl::glViewport(viewport->x(),
         viewport->y(),
         viewport->width(),
         viewport->height());
-
 
     const auto screenSize = glm::vec2(viewport->width(), viewport->height());
 
