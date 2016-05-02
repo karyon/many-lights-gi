@@ -74,6 +74,7 @@ void main()
     }
 
     vec3 N = normalize(v_normal);
+    outFaceNormal = N * 0.5 + 0.5;
 
     if (bumpType != BUMP_NONE)
     {
@@ -107,6 +108,4 @@ void main()
     {
         outSpecular = texture(specularTexture, uv).rgb;
     }
-
-    outFaceNormal = v_normal * 0.5 + 0.5;
 }

@@ -8,6 +8,8 @@
 
 #include <globjects/Texture.h>
 
+
+#include <gloperate/primitives/PolygonalDrawable.h>
 #include <gloperate/primitives/PolygonalGeometry.h>
 #include <gloperate/primitives/Scene.h>
 #include <gloperate/resources/ResourceManager.h>
@@ -56,6 +58,10 @@ ModelLoadingStage::ModelLoadingStage(Preset preset)
 : preset(preset)
 {
 	m_presetInformation = make_unique<PresetInformation>(getPresetInformation(preset));
+}
+
+ModelLoadingStage::~ModelLoadingStage()
+{
 }
 
 void ModelLoadingStage::process()

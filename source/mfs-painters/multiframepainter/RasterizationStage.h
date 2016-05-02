@@ -35,7 +35,9 @@ public:
     void initProperties(MultiFramePainter& painter);
 
     void initialize();
+    void loadPreset(const PresetInformation& preset);
     void process();
+
 
     gloperate::AbstractPerspectiveProjectionCapability * projection;
     gloperate::AbstractViewportCapability * viewport;
@@ -62,7 +64,10 @@ protected:
     globjects::ref_ptr<globjects::Program> m_program;
     globjects::ref_ptr<globjects::Program> m_zOnlyProgram;
 
+    float m_focalPoint;
+    float m_focalDist;
+    BumpType m_bumpType;
+
     ModelLoadingStage& m_modelLoadingStage;
     KernelGenerationStage& m_kernelGenerationStage;
-    const PresetInformation& m_presetInformation;
 };

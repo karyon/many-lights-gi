@@ -3,8 +3,6 @@
 #include <vector>
 #include <memory>
 
-#include <gloperate/primitives/PolygonalDrawable.h>
-
 #include "TypeDefinitions.h"
 #include "Preset.h"
 #include "Material.h"
@@ -17,6 +15,7 @@ namespace globjects
 namespace gloperate
 {
     class PolygonalGeometry;
+    class Drawable;
     class ResourceManager;
     class Scene;
 }
@@ -29,6 +28,7 @@ class ModelLoadingStage
 {
 public:
     ModelLoadingStage(Preset preset);
+    ~ModelLoadingStage();
 
     gloperate::ResourceManager* resourceManager;
     Preset preset;

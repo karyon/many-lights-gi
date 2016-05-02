@@ -45,7 +45,6 @@ namespace
 RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage)
 : m_modelLoadingStage(modelLoadingStage)
 , m_kernelGenerationStage(kernelGenerationStage)
-, m_presetInformation(modelLoadingStage.getCurrentPreset())
 {
     currentFrame = 1;
 }
@@ -87,11 +86,18 @@ void RasterizationStage::initialize()
     );
 
     m_modelLoadingStage.process();
+}
 
-    camera->setEye(m_presetInformation.camEye);
-    camera->setCenter(m_presetInformation.camCenter);
-    projection->setZNear(m_presetInformation.nearFar.x);
-    projection->setZFar(m_presetInformation.nearFar.y);
+
+void RasterizationStage::loadPreset(const PresetInformation& preset)
+{
+    camera->setEye(preset.camEye);
+    camera->setCenter(preset.camCenter);
+    projection->setZNear(preset.nearFar.x);
+    projection->setZFar(preset.nearFar.y);
+    m_bumpType = preset.bumpType;
+    m_focalDist = preset.focalDist;
+    m_focalPoint = preset.focalPoint;
 }
 
 void RasterizationStage::process()
@@ -130,7 +136,7 @@ void RasterizationStage::render()
 
     auto maxFloat = std::numeric_limits<float>::max();
 
-    m_fbo->clearBuffer(GL_COLOR, 0, glm::vec4(m_presetInformation.groundColor, 1.0f));
+    m_fbo->clearBuffer(GL_COLOR, 0, glm::vec4(0.0f));
     m_fbo->clearBuffer(GL_COLOR, 1, glm::vec4(0.0f));
     m_fbo->clearBuffer(GL_COLOR, 2, glm::vec4(0.0f));
     m_fbo->clearBuffer(GL_COLOR, 3, glm::vec4(0.0f));
@@ -139,7 +145,7 @@ void RasterizationStage::render()
 
     auto subpixelSample = m_kernelGenerationStage.antiAliasingKernel[currentFrame - 1];
     auto viewportSize = glm::vec2(viewport->width(), viewport->height());
-    auto focalPoint = m_kernelGenerationStage.depthOfFieldKernel[currentFrame - 1] * m_presetInformation.focalPoint;
+    auto focalPoint = m_kernelGenerationStage.depthOfFieldKernel[currentFrame - 1] * m_focalPoint;
     focalPoint *= useDOF;
 
     for (auto program : std::vector<globjects::Program*>{ m_program, m_zOnlyProgram })
@@ -153,8 +159,6 @@ void RasterizationStage::render()
         program->setUniform("opacityTexture", OpacitySampler);
         program->setUniform("bumpTexture", BumpSampler);
 
-        program->setUniform("groundPlaneColor", m_presetInformation.groundColor);
-
         program->setUniform("cameraEye", camera->eye());
         program->setUniform("modelView", camera->view());
         program->setUniform("projection", projection->projection());
@@ -163,7 +167,7 @@ void RasterizationStage::render()
         program->setUniform("ndcOffset", 2.0f * subpixelSample / viewportSize);
 
         program->setUniform("cocPoint", focalPoint);
-        program->setUniform("focalDist", m_presetInformation.focalDist);
+        program->setUniform("focalDist", m_focalDist);
     }
 
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
@@ -212,7 +216,7 @@ void RasterizationStage::render()
         auto bumpType = BumpType::None;
         if (hasBumpTex)
         {
-            bumpType = m_presetInformation.bumpType;
+            bumpType = m_bumpType;
             auto tex = material.textureMap().at(TextureType::Bump);
             tex->bindActive(BumpSampler);
         }

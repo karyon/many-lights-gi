@@ -23,6 +23,7 @@ namespace gloperate
 class ModelLoadingStage;
 class KernelGenerationStage;
 class RasterizationStage;
+class GIStage;
 class DeferredShadingStage;
 class PostprocessingStage;
 class FrameAccumulationStage;
@@ -65,6 +66,7 @@ protected:
     std::unique_ptr<ModelLoadingStage> modelLoadingStage;
     std::unique_ptr<KernelGenerationStage> kernelGenerationStage;
     std::unique_ptr<RasterizationStage> rasterizationStage;
+    std::unique_ptr<GIStage> giStage;
     std::unique_ptr<DeferredShadingStage> deferredShadingStage;
     std::unique_ptr<PostprocessingStage> postprocessingStage;
     std::unique_ptr<FrameAccumulationStage> frameAccumulationStage;

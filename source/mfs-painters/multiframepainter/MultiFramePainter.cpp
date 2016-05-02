@@ -18,6 +18,7 @@
 #include "ModelLoadingStage.h"
 #include "KernelGenerationStage.h"
 #include "RasterizationStage.h"
+#include "GIStage.h"
 #include "DeferredShadingStage.h"
 #include "PostprocessingStage.h"
 #include "FrameAccumulationStage.h"
@@ -45,11 +46,12 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
 
     modelLoadingStage = std::make_unique<ModelLoadingStage>(preset);
     kernelGenerationStage = std::make_unique<KernelGenerationStage>();
+    rasterizationStage = std::make_unique<RasterizationStage>(*modelLoadingStage, *kernelGenerationStage);
+    giStage = std::make_unique<GIStage>(*modelLoadingStage, *kernelGenerationStage);
     postprocessingStage = std::make_unique<PostprocessingStage>(*kernelGenerationStage, modelLoadingStage->getCurrentPreset());
     deferredShadingStage = std::make_unique<DeferredShadingStage>(*modelLoadingStage.get());
     frameAccumulationStage = std::make_unique<FrameAccumulationStage>();
     blitStage = std::make_unique<BlitStage>();
-    rasterizationStage = std::make_unique<RasterizationStage>(*modelLoadingStage, *kernelGenerationStage);
 
     modelLoadingStage->resourceManager = &resourceManager;
 
@@ -95,12 +97,21 @@ void MultiFramePainter::onInitialize()
     rasterizationStage->multiFrameCount = multiFrameCount;
     rasterizationStage->useDOF = useDOF;
     rasterizationStage->initialize();
+    rasterizationStage->loadPreset(modelLoadingStage->getCurrentPreset());
+
+    giStage->viewport = m_viewportCapability;
+    giStage->camera = m_cameraCapability;
+    giStage->projection = m_projectionCapability;
+    giStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
+    giStage->depthBuffer = rasterizationStage->depthBuffer;
+    giStage->initialize();
 
     deferredShadingStage->viewport = m_viewportCapability;
     deferredShadingStage->camera = m_cameraCapability;
     deferredShadingStage->projection = m_projectionCapability;
     deferredShadingStage->diffuseBuffer = rasterizationStage->diffuseBuffer;
     deferredShadingStage->specularBuffer = rasterizationStage->specularBuffer;
+    deferredShadingStage->giBuffer = giStage->giBuffer;
     deferredShadingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
     deferredShadingStage->normalBuffer = rasterizationStage->normalBuffer;
     deferredShadingStage->depthBuffer = rasterizationStage->depthBuffer;
@@ -137,6 +148,7 @@ void MultiFramePainter::onPaint()
     m_lastTimepoint = now;
 
     rasterizationStage->process();
+    giStage->process();
     deferredShadingStage->process();
     postprocessingStage->process();
     frameAccumulationStage->process();
