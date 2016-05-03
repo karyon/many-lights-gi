@@ -18,7 +18,7 @@ namespace globjects
 namespace gloperate
 {
     class ScreenAlignedQuad;
-    class AbstractPerspectiveProjectionCapability;
+    class OrthographicProjectionCapability;
     class AbstractViewportCapability;
     class AbstractCameraCapability;
 }
@@ -33,6 +33,7 @@ public:
     GIStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage);
     ~GIStage();
 
+    void initProperties(MultiFramePainter& painter);
     void initialize();
     void process();
 
@@ -42,7 +43,7 @@ public:
     globjects::ref_ptr<globjects::Texture> giBuffer;
 
     gloperate::AbstractViewportCapability * viewport;
-    gloperate::AbstractPerspectiveProjectionCapability * projection;
+    gloperate::AbstractProjectionCapability * projection;
     gloperate::AbstractCameraCapability * camera;
 
     ModelLoadingStage& modelLoadingStage;
@@ -58,7 +59,7 @@ protected:
     glm::vec3 m_lightPosition;
     glm::vec3 m_lightDirection;
 
-    std::unique_ptr<gloperate::AbstractPerspectiveProjectionCapability> m_lightProjection;
+    std::unique_ptr<gloperate::OrthographicProjectionCapability> m_lightProjection;
     std::unique_ptr<gloperate::AbstractViewportCapability> m_lightViewport;
     std::unique_ptr<gloperate::AbstractCameraCapability> m_lightCamera;
 };

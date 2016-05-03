@@ -68,6 +68,7 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
     }
 
     rasterizationStage->initProperties(*this);
+    giStage->initProperties(*this);
     deferredShadingStage->initProperties(*this);
 }
 

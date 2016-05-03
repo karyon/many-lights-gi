@@ -99,6 +99,7 @@ void DeferredShadingStage::process()
     normalBuffer->bindActive(3);
     depthBuffer->bindActive(4);
     m_shadowmap->distanceTexture()->bindActive(5);
+    giBuffer->bindActive(6);
 
 
     m_screenAlignedQuad->program()->setUniform("diffuseSampler", 0);
@@ -107,10 +108,10 @@ void DeferredShadingStage::process()
     m_screenAlignedQuad->program()->setUniform("normalSampler", 3);
     m_screenAlignedQuad->program()->setUniform("depthSampler", 4);
     m_screenAlignedQuad->program()->setUniform("shadowmap", 5);
+    m_screenAlignedQuad->program()->setUniform("giSampler", 6);
 
     m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
     m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
-    m_screenAlignedQuad->program()->setUniform("normalMatrix", camera->normal());
     m_screenAlignedQuad->program()->setUniform("viewMatrix", camera->view());
     m_screenAlignedQuad->program()->setUniform("viewInvertedMatrix", camera->viewInverted());
     m_screenAlignedQuad->program()->setUniform("worldLightPos", m_lightPosition);

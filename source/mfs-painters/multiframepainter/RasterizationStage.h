@@ -13,7 +13,7 @@ namespace globjects
 
 namespace gloperate
 {
-    class AbstractPerspectiveProjectionCapability;
+    class AbstractProjectionCapability;
     class AbstractViewportCapability;
     class AbstractCameraCapability;
 
@@ -39,7 +39,7 @@ public:
     void process();
 
 
-    gloperate::AbstractPerspectiveProjectionCapability * projection;
+    gloperate::AbstractProjectionCapability * projection;
     gloperate::AbstractViewportCapability * viewport;
     gloperate::AbstractCameraCapability * camera;
     int multiFrameCount;
