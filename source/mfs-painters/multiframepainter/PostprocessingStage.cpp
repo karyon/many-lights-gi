@@ -32,10 +32,10 @@ PostprocessingStage::PostprocessingStage(KernelGenerationStage& kernelGeneration
 
 void PostprocessingStage::initialize()
 {
-    postprocessedFrame = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    occlusionBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
 
     m_fbo = new globjects::Framebuffer();
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, postprocessedFrame);
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, occlusionBuffer);
 
     m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/postprocessing.frag")
@@ -59,17 +59,15 @@ void PostprocessingStage::process()
     m_fbo->bind();
     m_fbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
 
-    diffuseBuffer->bindActive(0);
-    faceNormalBuffer->bindActive(1);
-    depthBuffer->bindActive(2);
-    m_ssaoKernelTexture->bindActive(3);
-    m_ssaoNoiseTexture->bindActive(4);
+    faceNormalBuffer->bindActive(0);
+    depthBuffer->bindActive(1);
+    m_ssaoKernelTexture->bindActive(2);
+    m_ssaoNoiseTexture->bindActive(3);
 
-    m_screenAlignedQuad->program()->setUniform("colorSampler", 0);
-    m_screenAlignedQuad->program()->setUniform("normalSampler", 1);
-    m_screenAlignedQuad->program()->setUniform("depthSampler", 2);
-    m_screenAlignedQuad->program()->setUniform("ssaoKernelSampler", 3);
-    m_screenAlignedQuad->program()->setUniform("ssaoNoiseSampler", 4);
+    m_screenAlignedQuad->program()->setUniform("normalSampler", 0);
+    m_screenAlignedQuad->program()->setUniform("depthSampler", 1);
+    m_screenAlignedQuad->program()->setUniform("ssaoKernelSampler", 2);
+    m_screenAlignedQuad->program()->setUniform("ssaoNoiseSampler", 3);
 
     m_screenAlignedQuad->program()->setUniform("ssaoRadius", m_presetInformation.lightMaxShift);
     m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
@@ -88,7 +86,7 @@ void PostprocessingStage::process()
 
 void PostprocessingStage::resizeTexture(int width, int height)
 {
-    postprocessedFrame->image2D(0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    occlusionBuffer->image2D(0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
     m_fbo->printStatus(true);
 }
 

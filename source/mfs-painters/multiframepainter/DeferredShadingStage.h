@@ -46,6 +46,7 @@ public:
     globjects::ref_ptr<globjects::Texture> diffuseBuffer;
     globjects::ref_ptr<globjects::Texture> specularBuffer;
     globjects::ref_ptr<globjects::Texture> giBuffer;
+    globjects::ref_ptr<globjects::Texture> occlusionBuffer;
     globjects::ref_ptr<globjects::Texture> faceNormalBuffer;
     globjects::ref_ptr<globjects::Texture> normalBuffer;
     globjects::ref_ptr<globjects::Texture> depthBuffer;

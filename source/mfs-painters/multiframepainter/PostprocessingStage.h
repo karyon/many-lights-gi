@@ -37,13 +37,12 @@ public:
     int ssaoKernelSize;
     int ssaoNoiseSize;
 
-    globjects::ref_ptr<globjects::Texture> diffuseBuffer;
     globjects::ref_ptr<globjects::Texture> specularBuffer;
     globjects::ref_ptr<globjects::Texture> faceNormalBuffer;
     globjects::ref_ptr<globjects::Texture> normalBuffer;
     globjects::ref_ptr<globjects::Texture> depthBuffer;
 
-    globjects::ref_ptr<globjects::Texture> postprocessedFrame;
+    globjects::ref_ptr<globjects::Texture> occlusionBuffer;
 
 protected:
 

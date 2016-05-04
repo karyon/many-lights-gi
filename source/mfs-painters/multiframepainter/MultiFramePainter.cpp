@@ -96,30 +96,31 @@ void MultiFramePainter::onInitialize()
     giStage->depthBuffer = rasterizationStage->depthBuffer;
     giStage->initialize();
 
+    postprocessingStage->viewport = m_viewportCapability;
+    postprocessingStage->camera = m_cameraCapability;
+    postprocessingStage->projection = m_projectionCapability;
+    postprocessingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
+    postprocessingStage->normalBuffer = rasterizationStage->normalBuffer;
+    postprocessingStage->depthBuffer = rasterizationStage->depthBuffer;
+    postprocessingStage->initialize();
+
     deferredShadingStage->viewport = m_viewportCapability;
     deferredShadingStage->camera = m_cameraCapability;
     deferredShadingStage->projection = m_projectionCapability;
     deferredShadingStage->diffuseBuffer = rasterizationStage->diffuseBuffer;
     deferredShadingStage->specularBuffer = rasterizationStage->specularBuffer;
     deferredShadingStage->giBuffer = giStage->giBuffer;
+    deferredShadingStage->occlusionBuffer = postprocessingStage->occlusionBuffer;
     deferredShadingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
     deferredShadingStage->normalBuffer = rasterizationStage->normalBuffer;
     deferredShadingStage->depthBuffer = rasterizationStage->depthBuffer;
     deferredShadingStage->initialize();
 
-    postprocessingStage->viewport = m_viewportCapability;
-    postprocessingStage->camera = m_cameraCapability;
-    postprocessingStage->projection = m_projectionCapability;
-    postprocessingStage->diffuseBuffer = deferredShadingStage->shadedFrame;
-    postprocessingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
-    postprocessingStage->normalBuffer = rasterizationStage->normalBuffer;
-    postprocessingStage->depthBuffer = rasterizationStage->depthBuffer;
-    postprocessingStage->initialize();
 
     frameAccumulationStage->viewport = m_viewportCapability;
     frameAccumulationStage->currentFrame = rasterizationStage->currentFrame;
-    frameAccumulationStage->frame = postprocessingStage->postprocessedFrame;
-    frameAccumulationStage->depth = postprocessingStage->depthBuffer;
+    frameAccumulationStage->frame = deferredShadingStage->shadedFrame;
+    frameAccumulationStage->depth = rasterizationStage->depthBuffer;
     frameAccumulationStage->initialize();
 
     blitStage->viewport = m_viewportCapability;
@@ -135,8 +136,8 @@ void MultiFramePainter::onPaint()
     rasterizationStage->process();
     }
     giStage->process();
-    deferredShadingStage->process();
     postprocessingStage->process();
+    deferredShadingStage->process();
     frameAccumulationStage->process();
     blitStage->process();
 
