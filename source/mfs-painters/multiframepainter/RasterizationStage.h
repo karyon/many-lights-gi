@@ -42,7 +42,6 @@ public:
     gloperate::AbstractProjectionCapability * projection;
     gloperate::AbstractViewportCapability * viewport;
     gloperate::AbstractCameraCapability * camera;
-    int multiFrameCount;
     bool useDOF;
 
     int currentFrame;

@@ -27,6 +27,7 @@
 #include <gloperate-qt/viewer/QtWheelEventProvider.h>
 
 #include <multiframepainter/MultiFramePainter.h>
+#include "multiframepainter/PerfCounter.h"
 
 #include "QtViewerMapping.h"
 
@@ -224,12 +225,7 @@ void Viewer::onTimer()
     auto mfPainter = dynamic_cast<MultiFramePainter*>(m_painter.get());
     if (mfPainter)
     {
-        std::stringstream ss;
-        ss << std::fixed << std::setprecision(2) << mfPainter->framesPerSecond();
-        
-        auto fpsStr = ss.str();
-        auto mfCountStr = std::to_string(mfPainter->multiframeCount());
-        auto str = "Frame: " + mfCountStr + ", FPS: " + fpsStr;
+        auto str = mfPainter->getPerfCounterString();
         m_infoLabel.setText(QString::fromStdString(str));
     }
 }

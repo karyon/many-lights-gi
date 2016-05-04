@@ -21,6 +21,7 @@
 
 #include "ModelLoadingStage.h"
 #include "MultiFramePainter.h"
+#include "PerfCounter.h"
 
 using namespace gl;
 
@@ -87,10 +88,15 @@ void GIStage::initialize()
 
 void GIStage::process()
 {
+    {
+    AutoGLPerfCounter c("RSM");
     m_lightCamera->setEye(m_lightPosition);
     m_lightCamera->setCenter(m_lightPosition + m_lightDirection);
 
     m_rsmRenderer->process();
+    }
+
+    AutoGLPerfCounter c("GI");
 
     auto shadowBias = glm::mat4(
         0.5f, 0.0f, 0.0f, 0.0f

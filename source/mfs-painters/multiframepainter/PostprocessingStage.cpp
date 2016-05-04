@@ -14,6 +14,7 @@
 #include <gloperate/painter/AbstractCameraCapability.h>
 
 #include "KernelGenerationStage.h"
+#include "PerfCounter.h"
 
 using namespace gl;
 
@@ -46,6 +47,8 @@ void PostprocessingStage::initialize()
 
 void PostprocessingStage::process()
 {
+    AutoGLPerfCounter c("Postprocessing");
+
     const auto screenSize = glm::vec2(viewport->width(), viewport->height());
 
     if (viewport->hasChanged())

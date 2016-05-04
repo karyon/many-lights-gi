@@ -36,12 +36,10 @@ public:
     MultiFramePainter(gloperate::ResourceManager & resourceManager, const cpplocate::ModuleInfo & moduleInfo);
     virtual ~MultiFramePainter();
 
-    int multiframeCount() const;
-    float framesPerSecond() const;
-
+    // Viewer.cpp can't access PerfCounter::generateString(), probably because different compilation unit
+    std::string getPerfCounterString() const;
 
     gloperate::ResourceManager& resourceManager;
-    int multiFrameCount;
     Preset preset;
     bool useDOF;
 
@@ -52,16 +50,11 @@ protected:
 
 protected:
 
-    float m_fps;
-    std::chrono::time_point<std::chrono::steady_clock> m_lastTimepoint;
-
     /* Capabilities */
     gloperate::AbstractTargetFramebufferCapability * m_targetFramebufferCapability;
     gloperate::AbstractViewportCapability * m_viewportCapability;
     gloperate::AbstractPerspectiveProjectionCapability * m_projectionCapability;
     gloperate::AbstractCameraCapability * m_cameraCapability;
-
-    int m_multiFrameCount;
 
     std::unique_ptr<ModelLoadingStage> modelLoadingStage;
     std::unique_ptr<KernelGenerationStage> kernelGenerationStage;

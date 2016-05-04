@@ -20,6 +20,7 @@
 #include "ModelLoadingStage.h"
 #include "MultiFramePainter.h"
 #include "Shadowmap.h"
+#include "PerfCounter.h"
 
 using namespace gl;
 
@@ -76,6 +77,8 @@ void DeferredShadingStage::initialize()
 
 void DeferredShadingStage::process()
 {
+    AutoGLPerfCounter c("Deferred Shading");
+
     auto nearFar = glm::vec2(projection->zNear(), projection->zFar());
     auto biasedShadowTransform = m_shadowmap->render(m_lightPosition, m_lightDirection, m_modelLoadingStage.getDrawablesMap(), nearFar);
 
