@@ -79,13 +79,13 @@ void main()
 
             vec3 vplColor = texture(lightDiffuseSampler, texcoords).xyz;
 
-            float isNearLight = 1.0 - step(10.0, dist);
+            float isNearLight = 1.0 - step(15.0, dist);
 
 
-            vec3 debugSplotch = isNearLight * vplColor / dist * 300.0;
+            vec3 debugSplotch = isNearLight * vplColor / dist * 1000.0;
 
-            float attenuation = 1.0 / (pow(dist / 5000.0, 4.0) * 15000);
-            attenuation = min(attenuation, 55.0);
+            float attenuation = 1.0 / (pow(dist / 5000.0, 4.0) * 10000);
+            attenuation = min(attenuation, 100.0);
 
             //acc += debugSplotch;
             acc += vplColor * max(0.0, dot(vplNormal, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff)) * attenuation ;

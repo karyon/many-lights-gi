@@ -1,5 +1,8 @@
 #version 330
 
+#extension GL_ARB_shading_language_include : require
+#include </data/shaders/common/srgb_utils.glsl>
+
 in vec2 v_uv;
 
 out vec3 outColor;
@@ -84,6 +87,14 @@ float ssao(float depth, vec3 normal)
     return pow(1.0 - (ao * samplerSizes[1]), ssaoIntensity);
 }
 
+vec3 tonemap(vec3 color)
+{
+    float exposure = 1.0;
+    color *= exposure;
+    color /= 1 + color; // that's the reinhard operator
+    return color;
+}
+
 void main()
 {
     float d = linearDepth(v_uv);
@@ -93,5 +104,8 @@ void main()
         outColor = texture(colorSampler, v_uv).rgb;
 
     float ssao = ssao(d, normal);
-    outColor = vec3(texture(colorSampler, v_uv).rgb * ssao);
+
+    outColor = texture(colorSampler, v_uv).rgb * ssao;
+    outColor = tonemap(outColor);
+    outColor = toSRGB(outColor);
 }

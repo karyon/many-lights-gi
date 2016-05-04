@@ -3,6 +3,7 @@
 #extension GL_ARB_shading_language_include : require
 #include </data/shaders/common/shadowmapping.glsl>
 #include </data/shaders/common/reprojection.glsl>
+#include </data/shaders/common/srgb_utils.glsl>
 
 in vec2 v_uv;
 in vec3 v_viewRay;
@@ -31,7 +32,6 @@ uniform vec2 screenSize;
 const float ambientFactor = 0.25;
 const float specularFactor = 0.75;
 
-
 void main()
 {
     float projectionA = projectionMatrix[3][2];
@@ -55,8 +55,8 @@ void main()
     shadowFactor *= step(0.0, sign(scoord.w));
 
 
-    vec3 diffuseColor = texture(diffuseSampler, v_uv, 0).xyz;
-    vec3 specularColor = texture(specularSampler, v_uv, 0).xyz;
+    vec3 diffuseColor = toLinear(texture(diffuseSampler, v_uv, 0).xyz);
+    vec3 specularColor = toLinear(texture(specularSampler, v_uv, 0).xyz);
     vec3 giColor = texture(giSampler, v_uv, 0).xyz;
     vec3 ambientTerm = (ambientFactor + giColor) * diffuseColor;
     vec3 diffuseTerm = diffuseColor * (max(0.0, ndotl) * shadowFactor + giColor);
