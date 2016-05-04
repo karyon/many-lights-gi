@@ -23,10 +23,10 @@ namespace gloperate
 
 class KernelGenerationStage;
 
-class PostprocessingStage
+class SSAOStage
 {
 public:
-    PostprocessingStage(KernelGenerationStage& kernelGenerationStage, const PresetInformation& presetInformation);
+    SSAOStage(KernelGenerationStage& kernelGenerationStage, const PresetInformation& presetInformation);
 
     void initialize();
     void process();

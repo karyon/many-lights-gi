@@ -1,4 +1,4 @@
-#include "PostprocessingStage.h"
+#include "SSAOStage.h"
 
 #include <glbinding/gl/enum.h>
 
@@ -24,13 +24,13 @@ namespace
     const unsigned int s_ssaoNoiseSize = 128;
 }
 
-PostprocessingStage::PostprocessingStage(KernelGenerationStage& kernelGenerationStage, const PresetInformation& presetInformation)
+SSAOStage::SSAOStage(KernelGenerationStage& kernelGenerationStage, const PresetInformation& presetInformation)
 : m_kernelGenerationStage(kernelGenerationStage)
 , m_presetInformation(presetInformation)
 {
 }
 
-void PostprocessingStage::initialize()
+void SSAOStage::initialize()
 {
     occlusionBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
 
@@ -38,16 +38,16 @@ void PostprocessingStage::initialize()
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, occlusionBuffer);
 
     m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(
-        globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/postprocessing.frag")
+        globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/ssao.frag")
     );
 
     generateNoiseTexture();
     createKernelTexture();
 }
 
-void PostprocessingStage::process()
+void SSAOStage::process()
 {
-    AutoGLPerfCounter c("Postprocessing");
+    AutoGLPerfCounter c("SSAO");
 
     const auto screenSize = glm::vec2(viewport->width(), viewport->height());
 
@@ -84,13 +84,13 @@ void PostprocessingStage::process()
     m_fbo->unbind();
 }
 
-void PostprocessingStage::resizeTexture(int width, int height)
+void SSAOStage::resizeTexture(int width, int height)
 {
     occlusionBuffer->image2D(0, GL_R8, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
     m_fbo->printStatus(true);
 }
 
-void PostprocessingStage::generateNoiseTexture()
+void SSAOStage::generateNoiseTexture()
 {
     auto& noise = m_kernelGenerationStage.getSSAONoise(s_ssaoNoiseSize);
     auto size = static_cast<int>(std::sqrt(noise.size()));
@@ -106,7 +106,7 @@ void PostprocessingStage::generateNoiseTexture()
     m_ssaoNoiseTexture = texture;
 }
 
-void PostprocessingStage::createKernelTexture()
+void SSAOStage::createKernelTexture()
 {
     auto texture = new globjects::Texture(gl::GL_TEXTURE_1D);
     texture->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
@@ -117,7 +117,7 @@ void PostprocessingStage::createKernelTexture()
     updateKernelTexture();
 }
 
-void PostprocessingStage::updateKernelTexture()
+void SSAOStage::updateKernelTexture()
 {
     auto kernel = m_kernelGenerationStage.getSSAOKernel(s_ssaoKernelSize);
 

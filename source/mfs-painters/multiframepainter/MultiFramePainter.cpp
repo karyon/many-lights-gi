@@ -2,6 +2,7 @@
 #include "MultiFramePainter.h"
 
 #include <random>
+#include <memory>
 #include <iostream>
 
 #include <cpplocate/ModuleInfo.h>
@@ -21,7 +22,7 @@
 #include "RasterizationStage.h"
 #include "GIStage.h"
 #include "DeferredShadingStage.h"
-#include "PostprocessingStage.h"
+#include "SSAOStage.h"
 #include "FrameAccumulationStage.h"
 #include "BlitStage.h"
 #include "PerfCounter.h"
@@ -48,7 +49,7 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
     kernelGenerationStage = std::make_unique<KernelGenerationStage>();
     rasterizationStage = std::make_unique<RasterizationStage>(*modelLoadingStage, *kernelGenerationStage);
     giStage = std::make_unique<GIStage>(*modelLoadingStage, *kernelGenerationStage);
-    postprocessingStage = std::make_unique<PostprocessingStage>(*kernelGenerationStage, modelLoadingStage->getCurrentPreset());
+    ssaoStage = std::make_unique<SSAOStage>(*kernelGenerationStage, modelLoadingStage->getCurrentPreset());
     deferredShadingStage = std::make_unique<DeferredShadingStage>(*modelLoadingStage.get());
     frameAccumulationStage = std::make_unique<FrameAccumulationStage>();
     blitStage = std::make_unique<BlitStage>();
@@ -96,13 +97,13 @@ void MultiFramePainter::onInitialize()
     giStage->depthBuffer = rasterizationStage->depthBuffer;
     giStage->initialize();
 
-    postprocessingStage->viewport = m_viewportCapability;
-    postprocessingStage->camera = m_cameraCapability;
-    postprocessingStage->projection = m_projectionCapability;
-    postprocessingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
-    postprocessingStage->normalBuffer = rasterizationStage->normalBuffer;
-    postprocessingStage->depthBuffer = rasterizationStage->depthBuffer;
-    postprocessingStage->initialize();
+    ssaoStage->viewport = m_viewportCapability;
+    ssaoStage->camera = m_cameraCapability;
+    ssaoStage->projection = m_projectionCapability;
+    ssaoStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
+    ssaoStage->normalBuffer = rasterizationStage->normalBuffer;
+    ssaoStage->depthBuffer = rasterizationStage->depthBuffer;
+    ssaoStage->initialize();
 
     deferredShadingStage->viewport = m_viewportCapability;
     deferredShadingStage->camera = m_cameraCapability;
@@ -110,7 +111,7 @@ void MultiFramePainter::onInitialize()
     deferredShadingStage->diffuseBuffer = rasterizationStage->diffuseBuffer;
     deferredShadingStage->specularBuffer = rasterizationStage->specularBuffer;
     deferredShadingStage->giBuffer = giStage->giBuffer;
-    deferredShadingStage->occlusionBuffer = postprocessingStage->occlusionBuffer;
+    deferredShadingStage->occlusionBuffer = ssaoStage->occlusionBuffer;
     deferredShadingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
     deferredShadingStage->normalBuffer = rasterizationStage->normalBuffer;
     deferredShadingStage->depthBuffer = rasterizationStage->depthBuffer;
@@ -136,7 +137,7 @@ void MultiFramePainter::onPaint()
     rasterizationStage->process();
     }
     giStage->process();
-    postprocessingStage->process();
+    ssaoStage->process();
     deferredShadingStage->process();
     frameAccumulationStage->process();
     blitStage->process();
