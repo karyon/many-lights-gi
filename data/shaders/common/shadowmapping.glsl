@@ -11,7 +11,7 @@ float linstep(float low, float high, float v)
 float VSM(vec2 moments, float compare)
 {
     float p = smoothstep(compare-0.001, compare, moments.x);
-    float variance = max(moments.y - moments.x*moments.x, -0.001);
+    float variance = max(moments.y - moments.x*moments.x, 2.5);
     float d = compare - moments.x;
     float p_max = linstep(0.3, 1.0, variance / (variance + d*d));
     return clamp(max(p, p_max), 0.0, 1.0);
