@@ -95,12 +95,8 @@ void Shadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Texture& VSMBuf
     fbo.unbind();
 }
 
-glm::mat4 Shadowmap::render(const glm::vec3 &eye, const glm::vec3 &direction, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const
+void Shadowmap::render(const glm::vec3 &eye, const glm::mat4 &viewProjection, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const
 {
-	auto projection = glm::perspective(glm::radians(90.0f), 1.0f, nearFar.x, nearFar.y);
-	auto view = glm::lookAt(eye, eye + direction, glm::vec3(1.0f, 0.0f, 0.0f));
-
-
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
 
@@ -113,17 +109,8 @@ glm::mat4 Shadowmap::render(const glm::vec3 &eye, const glm::vec3 &direction, co
     m_fbo->clearBuffer(GL_COLOR, 0, glm::vec4(maxFloat, maxFloat, 1.0f, 0.0f));
     m_fbo->clearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
 
-	auto transform = projection * view;
-    m_shadowmapProgram->setUniform("transform", transform);
+    m_shadowmapProgram->setUniform("transform", viewProjection);
     m_shadowmapProgram->setUniform("lightWorldPos", eye);
-
-	auto shadowBias = glm::mat4(
-		0.5f, 0.0f, 0.0f, 0.0f
-		, 0.0f, 0.5f, 0.0f, 0.0f
-		, 0.0f, 0.0f, 0.5f, 0.0f
-		, 0.5f, 0.5f, 0.5f, 1.0f);
-
-	glm::mat4 biasedShadowTransform = shadowBias * transform;
 
     m_shadowmapProgram->use();
     for (const auto& pair : drawablesMap)
@@ -161,8 +148,6 @@ glm::mat4 Shadowmap::render(const glm::vec3 &eye, const glm::vec3 &direction, co
     //m_colorTextureBlurTemp->unbindActive(GL_TEXTURE0);
     //m_blurProgram->release();
     //m_blurredFbo->unbind();
-
-	return biasedShadowTransform;
 }
 
 void Shadowmap::setBlurSize(int blurSize)

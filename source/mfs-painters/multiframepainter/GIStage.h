@@ -1,6 +1,6 @@
 #include <memory>
 
-#include <glm/fwd.hpp>
+#include <glm/glm.hpp>
 
 #include <globjects/base/ref_ptr.h>
 
@@ -41,6 +41,10 @@ public:
     globjects::ref_ptr<globjects::Texture> depthBuffer;
 
     globjects::ref_ptr<globjects::Texture> giBuffer;
+    std::unique_ptr<Shadowmap> shadowmap;
+    glm::mat4 biasedShadowTransform;
+    glm::vec3 lightPosition;
+    glm::vec3 lightDirection;
 
     gloperate::AbstractViewportCapability * viewport;
     gloperate::AbstractProjectionCapability * projection;
@@ -56,8 +60,6 @@ protected:
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_screenAlignedQuad;
     globjects::ref_ptr<globjects::Program> m_program;
-    glm::vec3 m_lightPosition;
-    glm::vec3 m_lightDirection;
 
     std::unique_ptr<gloperate::OrthographicProjectionCapability> m_lightProjection;
     std::unique_ptr<gloperate::AbstractViewportCapability> m_lightViewport;

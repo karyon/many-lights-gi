@@ -22,6 +22,7 @@
 #include "ModelLoadingStage.h"
 #include "MultiFramePainter.h"
 #include "PerfCounter.h"
+#include "Shadowmap.h"
 
 using namespace gl;
 
@@ -32,6 +33,7 @@ GIStage::GIStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& ke
     m_lightCamera = std::make_unique<gloperate::CameraCapability>();
     m_lightViewport = std::make_unique<gloperate::ViewportCapability>();
     m_lightProjection = std::make_unique<gloperate::OrthographicProjectionCapability>(m_lightViewport.get());
+    biasedShadowTransform = glm::mat4();
 }
 
 GIStage::~GIStage()
@@ -42,14 +44,14 @@ GIStage::~GIStage()
 void GIStage::initProperties(MultiFramePainter& painter)
 {
     painter.addProperty<glm::vec3>("RSMLightPosition",
-        [this]() { return m_lightPosition; },
+        [this]() { return lightPosition; },
         [this](const glm::vec3 & pos) {
-            m_lightPosition = pos;
+            lightPosition = pos;
         });
     painter.addProperty<glm::vec3>("RSMLightDirection",
-        [this]() { return m_lightDirection; },
+        [this]() { return lightDirection; },
         [this](const glm::vec3 & dir) {
-            m_lightDirection = dir;
+            lightDirection = dir;
         });
 }
 
@@ -69,8 +71,8 @@ void GIStage::initialize()
     m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(m_program);
 
 
-    m_lightPosition = { -50.0, 1870.0, -250.0 };
-    m_lightDirection = { 0.0, -1.0, 0.25 };
+    lightPosition = { -50.0, 1870.0, -250.0 };
+    lightDirection = { 0.0, -1.0, 0.25 };
 
     m_rsmRenderer->camera = m_lightCamera.get();
 
@@ -84,15 +86,22 @@ void GIStage::initialize()
     m_rsmRenderer->projection = m_lightProjection.get();
 
     m_rsmRenderer->initialize();
+
+    shadowmap = std::make_unique<Shadowmap>();
 }
 
 void GIStage::process()
 {
+    m_lightCamera->setEye(lightPosition);
+    m_lightCamera->setCenter(lightPosition + lightDirection);
+
+    auto viewProjection = m_rsmRenderer->projection->projection() * m_rsmRenderer->camera->view();
+    auto nearFar = glm::vec2(projection->zNear(), projection->zFar());
+
+    shadowmap->render(lightPosition, viewProjection, modelLoadingStage.getDrawablesMap(), nearFar);
+
     {
     AutoGLPerfCounter c("RSM");
-    m_lightCamera->setEye(m_lightPosition);
-    m_lightCamera->setCenter(m_lightPosition + m_lightDirection);
-
     m_rsmRenderer->process();
     }
 
@@ -104,7 +113,7 @@ void GIStage::process()
         , 0.0f, 0.0f, 0.5f, 0.0f
         , 0.5f, 0.5f, 0.5f, 1.0f);
 
-    glm::mat4 biasedShadowTransform = shadowBias * m_rsmRenderer->projection->projection() * m_rsmRenderer->camera->view();
+    biasedShadowTransform = shadowBias * m_rsmRenderer->projection->projection() * m_rsmRenderer->camera->view();
 
 
     gl::glViewport(viewport->x(),
@@ -137,7 +146,7 @@ void GIStage::process()
     m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
     m_screenAlignedQuad->program()->setUniform("viewMatrix", camera->view());
     m_screenAlignedQuad->program()->setUniform("viewInvertedMatrix", camera->viewInverted());
-    m_screenAlignedQuad->program()->setUniform("worldLightPos", m_lightPosition);
+    m_screenAlignedQuad->program()->setUniform("worldLightPos", lightPosition);
     m_screenAlignedQuad->program()->setUniform("biasedLightViewProjectionMatrix", biasedShadowTransform);
     m_screenAlignedQuad->program()->setUniform("biasedLightViewProjectionInverseMatrix", glm::inverse(biasedShadowTransform));
     m_screenAlignedQuad->program()->setUniform("cameraEye", camera->eye());

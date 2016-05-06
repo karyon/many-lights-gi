@@ -26,6 +26,7 @@
 #include "FrameAccumulationStage.h"
 #include "BlitStage.h"
 #include "PerfCounter.h"
+#include "Shadowmap.h"
 
 
 using namespace reflectionzeug;
@@ -50,7 +51,7 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
     rasterizationStage = std::make_unique<RasterizationStage>(*modelLoadingStage, *kernelGenerationStage);
     giStage = std::make_unique<GIStage>(*modelLoadingStage, *kernelGenerationStage);
     ssaoStage = std::make_unique<SSAOStage>(*kernelGenerationStage, modelLoadingStage->getCurrentPreset());
-    deferredShadingStage = std::make_unique<DeferredShadingStage>(*modelLoadingStage.get());
+    deferredShadingStage = std::make_unique<DeferredShadingStage>();
     frameAccumulationStage = std::make_unique<FrameAccumulationStage>();
     blitStage = std::make_unique<BlitStage>();
 
@@ -115,8 +116,11 @@ void MultiFramePainter::onInitialize()
     deferredShadingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
     deferredShadingStage->normalBuffer = rasterizationStage->normalBuffer;
     deferredShadingStage->depthBuffer = rasterizationStage->depthBuffer;
+    deferredShadingStage->shadowmap = giStage->shadowmap->distanceTexture();
+    deferredShadingStage->biasedShadowTransform = &giStage->biasedShadowTransform;
+    deferredShadingStage->lightDirection = &giStage->lightDirection;
+    deferredShadingStage->lightPosition = &giStage->lightPosition;
     deferredShadingStage->initialize();
-
 
     frameAccumulationStage->viewport = m_viewportCapability;
     frameAccumulationStage->currentFrame = rasterizationStage->currentFrame;

@@ -31,7 +31,7 @@ class MultiFramePainter;
 class DeferredShadingStage
 {
 public:
-    DeferredShadingStage(ModelLoadingStage& modelLoadingStage);
+    DeferredShadingStage();
     ~DeferredShadingStage();
     
     void initProperties(MultiFramePainter& painter);
@@ -50,6 +50,10 @@ public:
     globjects::ref_ptr<globjects::Texture> faceNormalBuffer;
     globjects::ref_ptr<globjects::Texture> normalBuffer;
     globjects::ref_ptr<globjects::Texture> depthBuffer;
+    globjects::ref_ptr<globjects::Texture> shadowmap;
+    glm::mat4* biasedShadowTransform;
+    glm::vec3* lightPosition;
+    glm::vec3* lightDirection;
 
     globjects::ref_ptr<globjects::Texture> shadedFrame;
 
@@ -59,8 +63,4 @@ protected:
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_screenAlignedQuad;
     globjects::ref_ptr<globjects::Program> m_program;
-    glm::vec3 m_lightPosition;
-    glm::vec3 m_lightDirection;
-    std::unique_ptr<Shadowmap> m_shadowmap;
-    ModelLoadingStage& m_modelLoadingStage;
 };
