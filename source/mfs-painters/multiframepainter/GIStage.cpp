@@ -23,6 +23,7 @@
 #include "MultiFramePainter.h"
 #include "PerfCounter.h"
 #include "Shadowmap.h"
+#include "ImperfectShadowmap.h"
 
 using namespace gl;
 
@@ -88,6 +89,7 @@ void GIStage::initialize()
     m_rsmRenderer->initialize();
 
     shadowmap = std::make_unique<Shadowmap>();
+    ism = std::make_unique<ImperfectShadowmap>();
 }
 
 void GIStage::process()
@@ -95,10 +97,12 @@ void GIStage::process()
     m_lightCamera->setEye(lightPosition);
     m_lightCamera->setCenter(lightPosition + lightDirection);
 
-    auto viewProjection = m_rsmRenderer->projection->projection() * m_rsmRenderer->camera->view();
+    auto view = m_rsmRenderer->camera->view();
+    auto viewProjection = m_rsmRenderer->projection->projection() * view;
     auto nearFar = glm::vec2(projection->zNear(), projection->zFar());
 
     shadowmap->render(lightPosition, viewProjection, modelLoadingStage.getDrawablesMap(), nearFar);
+    ism->render(lightPosition, view, modelLoadingStage.getDrawablesMap(), nearFar);
 
     {
     AutoGLPerfCounter c("RSM");
