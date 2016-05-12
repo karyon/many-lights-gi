@@ -43,11 +43,11 @@ ImperfectShadowmap::ImperfectShadowmap()
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/cubemapblur.frag"));
 
     m_fbo = new globjects::Framebuffer();
-    m_depthBuffer = globjects::Texture::createDefault();
-    m_depthBuffer->setName("ISM depth");
+    depthBuffer = globjects::Texture::createDefault();
+    depthBuffer->setName("ISM Depth");
 
-    m_depthBuffer->image2D(0, GL_DEPTH_COMPONENT, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-    m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, m_depthBuffer);
+    depthBuffer->image2D(0, GL_DEPTH_COMPONENT, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depthBuffer);
 
     m_fbo->printStatus(true);
 
@@ -123,9 +123,4 @@ void ImperfectShadowmap::render(const glm::vec3 &eye, const glm::mat4 &view, con
     //m_colorTextureBlurTemp->unbindActive(GL_TEXTURE0);
     //m_blurProgram->release();
     //m_blurredFbo->unbind();
-}
-
-globjects::Texture * ImperfectShadowmap::distanceTexture() const
-{
-    return m_depthBuffer;
 }

@@ -21,7 +21,6 @@ namespace gloperate
 }
 
 class GroundPlane;
-class Shadowmap;
 class ModelLoadingStage;
 class KernelGenerationStage;
 class MultiFramePainter;
@@ -29,7 +28,7 @@ class MultiFramePainter;
 class RasterizationStage
 {
 public:
-    RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage);
+    RasterizationStage(std::string name, ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage);
     ~RasterizationStage();
 
     void initProperties(MultiFramePainter& painter);
@@ -69,4 +68,6 @@ protected:
 
     ModelLoadingStage& m_modelLoadingStage;
     KernelGenerationStage& m_kernelGenerationStage;
+
+    std::string m_name;
 };

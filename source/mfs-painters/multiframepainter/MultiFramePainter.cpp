@@ -27,6 +27,7 @@
 #include "BlitStage.h"
 #include "PerfCounter.h"
 #include "Shadowmap.h"
+#include "ImperfectShadowmap.h"
 
 
 using namespace reflectionzeug;
@@ -48,7 +49,7 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
 
     modelLoadingStage = std::make_unique<ModelLoadingStage>(preset);
     kernelGenerationStage = std::make_unique<KernelGenerationStage>();
-    rasterizationStage = std::make_unique<RasterizationStage>(*modelLoadingStage, *kernelGenerationStage);
+    rasterizationStage = std::make_unique<RasterizationStage>("GBuffer", *modelLoadingStage, *kernelGenerationStage);
     giStage = std::make_unique<GIStage>(*modelLoadingStage, *kernelGenerationStage);
     ssaoStage = std::make_unique<SSAOStage>(*kernelGenerationStage, modelLoadingStage->getCurrentPreset());
     deferredShadingStage = std::make_unique<DeferredShadingStage>();
@@ -69,9 +70,6 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
         dataPath = "data/";
     }
 
-    rasterizationStage->initProperties(*this);
-    giStage->initProperties(*this);
-    deferredShadingStage->initProperties(*this);
 }
 
 MultiFramePainter::~MultiFramePainter()
@@ -89,6 +87,7 @@ void MultiFramePainter::onInitialize()
     rasterizationStage->viewport = m_viewportCapability;
     rasterizationStage->useDOF = useDOF;
     rasterizationStage->initialize();
+    rasterizationStage->initProperties(*this);
     rasterizationStage->loadPreset(modelLoadingStage->getCurrentPreset());
 
     giStage->viewport = m_viewportCapability;
@@ -97,6 +96,7 @@ void MultiFramePainter::onInitialize()
     giStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
     giStage->depthBuffer = rasterizationStage->depthBuffer;
     giStage->initialize();
+    giStage->initProperties(*this);
 
     ssaoStage->viewport = m_viewportCapability;
     ssaoStage->camera = m_cameraCapability;
@@ -116,11 +116,12 @@ void MultiFramePainter::onInitialize()
     deferredShadingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
     deferredShadingStage->normalBuffer = rasterizationStage->normalBuffer;
     deferredShadingStage->depthBuffer = rasterizationStage->depthBuffer;
-    deferredShadingStage->shadowmap = giStage->shadowmap->distanceTexture();
+    deferredShadingStage->shadowmap = giStage->shadowmap->vsmBuffer;
     deferredShadingStage->biasedShadowTransform = &giStage->biasedShadowTransform;
     deferredShadingStage->lightDirection = &giStage->lightDirection;
     deferredShadingStage->lightPosition = &giStage->lightPosition;
     deferredShadingStage->initialize();
+    deferredShadingStage->initProperties(*this);
 
     frameAccumulationStage->viewport = m_viewportCapability;
     frameAccumulationStage->currentFrame = rasterizationStage->currentFrame;
@@ -131,7 +132,29 @@ void MultiFramePainter::onInitialize()
     blitStage->viewport = m_viewportCapability;
     blitStage->accumulation = frameAccumulationStage->accumulation;
     blitStage->depth = frameAccumulationStage->depth;
+
+    blitStage->m_buffers = {
+        rasterizationStage->diffuseBuffer,
+        rasterizationStage->specularBuffer,
+        rasterizationStage->normalBuffer,
+        rasterizationStage->faceNormalBuffer,
+        rasterizationStage->depthBuffer,
+        giStage->shadowmap->vsmBuffer,
+        giStage->shadowmap->depthBuffer,
+        giStage->rsmRenderer->diffuseBuffer,
+        giStage->rsmRenderer->specularBuffer,
+        giStage->rsmRenderer->normalBuffer,
+        giStage->rsmRenderer->faceNormalBuffer,
+        giStage->rsmRenderer->depthBuffer,
+        giStage->ism->depthBuffer,
+        giStage->giBuffer,
+        ssaoStage->occlusionBuffer,
+        deferredShadingStage->shadedFrame,
+        frameAccumulationStage->accumulation
+    };
+
     blitStage->initialize();
+    blitStage->initProperties(*this);
 }
 
 void MultiFramePainter::onPaint()

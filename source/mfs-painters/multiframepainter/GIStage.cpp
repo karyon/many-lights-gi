@@ -30,7 +30,7 @@ using namespace gl;
 GIStage::GIStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage)
 : modelLoadingStage(modelLoadingStage)
 {
-    m_rsmRenderer = std::make_unique<RasterizationStage>(modelLoadingStage, kernelGenerationStage);
+    rsmRenderer = std::make_unique<RasterizationStage>("RSM", modelLoadingStage, kernelGenerationStage);
     m_lightCamera = std::make_unique<gloperate::CameraCapability>();
     m_lightViewport = std::make_unique<gloperate::ViewportCapability>();
     m_lightProjection = std::make_unique<gloperate::OrthographicProjectionCapability>(m_lightViewport.get());
@@ -59,6 +59,7 @@ void GIStage::initProperties(MultiFramePainter& painter)
 void GIStage::initialize()
 {
     giBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    giBuffer->setName("GI Buffer");
 
     m_fbo = new globjects::Framebuffer();
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, giBuffer);
@@ -75,18 +76,18 @@ void GIStage::initialize()
     lightPosition = { -50.0, 1870.0, -250.0 };
     lightDirection = { 0.0, -1.0, 0.25 };
 
-    m_rsmRenderer->camera = m_lightCamera.get();
+    rsmRenderer->camera = m_lightCamera.get();
 
     m_lightViewport->setViewport(0, 0, 512, 128);
-    m_rsmRenderer->viewport = m_lightViewport.get();
+    rsmRenderer->viewport = m_lightViewport.get();
     m_lightProjection->setHeight(500);
 
     m_lightProjection->setZFar(5000);
     m_lightProjection->setZNear(5);
 
-    m_rsmRenderer->projection = m_lightProjection.get();
+    rsmRenderer->projection = m_lightProjection.get();
 
-    m_rsmRenderer->initialize();
+    rsmRenderer->initialize();
 
     shadowmap = std::make_unique<Shadowmap>();
     ism = std::make_unique<ImperfectShadowmap>();
@@ -97,16 +98,23 @@ void GIStage::process()
     m_lightCamera->setEye(lightPosition);
     m_lightCamera->setCenter(lightPosition + lightDirection);
 
-    auto view = m_rsmRenderer->camera->view();
-    auto viewProjection = m_rsmRenderer->projection->projection() * view;
+    auto view = rsmRenderer->camera->view();
+    auto viewProjection = rsmRenderer->projection->projection() * view;
     auto nearFar = glm::vec2(projection->zNear(), projection->zFar());
 
-    shadowmap->render(lightPosition, viewProjection, modelLoadingStage.getDrawablesMap(), nearFar);
-    ism->render(lightPosition, view, modelLoadingStage.getDrawablesMap(), nearFar);
+    {
+        AutoGLPerfCounter c("Shadowmap");
+        shadowmap->render(lightPosition, viewProjection, modelLoadingStage.getDrawablesMap(), nearFar);
+    }
 
     {
-    AutoGLPerfCounter c("RSM");
-    m_rsmRenderer->process();
+        AutoGLPerfCounter c("ISM");
+        ism->render(lightPosition, view, modelLoadingStage.getDrawablesMap(), nearFar);
+    }
+
+    {
+        AutoGLPerfCounter c("RSM");
+        rsmRenderer->process();
     }
 
     AutoGLPerfCounter c("GI");
@@ -117,7 +125,7 @@ void GIStage::process()
         , 0.0f, 0.0f, 0.5f, 0.0f
         , 0.5f, 0.5f, 0.5f, 1.0f);
 
-    biasedShadowTransform = shadowBias * m_rsmRenderer->projection->projection() * m_rsmRenderer->camera->view();
+    biasedShadowTransform = shadowBias * rsmRenderer->projection->projection() * rsmRenderer->camera->view();
 
 
     gl::glViewport(viewport->x(),
@@ -135,9 +143,9 @@ void GIStage::process()
 
     faceNormalBuffer->bindActive(0);
     depthBuffer->bindActive(1);
-    m_rsmRenderer->diffuseBuffer->bindActive(2);
-    m_rsmRenderer->faceNormalBuffer->bindActive(3);
-    m_rsmRenderer->depthBuffer->bindActive(4);
+    rsmRenderer->diffuseBuffer->bindActive(2);
+    rsmRenderer->faceNormalBuffer->bindActive(3);
+    rsmRenderer->depthBuffer->bindActive(4);
 
 
     m_screenAlignedQuad->program()->setUniform("faceNormalSampler", 0);

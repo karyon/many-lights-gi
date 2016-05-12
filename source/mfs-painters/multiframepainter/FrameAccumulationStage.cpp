@@ -13,6 +13,8 @@
 #include <gloperate/primitives/ScreenAlignedQuad.h>
 #include <gloperate/painter/AbstractViewportCapability.h>
 
+#include "PerfCounter.h"
+
 using namespace gl;
 
 FrameAccumulationStage::FrameAccumulationStage()
@@ -22,6 +24,7 @@ FrameAccumulationStage::FrameAccumulationStage()
 void FrameAccumulationStage::initialize()
 {
     accumulation = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    accumulation->setName("Accumulation Buffer");
 
     m_fbo = new globjects::Framebuffer();
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, accumulation);
@@ -34,6 +37,8 @@ void FrameAccumulationStage::initialize()
 
 void FrameAccumulationStage::process()
 {
+    AutoGLPerfCounter c("Accum");
+
     if (viewport->hasChanged())
         resizeTexture(viewport->width(), viewport->height());
 

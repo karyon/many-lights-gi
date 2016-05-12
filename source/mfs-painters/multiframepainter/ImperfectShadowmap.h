@@ -27,7 +27,7 @@ public:
 
     void render(const glm::vec3 &eye, const glm::mat4 &view, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const;
 
-    globjects::Texture * distanceTexture() const;
+    globjects::ref_ptr<globjects::Texture> depthBuffer;
 
 protected:
     void setupFbo(globjects::Framebuffer& fbo, globjects::Texture& depthBuffer, int size);
@@ -37,7 +37,6 @@ protected:
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<globjects::Framebuffer> m_fboFaces;
-    globjects::ref_ptr<globjects::Texture> m_depthBuffer;
 
     globjects::ref_ptr<globjects::Framebuffer> m_blurredFboTemp;
     globjects::ref_ptr<globjects::Texture> m_colorTextureBlurTemp;

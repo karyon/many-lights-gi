@@ -40,11 +40,12 @@ Shadowmap::Shadowmap()
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/cubemapblur.frag"));
 
     m_fbo = new globjects::Framebuffer();
-    m_VSMBuffer = globjects::Texture::createDefault();
-    m_depthBuffer = globjects::Texture::createDefault();
-    m_fluxBuffer = globjects::Texture::createDefault();
-    m_normalTexture = globjects::Texture::createDefault();
-    setupFbo(*m_fbo, *m_VSMBuffer, *m_depthBuffer, *m_fluxBuffer, *m_normalTexture, size);
+    vsmBuffer = globjects::Texture::createDefault();
+    depthBuffer = globjects::Texture::createDefault();
+    setupFbo(*m_fbo, *vsmBuffer, *depthBuffer, size);
+
+	vsmBuffer->setName("Shadowmap VSM");
+	depthBuffer->setName("Shadowmap Depth");
 
     m_blurredFbo = new globjects::Framebuffer();
     m_colorTextureBlur = globjects::Texture::createDefault();
@@ -71,19 +72,11 @@ void Shadowmap::setupSimpleFbo(globjects::Framebuffer& fbo, globjects::Texture& 
     VSMBuffer.unbind();
     fbo.attachTexture(GL_COLOR_ATTACHMENT0, &VSMBuffer);
 }
-void Shadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Texture& VSMBuffer, globjects::Texture& depthBuffer, globjects::Texture& fluxBuffer, globjects::Texture& normalBuffer, int size)
+
+void Shadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Texture& VSMBuffer, globjects::Texture& depthBuffer, int size)
 {
     setupSimpleFbo(fbo, VSMBuffer, size);
 
-    fluxBuffer.bind();
-    fluxBuffer.image2D(0, GL_RGB8, size, size, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-    fluxBuffer.unbind();
-    fbo.attachTexture(GL_COLOR_ATTACHMENT1, &fluxBuffer);
-
-    normalBuffer.bind();
-    normalBuffer.image2D(0, GL_RGBA32F, size, size, 0, GL_RGB, GL_FLOAT, nullptr);
-    normalBuffer.unbind();
-    fbo.attachTexture(GL_COLOR_ATTACHMENT2, &normalBuffer);
 
     depthBuffer.bind();
 	depthBuffer.image2D(0, GL_DEPTH_COMPONENT, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
@@ -158,9 +151,4 @@ void Shadowmap::setBlurSize(int blurSize)
 globjects::Program* Shadowmap::program() const
 {
     return m_shadowmapProgram;
-}
-
-globjects::Texture * Shadowmap::distanceTexture() const
-{
-    return m_VSMBuffer;
 }

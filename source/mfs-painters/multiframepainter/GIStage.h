@@ -49,6 +49,8 @@ public:
     glm::vec3 lightPosition;
     glm::vec3 lightDirection;
 
+    std::unique_ptr<RasterizationStage> rsmRenderer;
+
     gloperate::AbstractViewportCapability * viewport;
     gloperate::AbstractProjectionCapability * projection;
     gloperate::AbstractCameraCapability * camera;
@@ -58,7 +60,6 @@ public:
 protected:
     void resizeTexture(int width, int height);
 
-    std::unique_ptr<RasterizationStage> m_rsmRenderer;
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_screenAlignedQuad;

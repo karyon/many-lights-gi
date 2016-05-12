@@ -44,6 +44,7 @@ void DeferredShadingStage::initProperties(MultiFramePainter& painter)
 void DeferredShadingStage::initialize()
 {
     shadedFrame = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    shadedFrame->setName("Shaded Frame");
 
     m_fbo = new globjects::Framebuffer();
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, shadedFrame);

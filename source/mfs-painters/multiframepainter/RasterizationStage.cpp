@@ -42,8 +42,9 @@ namespace
     };
 }
 
-RasterizationStage::RasterizationStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage)
-: m_modelLoadingStage(modelLoadingStage)
+RasterizationStage::RasterizationStage(std::string name, ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage)
+: m_name(name)
+, m_modelLoadingStage(modelLoadingStage)
 , m_kernelGenerationStage(kernelGenerationStage)
 {
     currentFrame = 1;
@@ -65,6 +66,12 @@ void RasterizationStage::initialize()
     faceNormalBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
     normalBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
     depthBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
+
+    diffuseBuffer->setName(m_name + " Diffuse");
+    specularBuffer->setName(m_name + " Specular");
+    faceNormalBuffer->setName(m_name + " Face Normal");
+    normalBuffer->setName(m_name + " Normal");
+    depthBuffer->setName(m_name + " Depth");
 
     m_fbo = new globjects::Framebuffer();
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, diffuseBuffer);

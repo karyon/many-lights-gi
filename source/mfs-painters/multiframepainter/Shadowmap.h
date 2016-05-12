@@ -29,21 +29,19 @@ public:
     void setBlurSize(int blurSize);
 
     globjects::Program * program() const;
-    globjects::Texture * distanceTexture() const;
+
+    globjects::ref_ptr<globjects::Texture> vsmBuffer;
+    globjects::ref_ptr<globjects::Texture> depthBuffer;
 
 protected:
     void setupSimpleFbo(globjects::Framebuffer& fbo, globjects::Texture& VSMBuffer, int size);
-    void setupFbo(globjects::Framebuffer& fbo, globjects::Texture& VSMBuffer, globjects::Texture& depthBuffer, globjects::Texture& fluxBuffer, globjects::Texture& normalBuffer, int size);
+    void setupFbo(globjects::Framebuffer& fbo, globjects::Texture& VSMBuffer, globjects::Texture& depthBuffer, int size);
 
 protected:
     int m_blurSize;
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<globjects::Framebuffer> m_fboFaces;
-    globjects::ref_ptr<globjects::Texture> m_VSMBuffer;
-    globjects::ref_ptr<globjects::Texture> m_fluxBuffer;
-    globjects::ref_ptr<globjects::Texture> m_normalTexture;
-    globjects::ref_ptr<globjects::Texture> m_depthBuffer;
 
     globjects::ref_ptr<globjects::Framebuffer> m_blurredFboTemp;
     globjects::ref_ptr<globjects::Texture> m_colorTextureBlurTemp;

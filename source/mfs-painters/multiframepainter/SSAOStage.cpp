@@ -33,6 +33,7 @@ SSAOStage::SSAOStage(KernelGenerationStage& kernelGenerationStage, const PresetI
 void SSAOStage::initialize()
 {
     occlusionBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    occlusionBuffer->setName("Occlusion");
 
     m_fbo = new globjects::Framebuffer();
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, occlusionBuffer);
