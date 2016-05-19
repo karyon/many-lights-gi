@@ -18,6 +18,8 @@ namespace gloperate
     class VertexDrawable;
 }
 
+class RasterizationStage;
+
 
 class ImperfectShadowmap
 {
@@ -25,7 +27,7 @@ public:
     ImperfectShadowmap();
     ~ImperfectShadowmap();
 
-    void render(const glm::vec3 &eye, const glm::mat4 &view, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const;
+    void render(const glm::vec3 &eye, const glm::mat4 &view, const RasterizationStage* rsmRenderer, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const;
 
     globjects::ref_ptr<globjects::Texture> depthBuffer;
 

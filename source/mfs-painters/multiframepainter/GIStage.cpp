@@ -107,14 +107,14 @@ void GIStage::process()
         shadowmap->render(lightPosition, viewProjection, modelLoadingStage.getDrawablesMap(), nearFar);
     }
 
-    {
-        AutoGLPerfCounter c("ISM");
-        ism->render(lightPosition, view, modelLoadingStage.getDrawablesMap(), nearFar);
-    }
+	{
+		AutoGLPerfCounter c("RSM");
+		rsmRenderer->process();
+	}
 
     {
-        AutoGLPerfCounter c("RSM");
-        rsmRenderer->process();
+        AutoGLPerfCounter c("ISM");
+        ism->render(lightPosition, view, rsmRenderer.get(), modelLoadingStage.getDrawablesMap(), nearFar);
     }
 
     AutoGLPerfCounter c("GI");
@@ -146,13 +146,15 @@ void GIStage::process()
     rsmRenderer->diffuseBuffer->bindActive(2);
     rsmRenderer->faceNormalBuffer->bindActive(3);
     rsmRenderer->depthBuffer->bindActive(4);
+	ism->depthBuffer->bindActive(5);
 
 
     m_screenAlignedQuad->program()->setUniform("faceNormalSampler", 0);
     m_screenAlignedQuad->program()->setUniform("depthSampler", 1);
     m_screenAlignedQuad->program()->setUniform("lightDiffuseSampler", 2);
     m_screenAlignedQuad->program()->setUniform("lightNormalSampler", 3);
-    m_screenAlignedQuad->program()->setUniform("lightDepthSampler", 4);
+	m_screenAlignedQuad->program()->setUniform("lightDepthSampler", 4);
+	m_screenAlignedQuad->program()->setUniform("ismDepthSampler", 5);
 
     m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
     m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());

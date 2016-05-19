@@ -4,6 +4,7 @@
 #include <memory>
 
 #include <glm/vec3.hpp>
+#include <glm/mat4x4.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -18,12 +19,16 @@
 
 #include <gloperate/primitives/VertexDrawable.h>
 #include <gloperate/primitives/PolygonalDrawable.h>
+#include <gloperate/painter/AbstractProjectionCapability.h>
+#include <gloperate/painter/AbstractCameraCapability.h>
+
+#include "RasterizationStage.h"
 
 using namespace gl;
 
 namespace
 {
-    const int size = 512;
+    const int size = 1024;
 }
 
 ImperfectShadowmap::ImperfectShadowmap()
@@ -70,7 +75,7 @@ void ImperfectShadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Textur
 
 }
 
-void ImperfectShadowmap::render(const glm::vec3 &eye, const glm::mat4 &view, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const
+void ImperfectShadowmap::render(const glm::vec3 &eye, const glm::mat4 &view, const RasterizationStage* rsmRenderer, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const
 {
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
@@ -81,7 +86,24 @@ void ImperfectShadowmap::render(const glm::vec3 &eye, const glm::mat4 &view, con
 
     m_fbo->clearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
 
-    m_shadowmapProgram->setUniform("modelView", view);
+
+	auto shadowBias = glm::mat4(
+		0.5f, 0.0f, 0.0f, 0.0f
+		, 0.0f, 0.5f, 0.0f, 0.0f
+		, 0.0f, 0.0f, 0.5f, 0.0f
+		, 0.5f, 0.5f, 0.5f, 1.0f);
+
+	glm::mat4 biasedShadowTransform = shadowBias * rsmRenderer->projection->projection() * rsmRenderer->camera->view();
+
+
+
+	rsmRenderer->faceNormalBuffer->bindActive(0);
+	rsmRenderer->depthBuffer->bindActive(1);
+
+	m_shadowmapProgram->setUniform("rsmFaceNormalSampler", 0);
+	m_shadowmapProgram->setUniform("rsmDepthSampler", 1);
+	m_shadowmapProgram->setUniform("modelView", view);
+	m_shadowmapProgram->setUniform("biasedLightViewProjectionInverseMatrix", glm::inverse(biasedShadowTransform));
 
     m_shadowmapProgram->use();
 

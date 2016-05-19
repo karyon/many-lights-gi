@@ -32,6 +32,7 @@ uniform vec2 screenSize;
 
 const float ambientFactor = 1.00;
 const float specularFactor = 0.75;
+const float diffuseFactor = 3.0;
 
 
 vec3 tonemap(vec3 color)
@@ -71,7 +72,7 @@ void main()
     vec3 giColor = texture(giSampler, v_uv, 0).xyz;
     float occlusionFactor = texture(occlusionSampler, v_uv, 0).x;
     vec3 ambientTerm = ambientFactor * giColor * diffuseColor * occlusionFactor;
-    vec3 diffuseTerm = diffuseColor * (max(0.0, ndotl) * shadowFactor);
+    vec3 diffuseTerm = diffuseColor * (max(0.0, ndotl) * shadowFactor) * diffuseFactor;
     vec3 specularTerm = specularFactor * specularColor * pow(max(0.0, ndotH), 20.0) * shadowFactor;
 
     outColor = ambientTerm + diffuseTerm + specularTerm;

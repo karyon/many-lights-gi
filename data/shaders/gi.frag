@@ -1,7 +1,6 @@
 #version 330
 
 #extension GL_ARB_shading_language_include : require
-#include </data/shaders/common/shadowmapping.glsl>
 #include </data/shaders/common/reprojection.glsl>
 
 in vec2 v_uv;
@@ -14,6 +13,7 @@ uniform sampler2D depthSampler;
 uniform sampler2D lightDiffuseSampler;
 uniform sampler2D lightNormalSampler;
 uniform sampler2D lightDepthSampler;
+uniform sampler2D ismDepthSampler;
 
 uniform mat4 projectionMatrix;
 uniform mat4 projectionInverseMatrix;
@@ -27,72 +27,113 @@ uniform float zFar;
 uniform float zNear;
 uniform vec2 screenSize;
 
-const float ambientFactor = 0.25;
-const float specularFactor = 0.75;
+bool debug = true;
 
+//based on glm matrix_transform.inl
+mat4 lookAtRH
+(
+    vec3 eye,
+    vec3 center,
+    vec3 up
+)
+{
+    vec3 f = normalize(center - eye);
+    vec3 s = normalize(cross(f, up));
+    vec3 u = cross(s, f);
+
+    mat4 Result = mat4(1);
+    Result[0][0] = s.x;
+    Result[1][0] = s.y;
+    Result[2][0] = s.z;
+    Result[0][1] = u.x;
+    Result[1][1] = u.y;
+    Result[2][1] = u.z;
+    Result[0][2] =-f.x;
+    Result[1][2] =-f.y;
+    Result[2][2] =-f.z;
+    Result[3][0] =-dot(s, eye);
+    Result[3][1] =-dot(u, eye);
+    Result[3][2] = dot(f, eye);
+    return Result;
+}
 
 void main()
 {
     float projectionA = projectionMatrix[3][2];
     float projectionB = zFar / (zFar - zNear);
     float d = linearDepth(depthSampler, v_uv, projectionA, projectionB);
-    vec3 fragNormal = texture(faceNormalSampler, v_uv, 0).xyz * 2.0 - 1.0;
+    vec3 fragNormal = texture(faceNormalSampler, v_uv).xyz * 2.0 - 1.0;
 
     vec3 fragViewCoord = d * v_viewRay / zFar / 2.0; // unclear why the 2.0 is necessary
     vec3 fragWorldCoord = (viewInvertedMatrix * vec4(fragViewCoord, 1.0)).xyz;
 
-    vec3 L = normalize(worldLightPos - fragWorldCoord);
-    vec3 V = normalize(cameraEye - fragWorldCoord);
-    vec3 H = normalize(L + V);
-    float ndotl = dot(fragNormal, L);
-    float ndotH = dot(fragNormal, H);
-
-    vec4 scoord = biasedLightViewProjectionMatrix * vec4(fragWorldCoord, 1.0);
-
-
-    //float shadowFactor = shadowmapComparisonVSM(shadowmap, scoord.xy/scoord.w, fragWorldCoord, worldLightPos);
-    //shadowFactor *= step(0.0, sign(scoord.w));
-
-    scoord.xyz /= scoord.w;
-    vec3 lightColor = texture(lightDiffuseSampler, scoord.xy).rgb;
-    vec3 lightNormal = texture(lightNormalSampler, scoord.xy).rgb * 2.0 - 1.0;
-    float lightDepth = texture(lightDepthSampler, scoord.xy).r;
-
-    //vec4 fragWorldCoords = biasedLightViewProjectionInverseMatrix * vec4(scoord.xy, lightDepth, 1.0);
     vec3 acc = vec3(0.0);
 
-    const ivec2 iterations = ivec2(40, 10);
-    int row = 3;
-    for (int x = 2; x < iterations.x-2; x++) {
-        for (int y = 0; y < iterations.y; y++) {
-            vec2 texcoords = (vec2(x, y) + 0.5) / iterations;
+    const ivec2 maxIterations = ivec2(16,16);
+    ivec2 from = ivec2(0, 0);
+    ivec2 to = ivec2(16, 16);
+    //from = ivec2(7,8);
+    //to = ivec2(9,9);
+    int numIterations = (to.x - from.x) * (to.y - from.y);
+
+    for (int x = from.x; x < to.x; x++) {
+        for (int y = from.y; y < to.y; y++) {
+            vec2 texcoords = (vec2(x, y)) / vec2(maxIterations);
             float depth = texture(lightDepthSampler, texcoords).r;
             vec4 vplWorldcoords = biasedLightViewProjectionInverseMatrix * vec4(texcoords, depth, 1.0);
             vplWorldcoords.xyz /= vplWorldcoords.w;
 
             vec3 vplNormal = texture(lightNormalSampler, texcoords).xyz * 2.0 - 1.0;
-            //vplWorldcoords.xyz += vplNormal * 1;
 
             vec3 diff = fragWorldCoord - vplWorldcoords.xyz ;
         	float dist = length(diff);
             vec3 normalizedDiff = diff / dist;
 
+
             vec3 vplColor = texture(lightDiffuseSampler, texcoords).xyz;
 
+            // debug splotch
             float isNearLight = 1.0 - step(15.0, dist);
+            vec3 debugSplotch = isNearLight * vplColor / dist / dist * 30.0;
+            acc += debugSplotch;
 
+            // angle and attenuation
+            float angleFactor = max(0.0, dot(vplNormal, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff));
+            if (angleFactor <= 0.0)
+                continue;
 
-            vec3 debugSplotch = isNearLight * vplColor / dist * 1000.0;
+            float toMetersFactor = 0.01;
+            float attenuation = 1.0 / pow(dist * toMetersFactor, 4.0);
 
-            float attenuation = 1.0 / (pow(dist / 5000.0, 4.0) * 10000);
-            attenuation = min(attenuation, 100.0);
+            mat4 vpl_view = lookAtRH(vplWorldcoords.xyz, vplWorldcoords.xyz + vplNormal, vec3(0.0, 1.0, 0.01));
 
-            //acc += debugSplotch;
-            acc += vplColor * max(0.0, dot(vplNormal, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff)) * attenuation ;
+            vec4 v = vpl_view * vec4(fragWorldCoord, 1.0);
 
-    	   //check output of that last line
+            // paraboloid projection
+            v.xyz /= dist;
+            v.z = 1.0 - v.z;
+            v.xy /= v.z;
+            v.z = dist / (2000.0);
+
+            // scale and bias to texcoords
+            v.xy += 1.0;
+            v.xy /= 2.0;
+            v.xy /= maxIterations;
+            v.xy += vec2(x, y) / maxIterations;
+
+            // ISM shadowing
+            float occluderDepth = texture(ismDepthSampler, v.xy).x;
+            float shadowValue = v.z - occluderDepth;
+            shadowValue = smoothstep(0.90, 1.0, 1 - shadowValue);
+
+            float arbitraryIntensityFactor = 10000.0;
+            float arbitraryClampingValue = arbitraryIntensityFactor * 0.001;
+            float factor =  angleFactor * attenuation * shadowValue * arbitraryIntensityFactor;
+            factor = min(factor, arbitraryClampingValue);
+
+            acc += vplColor * factor / numIterations;
         }
     }
 
-    outColor = vec3(acc/100.0);
+    outColor = vec3(acc);
 }
