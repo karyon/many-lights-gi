@@ -55,6 +55,7 @@ set(headers
     ${include_path}/multiframepainter/OmnidirectionalShadowmap.h
     ${include_path}/multiframepainter/Shadowmap.h
     ${include_path}/multiframepainter/ImperfectShadowmap.h
+    ${include_path}/multiframepainter/VPLProcessor.h
     ${include_path}/multiframepainter/Material.h
     ${include_path}/multiframepainter/PerfCounter.h
 )
@@ -75,6 +76,7 @@ set(sources
     ${source_path}/multiframepainter/OmnidirectionalShadowmap.cpp
     ${source_path}/multiframepainter/Shadowmap.cpp
     ${source_path}/multiframepainter/ImperfectShadowmap.cpp
+    ${source_path}/multiframepainter/VPLProcessor.cpp
     ${source_path}/multiframepainter/Material.cpp
     ${source_path}/multiframepainter/PerfCounter.cpp
 )

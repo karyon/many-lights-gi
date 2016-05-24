@@ -26,7 +26,7 @@ namespace gloperate
 class Shadowmap;
 class ImperfectShadowmap;
 class ModelLoadingStage;
-class KernelGenerationStage;
+class VPLProcessor;
 
 
 class GIStage
@@ -45,7 +45,6 @@ public:
     globjects::ref_ptr<globjects::Texture> giBuffer;
     std::unique_ptr<Shadowmap> shadowmap;
     std::unique_ptr<ImperfectShadowmap> ism;
-    glm::mat4 biasedShadowTransform;
     glm::vec3 lightPosition;
     glm::vec3 lightDirection;
 
@@ -56,6 +55,8 @@ public:
     gloperate::AbstractCameraCapability * camera;
 
     ModelLoadingStage& modelLoadingStage;
+
+    std::unique_ptr<VPLProcessor> vplProcessor;
 
 protected:
     void resizeTexture(int width, int height);

@@ -19,6 +19,7 @@ namespace gloperate
 }
 
 class RasterizationStage;
+class VPLProcessor;
 
 
 class ImperfectShadowmap
@@ -27,7 +28,7 @@ public:
     ImperfectShadowmap();
     ~ImperfectShadowmap();
 
-    void render(const glm::vec3 &eye, const glm::mat4 &view, const RasterizationStage* rsmRenderer, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const;
+    void render(const glm::vec3 &eye, const glm::mat4 &view, const RasterizationStage& rsmRenderer, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar, const VPLProcessor& vplProcessor) const;
 
     globjects::ref_ptr<globjects::Texture> depthBuffer;
 
@@ -47,5 +48,5 @@ protected:
     globjects::ref_ptr<globjects::Texture> m_colorTextureBlur;
 
     globjects::ref_ptr<globjects::Program> m_shadowmapProgram;
-	globjects::ref_ptr<globjects::Program> m_blurProgram;
+    globjects::ref_ptr<globjects::Program> m_blurProgram;
 };

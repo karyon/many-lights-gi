@@ -16,6 +16,7 @@
 #include <globjects/Program.h>
 #include <globjects/Texture.h>
 #include <globjects/Framebuffer.h>
+#include <globjects/Buffer.h>
 
 #include <gloperate/primitives/VertexDrawable.h>
 #include <gloperate/primitives/PolygonalDrawable.h>
@@ -23,12 +24,13 @@
 #include <gloperate/painter/AbstractCameraCapability.h>
 
 #include "RasterizationStage.h"
+#include "VPLProcessor.h"
 
 using namespace gl;
 
 namespace
 {
-    const int size = 1024;
+    const int size = 2048;
 }
 
 ImperfectShadowmap::ImperfectShadowmap()
@@ -45,7 +47,8 @@ ImperfectShadowmap::ImperfectShadowmap()
     m_blurProgram->attach(
         globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/cubemapblur.vert"),
         globjects::Shader::fromFile(GL_GEOMETRY_SHADER, "data/shaders/cubemapblur.geom"),
-        globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/cubemapblur.frag"));
+        globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/cubemapblur.frag")
+    );
 
     m_fbo = new globjects::Framebuffer();
     depthBuffer = globjects::Texture::createDefault();
@@ -75,7 +78,8 @@ void ImperfectShadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Textur
 
 }
 
-void ImperfectShadowmap::render(const glm::vec3 &eye, const glm::mat4 &view, const RasterizationStage* rsmRenderer, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const
+
+void ImperfectShadowmap::render(const glm::vec3 &eye, const glm::mat4 &view, const RasterizationStage& rsmRenderer, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar, const VPLProcessor& vplProcessor) const
 {
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
@@ -86,24 +90,7 @@ void ImperfectShadowmap::render(const glm::vec3 &eye, const glm::mat4 &view, con
 
     m_fbo->clearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
 
-
-	auto shadowBias = glm::mat4(
-		0.5f, 0.0f, 0.0f, 0.0f
-		, 0.0f, 0.5f, 0.0f, 0.0f
-		, 0.0f, 0.0f, 0.5f, 0.0f
-		, 0.5f, 0.5f, 0.5f, 1.0f);
-
-	glm::mat4 biasedShadowTransform = shadowBias * rsmRenderer->projection->projection() * rsmRenderer->camera->view();
-
-
-
-	rsmRenderer->faceNormalBuffer->bindActive(0);
-	rsmRenderer->depthBuffer->bindActive(1);
-
-	m_shadowmapProgram->setUniform("rsmFaceNormalSampler", 0);
-	m_shadowmapProgram->setUniform("rsmDepthSampler", 1);
-	m_shadowmapProgram->setUniform("modelView", view);
-	m_shadowmapProgram->setUniform("biasedLightViewProjectionInverseMatrix", glm::inverse(biasedShadowTransform));
+    vplProcessor.vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
 
     m_shadowmapProgram->use();
 

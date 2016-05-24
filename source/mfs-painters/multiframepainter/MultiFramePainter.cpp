@@ -28,6 +28,7 @@
 #include "PerfCounter.h"
 #include "Shadowmap.h"
 #include "ImperfectShadowmap.h"
+#include "VPLProcessor.h"
 
 
 using namespace reflectionzeug;
@@ -117,7 +118,7 @@ void MultiFramePainter::onInitialize()
     deferredShadingStage->normalBuffer = rasterizationStage->normalBuffer;
     deferredShadingStage->depthBuffer = rasterizationStage->depthBuffer;
     deferredShadingStage->shadowmap = giStage->shadowmap->vsmBuffer;
-    deferredShadingStage->biasedShadowTransform = &giStage->biasedShadowTransform;
+    deferredShadingStage->biasedShadowTransform = &giStage->vplProcessor->biasedShadowTransform;
     deferredShadingStage->lightDirection = &giStage->lightDirection;
     deferredShadingStage->lightPosition = &giStage->lightPosition;
     deferredShadingStage->initialize();

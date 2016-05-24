@@ -1,49 +1,27 @@
-#version 410
+#version 430
 
 layout (triangles, equal_spacing, point_mode) in;
 
+struct vpl {
+    vec4 position;
+    vec4 normal;
+    vec4 color;
+    mat4 viewMatrix;
+};
 
-uniform sampler2D rsmFaceNormalSampler;
-uniform sampler2D rsmDepthSampler;
-uniform mat4 modelView;
-uniform mat4 biasedLightViewProjectionInverseMatrix;
+layout (std140, binding = 0) uniform vplBuffer_
+{
+    vpl vplBuffer[256];
+};
 
 const int ism_count1d = 16;
 const int ism_count = ism_count1d * ism_count1d;
+
 
 vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2)
 {
     return vec3(gl_TessCoord.x) * v0 + vec3(gl_TessCoord.y) * v1 + vec3(gl_TessCoord.z) * v2;
 }
-
-//based on glm matrix_transform.inl
-mat4 lookAtRH
-(
-    vec3 eye,
-    vec3 center,
-    vec3 up
-)
-{
-    vec3 f = normalize(center - eye);
-    vec3 s = normalize(cross(f, up));
-    vec3 u = cross(s, f);
-
-    mat4 Result = mat4(1);
-    Result[0][0] = s.x;
-    Result[1][0] = s.y;
-    Result[2][0] = s.z;
-    Result[0][1] = u.x;
-    Result[1][1] = u.y;
-    Result[2][1] = u.z;
-    Result[0][2] =-f.x;
-    Result[1][2] =-f.y;
-    Result[2][2] =-f.z;
-    Result[3][0] =-dot(s, eye);
-    Result[3][1] =-dot(u, eye);
-    Result[3][2] = dot(f, eye);
-    return Result;
-}
-
 
 void main()
 {
@@ -58,13 +36,9 @@ void main()
     ivec2 ismIndex = ivec2(ismID % ism_count1d, ismID / ism_count1d);
     vec2 ismIndexFloat = vec2(ismIndex) / ism_count1d;
 
-    vec3 vplNormal = texture(rsmFaceNormalSampler, ismIndexFloat).xyz * 2.0 - 1.0;
-    float rsm_depth = texture(rsmDepthSampler, ismIndexFloat).r;
-
-    vec4 vplWorldcoords = biasedLightViewProjectionInverseMatrix * vec4(ismIndexFloat, rsm_depth, 1.0);
-    vplWorldcoords.xyz /= vplWorldcoords.w;
-
-    mat4 vpl_view = lookAtRH(vplWorldcoords.xyz, vplWorldcoords.xyz + vplNormal, vec3(0.0, 1.0, 0.0));
+    vec3 vplWorldcoords = vplBuffer[ismID].position.xyz;
+    mat4 vpl_view = vplBuffer[ismID].viewMatrix;
+    vec3 vplNormal = vplBuffer[ismID].normal.xyz;
 
     vec4 v = vpl_view * gl_Position;
 

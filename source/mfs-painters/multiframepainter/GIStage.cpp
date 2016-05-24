@@ -24,6 +24,7 @@
 #include "PerfCounter.h"
 #include "Shadowmap.h"
 #include "ImperfectShadowmap.h"
+#include "VPLProcessor.h"
 
 using namespace gl;
 
@@ -34,7 +35,6 @@ GIStage::GIStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& ke
     m_lightCamera = std::make_unique<gloperate::CameraCapability>();
     m_lightViewport = std::make_unique<gloperate::ViewportCapability>();
     m_lightProjection = std::make_unique<gloperate::OrthographicProjectionCapability>(m_lightViewport.get());
-    biasedShadowTransform = glm::mat4();
 }
 
 GIStage::~GIStage()
@@ -91,6 +91,7 @@ void GIStage::initialize()
 
     shadowmap = std::make_unique<Shadowmap>();
     ism = std::make_unique<ImperfectShadowmap>();
+    vplProcessor = std::make_unique<VPLProcessor>(*rsmRenderer.get());
 }
 
 void GIStage::process()
@@ -107,25 +108,22 @@ void GIStage::process()
         shadowmap->render(lightPosition, viewProjection, modelLoadingStage.getDrawablesMap(), nearFar);
     }
 
-	{
-		AutoGLPerfCounter c("RSM");
-		rsmRenderer->process();
-	}
+    {
+        AutoGLPerfCounter c("RSM");
+        rsmRenderer->process();
+    }
+
+    {
+        AutoGLPerfCounter c("VPL processing");
+        vplProcessor->process();
+    }
 
     {
         AutoGLPerfCounter c("ISM");
-        ism->render(lightPosition, view, rsmRenderer.get(), modelLoadingStage.getDrawablesMap(), nearFar);
+        ism->render(lightPosition, view, *rsmRenderer.get(), modelLoadingStage.getDrawablesMap(), nearFar, *vplProcessor.get());
     }
 
     AutoGLPerfCounter c("GI");
-
-    auto shadowBias = glm::mat4(
-        0.5f, 0.0f, 0.0f, 0.0f
-        , 0.0f, 0.5f, 0.0f, 0.0f
-        , 0.0f, 0.0f, 0.5f, 0.0f
-        , 0.5f, 0.5f, 0.5f, 1.0f);
-
-    biasedShadowTransform = shadowBias * rsmRenderer->projection->projection() * rsmRenderer->camera->view();
 
 
     gl::glViewport(viewport->x(),
@@ -143,30 +141,22 @@ void GIStage::process()
 
     faceNormalBuffer->bindActive(0);
     depthBuffer->bindActive(1);
-    rsmRenderer->diffuseBuffer->bindActive(2);
-    rsmRenderer->faceNormalBuffer->bindActive(3);
-    rsmRenderer->depthBuffer->bindActive(4);
-	ism->depthBuffer->bindActive(5);
+    ism->depthBuffer->bindActive(2);
+
+
+    vplProcessor->vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
 
 
     m_screenAlignedQuad->program()->setUniform("faceNormalSampler", 0);
     m_screenAlignedQuad->program()->setUniform("depthSampler", 1);
-    m_screenAlignedQuad->program()->setUniform("lightDiffuseSampler", 2);
-    m_screenAlignedQuad->program()->setUniform("lightNormalSampler", 3);
-	m_screenAlignedQuad->program()->setUniform("lightDepthSampler", 4);
-	m_screenAlignedQuad->program()->setUniform("ismDepthSampler", 5);
+    m_screenAlignedQuad->program()->setUniform("ismDepthSampler", 2);
 
     m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
     m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
     m_screenAlignedQuad->program()->setUniform("viewMatrix", camera->view());
     m_screenAlignedQuad->program()->setUniform("viewInvertedMatrix", camera->viewInverted());
-    m_screenAlignedQuad->program()->setUniform("worldLightPos", lightPosition);
-    m_screenAlignedQuad->program()->setUniform("biasedLightViewProjectionMatrix", biasedShadowTransform);
-    m_screenAlignedQuad->program()->setUniform("biasedLightViewProjectionInverseMatrix", glm::inverse(biasedShadowTransform));
-    m_screenAlignedQuad->program()->setUniform("cameraEye", camera->eye());
     m_screenAlignedQuad->program()->setUniform("zFar", projection->zFar());
     m_screenAlignedQuad->program()->setUniform("zNear", projection->zNear());
-    m_screenAlignedQuad->program()->setUniform("screenSize", screenSize);
 
     m_screenAlignedQuad->draw();
 
