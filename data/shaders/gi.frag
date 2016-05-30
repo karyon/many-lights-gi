@@ -34,12 +34,10 @@ uniform float zNear;
 
 void main()
 {
-    float projectionA = projectionMatrix[3][2];
-    float projectionB = zFar / (zFar - zNear);
-    float d = linearDepth(depthSampler, v_uv, projectionA, projectionB);
+    float d = linearDepth(depthSampler, v_uv, projectionMatrix);
     vec3 fragNormal = texture(faceNormalSampler, v_uv).xyz * 2.0 - 1.0;
 
-    vec3 fragViewCoord = d * v_viewRay / zFar / 2.0; // unclear why the 2.0 is necessary
+    vec3 fragViewCoord = d * v_viewRay;
     vec3 fragWorldCoord = (viewInvertedMatrix * vec4(fragViewCoord, 1.0)).xyz;
 
     vec3 acc = vec3(0.0);

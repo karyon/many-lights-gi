@@ -1,6 +1,10 @@
 #version 330
 
+#extension GL_ARB_shading_language_include : require
+#include </data/shaders/common/reprojection.glsl>
+
 in vec2 v_uv;
+in vec3 v_viewRay;
 
 out float outOcclusion;
 
@@ -24,13 +28,6 @@ bool equalsDelta(float v1, float v2, float d)
     return v1 > v2 - d && v1 < v2 + d;
 }
 
-// returns values in [nearZ:farZ]
-float linearDepth(const in vec2 uv)
-{
-    float d = texture(depthSampler, uv, 0).x;
-    return projectionMatrix[3][2] / (d + projectionMatrix[2][2]);
-}
-
 mat3 noised(const in vec3 normal, in vec2 uv)
 {
     uv *= screenSize * samplerSizes[3];
@@ -46,12 +43,7 @@ mat3 noised(const in vec3 normal, in vec2 uv)
 
 float ssao(float depth, vec3 normal)
 {
-    vec4 eye = (projectionInverseMatrix * vec4(2.0*(v_uv - vec2(0.5)), 1.0, 1.0));
-    eye.xyz /= eye.w;
-    eye.xyz /= farZ;
-    // eye has a z of -1 here
-
-    vec3 origin = eye.xyz * depth;
+    vec3 origin = depth * v_viewRay;
 
     vec3 viewNormal = normalMatrix * normal;
 
@@ -72,7 +64,7 @@ float ssao(float depth, vec3 normal)
 
         s_offset.xy = s_offset.xy * 0.5 + 0.5;
 
-        float sd = -linearDepth(s_offset.xy);
+        float sd = linearDepth(depthSampler, s_offset.xy, projectionMatrix);
 
         float ndcRangeCheck = 1.0 - float(any(greaterThan(s_offset.xyz, vec3(1.0))) || any(lessThan(s_offset.xyz, vec3(0.0))));
         float rangeCheck = smoothstep(0.0, 1.0, ssaoRadius / abs(-origin.z + sd));
@@ -85,11 +77,13 @@ float ssao(float depth, vec3 normal)
 
 void main()
 {
-    float d = linearDepth(v_uv);
+    float d = linearDepth(depthSampler, v_uv, projectionMatrix);
     vec3 normal = texture(normalSampler, v_uv, 0).xyz * 2.0 - 1.0;
 
-    if (d > farZ)
+    if (-d >= farZ * 0.99) {
         outOcclusion = 1.0;
+        return;
+    }
 
     outOcclusion = ssao(d, normal);
 }

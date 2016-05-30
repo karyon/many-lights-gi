@@ -38,9 +38,14 @@ void SSAOStage::initialize()
     m_fbo = new globjects::Framebuffer();
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, occlusionBuffer);
 
-    m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(
-        globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/ssao.frag")
-    );
+
+    auto program = new globjects::Program();
+    program->attach(
+        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/deferredshading.vert"),
+        globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/ssao.frag"));
+
+
+    m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(program);
 
     generateNoiseTexture();
     createKernelTexture();
@@ -70,7 +75,7 @@ void SSAOStage::process()
     m_screenAlignedQuad->program()->setUniform("ssaoKernelSampler", 2);
     m_screenAlignedQuad->program()->setUniform("ssaoNoiseSampler", 3);
 
-    m_screenAlignedQuad->program()->setUniform("ssaoRadius", m_presetInformation.lightMaxShift);
+    m_screenAlignedQuad->program()->setUniform("ssaoRadius", m_presetInformation.lightMaxShift * 0.5f);
     m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
     m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
     m_screenAlignedQuad->program()->setUniform("normalMatrix", camera->normal());

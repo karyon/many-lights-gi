@@ -15,4 +15,5 @@ void main()
 
     vec4 vertex_vs = projectionInverseMatrix * vec4(a_vertex, 1.0, 1.0);
     v_viewRay = vertex_vs.xyz / vertex_vs.w;
+    v_viewRay /= v_viewRay.z;
 }

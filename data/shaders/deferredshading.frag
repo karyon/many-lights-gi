@@ -46,12 +46,11 @@ vec3 tonemap(vec3 color)
 
 void main()
 {
-    float projectionA = projectionMatrix[3][2];
-    float projectionB = zFar / (zFar - zNear);
-    float d = linearDepth(depthSampler, v_uv, projectionA, projectionB);
+    float d = linearDepth(depthSampler, v_uv, projectionMatrix);
+
     vec3 N = texture(normalSampler, v_uv, 0).xyz * 2.0 - 1.0;
 
-    vec3 viewCoord = d * v_viewRay / zFar / 2.0; // unclear why the 2.0 is necessary
+    vec3 viewCoord = d * v_viewRay;
     vec3 worldCoord = (viewInvertedMatrix * vec4(viewCoord, 1.0)).xyz;
 
     vec3 L = normalize(worldLightPos - worldCoord);
