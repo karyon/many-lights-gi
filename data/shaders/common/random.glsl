@@ -25,4 +25,9 @@ float rand(in sampler3D noiseTexture, const in vec3 worldCoord, const in float r
     return fract(rand(texture(noiseTexture, worldCoord).rg) + randSeed);
 }
 
+float rand(vec3 co)
+{
+    return fract(sin( dot(co.xyz ,vec3(12.9898,78.233,45.5432) )) * 43758.5453);
+}
+
 #endif

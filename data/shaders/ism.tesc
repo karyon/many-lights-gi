@@ -3,13 +3,17 @@
 layout (vertices = 3) out;
 
 
+float arbitraryTessLevelDivisor = 50; // smaller value doesn't further tesselate large triangles in crytek sponza
 
 void main(void)
 {
-    //TODO tesselate large triangles
-    gl_TessLevelInner[0] = 1.0;
-    gl_TessLevelOuter[0] = 1.0;
-    gl_TessLevelOuter[1] = 2.0;
-    gl_TessLevelOuter[2] = 2.0;
+    float length0 = length(gl_in[1].gl_Position - gl_in[2].gl_Position);
+    float length1 = length(gl_in[2].gl_Position - gl_in[0].gl_Position);
+    float length2 = length(gl_in[0].gl_Position - gl_in[1].gl_Position);
+    gl_TessLevelOuter[0] = length0 / arbitraryTessLevelDivisor;
+    gl_TessLevelOuter[1] = length1 / arbitraryTessLevelDivisor;
+    gl_TessLevelOuter[2] = length2 / arbitraryTessLevelDivisor;
+
+    gl_TessLevelInner[0] = max(max(gl_TessLevelOuter[0], gl_TessLevelOuter[1]), gl_TessLevelOuter[2]);
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
 }

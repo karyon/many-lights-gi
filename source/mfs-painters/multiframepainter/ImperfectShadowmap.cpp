@@ -40,6 +40,7 @@ ImperfectShadowmap::ImperfectShadowmap()
         globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/ism.vert"),
         globjects::Shader::fromFile(GL_TESS_CONTROL_SHADER, "data/shaders/ism.tesc"),
         globjects::Shader::fromFile(GL_TESS_EVALUATION_SHADER, "data/shaders/ism.tese"),
+        globjects::Shader::fromFile(GL_GEOMETRY_SHADER, "data/shaders/ism.geom"),
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/empty.frag")
     );
 
@@ -91,6 +92,8 @@ void ImperfectShadowmap::render(const glm::vec3 &eye, const glm::mat4 &view, con
     m_fbo->clearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
 
     vplProcessor.vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
+
+    m_shadowmapProgram->setUniform("viewport", glm::ivec2(size, size));
 
     m_shadowmapProgram->use();
 
