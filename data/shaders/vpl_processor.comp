@@ -14,43 +14,12 @@ struct vpl {
 	vec4 position;
 	vec4 normal;
 	vec4 color;
-	mat4 viewMatrix;
 };
 
-layout (std430, binding = 0) buffer vplBuffer_
+layout (std140, binding = 0) buffer vplBuffer_
 {
 	vpl vplBuffer[];
 };
-
-
-
-//based on glm matrix_transform.inl
-mat4 lookAtRH
-(
-    vec3 eye,
-    vec3 center,
-    vec3 up
-)
-{
-    vec3 f = normalize(center - eye);
-    vec3 s = normalize(cross(f, up));
-    vec3 u = cross(s, f);
-
-    mat4 Result = mat4(1);
-    Result[0][0] = s.x;
-    Result[1][0] = s.y;
-    Result[2][0] = s.z;
-    Result[0][1] = u.x;
-    Result[1][1] = u.y;
-    Result[2][1] = u.z;
-    Result[0][2] =-f.x;
-    Result[1][2] =-f.y;
-    Result[2][2] =-f.z;
-    Result[3][0] =-dot(s, eye);
-    Result[3][1] =-dot(u, eye);
-    Result[3][2] = dot(f, eye);
-    return Result;
-}
 
 
 void main()
@@ -69,12 +38,8 @@ void main()
     vec3 normal = texelFetch(rsmNormalSampler, ivec2(texCoords), 0).rgb * 2.0 - 1.0;
     float depth = texelFetch(rsmDepthSampler, ivec2(texCoords), 0).r;
 
-
     vec4 worldcoords = biasedLightViewProjectionInverseMatrix * vec4(texCoordsf, depth, 1.0);
     worldcoords.xyz /= worldcoords.w;
 
-
-    mat4 viewMatrix = lookAtRH(worldcoords.xyz, worldcoords.xyz + normal, vec3(0.0, 1.0, 0.01));
-
-    vplBuffer[resultIndex] = vpl(vec4(worldcoords.xyz, 0.0), vec4(normal, 1.0), vec4(diffuse, 0.0), viewMatrix);
+    vplBuffer[resultIndex] = vpl(vec4(worldcoords.xyz, 0.0), vec4(normal, 0.0), vec4(diffuse, 0.0));
 }

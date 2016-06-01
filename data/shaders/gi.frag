@@ -2,6 +2,7 @@
 
 #extension GL_ARB_shading_language_include : require
 #include </data/shaders/common/reprojection.glsl>
+#include </data/shaders/common/ism_utils.glsl>
 
 in vec2 v_uv;
 in vec3 v_viewRay;
@@ -10,12 +11,12 @@ struct VPL {
     vec4 position;
     vec4 normal;
     vec4 color;
-    mat4 viewMatrix;
 };
 
+const int numVPLs = 256;
 layout (std140, binding = 0) uniform vplBuffer_
 {
-    VPL vplBuffer[256];
+    VPL vplBuffer[numVPLs];
 };
 
 out vec3 outColor;
@@ -71,7 +72,9 @@ void main()
         float toMetersFactor = 0.01;
         float attenuation = 1.0 / pow(dist * toMetersFactor, 4.0);
 
-        vec4 v = vpl.viewMatrix * vec4(fragWorldCoord, 1.0);
+        mat3 vplView = lookAtRH(vplNormal);
+
+        vec3 v = vplView * diff;
 
         // paraboloid projection
         v.xyz /= dist;

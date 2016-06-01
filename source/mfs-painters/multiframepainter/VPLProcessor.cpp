@@ -23,7 +23,6 @@ struct vpl {
     glm::vec4 position;
     glm::vec4 normal;
     glm::vec4 color;
-    glm::mat4x4 viewMatrix;
 };
 
 VPLProcessor::VPLProcessor(const RasterizationStage& rsmRenderer)
@@ -68,6 +67,4 @@ void VPLProcessor::process()
     vplBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
 
     m_program->dispatchCompute(4, 1, 1);
-
-    vplBuffer->unbind(GL_SHADER_STORAGE_BUFFER, 0);
 }

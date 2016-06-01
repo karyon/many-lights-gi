@@ -38,10 +38,6 @@ uniform vec3 cameraEye;
 #define BUMP_HEIGHT 1
 #define BUMP_NORMAL 2
 
-const float ambientFactor = 0.25;
-const float specularFactor = 0.75;
-const float emissiveFactor = 0.75;
-
 // taken from http://www.thetenthplanet.de/archives/1180
 mat3 cotangent_frame(vec3 N, vec3 p, vec2 uv)
 {

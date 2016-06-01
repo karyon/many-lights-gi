@@ -2,6 +2,7 @@
 
 #extension GL_ARB_shading_language_include : require
 #include </data/shaders/common/random.glsl>
+#include </data/shaders/common/ism_utils.glsl>
 
 uniform ivec2 viewport;
 
@@ -9,7 +10,6 @@ struct vpl {
     vec4 position;
     vec4 normal;
     vec4 color;
-    mat4 viewMatrix;
 };
 
 layout (std140, binding = 0) uniform vplBuffer_
@@ -37,9 +37,13 @@ void main()
     ismIndex %= ism_count1d; //for debugging
     vec2 ismIndexFloat = vec2(ismIndex) / ism_count1d;
 
-    mat4 vpl_view = vplBuffer[ismID].viewMatrix;
 
-    vec4 v = vpl_view * position;
+    vec3 vplNormal = vplBuffer[ismID].normal.xyz;
+    mat3 vplView = lookAtRH(vplNormal);
+    vec3 vplPosition = vplBuffer[ismID].position.xyz;
+
+    vec3 v = position.xyz - vplPosition;
+    v = vplView * v;
 
     // culling
     if (v.z > 0.0) {
@@ -62,7 +66,7 @@ void main()
     v.xy *= 2.0;
     v.xy -= 1.0;
 
-    gl_Position = v;
+    gl_Position = vec4(v, 1.0);
     float pointSize = dist /= 2000;
     pointSize = 1.0 - pointSize;
     pointSize *= pointSize;
