@@ -16,16 +16,14 @@ class RasterizationStage;
 class VPLProcessor
 {
 public:
-    VPLProcessor(const RasterizationStage& rsmRenderer);
+    VPLProcessor();
     ~VPLProcessor();
 
-    void process();
+    void process(const RasterizationStage& rsmRenderer, float lightIntensity);
 
     globjects::ref_ptr<globjects::Buffer> vplBuffer;
     glm::mat4 biasedShadowTransform;
 
 private:
     globjects::ref_ptr<globjects::Program> m_program;
-
-    const RasterizationStage& m_rsmRenderer;
 };

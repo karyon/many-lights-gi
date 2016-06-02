@@ -54,6 +54,88 @@ void GIStage::initProperties(MultiFramePainter& painter)
         [this](const glm::vec3 & dir) {
             lightDirection = dir;
         });
+
+    painter.addProperty<float>("LightIntensity",
+        [this]() { return lightIntensity; },
+        [this](const float & intensity) {
+            lightIntensity = intensity;
+        }
+    )->setOptions({
+        { "minimum", 0.0f },
+        { "step", 0.2f },
+        { "precision", 2u },
+    });
+
+    painter.addProperty<float>("GIIntensityFactor",
+        [this]() { return giIntensityFactor; },
+        [this](const float & factor) {
+            giIntensityFactor = factor;
+        }
+    )->setOptions({
+        { "minimum", 0.0f },
+        { "step", 100.0f },
+        { "precision", 1u },
+    });
+
+    painter.addProperty<float>("VPLClampingValue",
+        [this]() { return vplClampingValue; },
+        [this](const float & value) {
+            vplClampingValue = value;
+        }
+    )->setOptions({
+        { "minimum", 0.0f },
+        { "step", 0.0001f },
+        { "precision", 5u },
+    });
+
+    painter.addProperty<int>("VPLStartIndex",
+	    [this]() { return vplStartIndex; },
+	    [this](const int & value) {
+	    vplStartIndex = value;
+	    }
+    )->setOptions({
+	    { "minimum", 0 },
+	    { "maximum", 256}
+    });
+
+    painter.addProperty<int>("VPLEndIndex",
+        [this]() { return vplEndIndex; },
+        [this](const int & value) {
+            vplEndIndex = value;
+        }
+    )->setOptions({
+        { "minimum", 0 },
+        { "maximum", 256 }
+    });
+
+    painter.addProperty<bool>("ScaleISMs",
+        [this]() { return scaleISMs; },
+        [this](const bool & value) {
+            scaleISMs = value;
+    });
+
+    painter.addProperty<bool>("PointsOnlyToScaledISMs",
+        [this]() { return pointsOnlyIntoScaledISMs; },
+        [this](const bool & value) {
+            pointsOnlyIntoScaledISMs = value;
+    });
+
+    painter.addProperty<float>("TessLevelFactor",
+        [this]() { return tessLevelFactor; },
+        [this](const float & value) {
+            tessLevelFactor = value;
+        }
+    )->setOptions({
+        { "minimum", 0.0f },
+        { "step", 0.001f },
+        { "precision", 3u },
+    });
+
+    painter.addProperty<bool>("ShowLightPositions",
+        [this]() { return showLightPositions; },
+        [this](const bool & value) {
+            showLightPositions = value;
+    });
 }
 
 void GIStage::initialize()
@@ -75,6 +157,16 @@ void GIStage::initialize()
 
     lightPosition = { -50.0, 1870.0, -250.0 };
     lightDirection = { 0.0, -1.0, 0.25 };
+    lightIntensity = 5.0f;
+
+    giIntensityFactor = 3000.0f;
+    vplClampingValue = 0.001f;
+    vplStartIndex = 0;
+    vplEndIndex = 256;
+    scaleISMs = false;
+    pointsOnlyIntoScaledISMs = false;
+    tessLevelFactor = 0.02;
+    showLightPositions = false;
 
     rsmRenderer->camera = m_lightCamera.get();
 
@@ -91,7 +183,7 @@ void GIStage::initialize()
 
     shadowmap = std::make_unique<Shadowmap>();
     ism = std::make_unique<ImperfectShadowmap>();
-    vplProcessor = std::make_unique<VPLProcessor>(*rsmRenderer.get());
+    vplProcessor = std::make_unique<VPLProcessor>();
 }
 
 void GIStage::process()
@@ -115,12 +207,12 @@ void GIStage::process()
 
     {
         AutoGLPerfCounter c("VPL processing");
-        vplProcessor->process();
+        vplProcessor->process(*rsmRenderer.get(), lightIntensity);
     }
 
     {
         AutoGLPerfCounter c("ISM");
-        ism->render(lightPosition, view, *rsmRenderer.get(), modelLoadingStage.getDrawablesMap(), nearFar, *vplProcessor.get());
+        ism->render(modelLoadingStage.getDrawablesMap(), *vplProcessor.get(), vplStartIndex, vplEndIndex, scaleISMs, pointsOnlyIntoScaledISMs, tessLevelFactor);
     }
 
     AutoGLPerfCounter c("GI");
@@ -157,6 +249,12 @@ void GIStage::process()
     m_screenAlignedQuad->program()->setUniform("viewInvertedMatrix", camera->viewInverted());
     m_screenAlignedQuad->program()->setUniform("zFar", projection->zFar());
     m_screenAlignedQuad->program()->setUniform("zNear", projection->zNear());
+    m_screenAlignedQuad->program()->setUniform("giIntensityFactor", giIntensityFactor);
+    m_screenAlignedQuad->program()->setUniform("vplClampingValue", vplClampingValue);
+    m_screenAlignedQuad->program()->setUniform("vplStartIndex", vplStartIndex);
+    m_screenAlignedQuad->program()->setUniform("vplEndIndex", vplEndIndex);
+    m_screenAlignedQuad->program()->setUniform("scaleISMs", scaleISMs);
+    m_screenAlignedQuad->program()->setUniform("showLightPositions", showLightPositions);
 
     m_screenAlignedQuad->draw();
 

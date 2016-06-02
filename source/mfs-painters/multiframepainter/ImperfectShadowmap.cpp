@@ -23,7 +23,6 @@
 #include <gloperate/painter/AbstractProjectionCapability.h>
 #include <gloperate/painter/AbstractCameraCapability.h>
 
-#include "RasterizationStage.h"
 #include "VPLProcessor.h"
 
 using namespace gl;
@@ -80,7 +79,7 @@ void ImperfectShadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Textur
 }
 
 
-void ImperfectShadowmap::render(const glm::vec3 &eye, const glm::mat4 &view, const RasterizationStage& rsmRenderer, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar, const VPLProcessor& vplProcessor) const
+void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor) const
 {
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
@@ -94,6 +93,11 @@ void ImperfectShadowmap::render(const glm::vec3 &eye, const glm::mat4 &view, con
     vplProcessor.vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
 
     m_shadowmapProgram->setUniform("viewport", glm::ivec2(size, size));
+    m_shadowmapProgram->setUniform("vplStartIndex", vplStartIndex);
+    m_shadowmapProgram->setUniform("vplEndIndex", vplEndIndex);
+    m_shadowmapProgram->setUniform("scaleISMs", scaleISMs);
+    m_shadowmapProgram->setUniform("pointsOnlyIntoScaledISMs", pointsOnlyIntoScaledISMs);
+    m_shadowmapProgram->setUniform("tessLevelFactor", tessLevelFactor);
 
     m_shadowmapProgram->use();
 

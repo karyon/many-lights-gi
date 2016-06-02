@@ -120,8 +120,10 @@ void Viewer::setPainter(Painter & painter)
         QWidget * old = m_propertyDockWidget->widget();
         delete old;
 
-        m_propertyDockWidget->setWidget(new propertyguizeug::PropertyBrowser(m_painter.get()));
+        auto propertyBrowser = new propertyguizeug::PropertyBrowser(m_painter.get());
+        m_propertyDockWidget->setWidget(propertyBrowser);
         m_propertyDockWidget->show();
+        propertyBrowser->setAlwaysExpandGroups(true);
     }
     else
     {
@@ -228,6 +230,7 @@ void Viewer::onTimer()
         auto str = mfPainter->getPerfCounterString();
         m_infoLabel.setText(QString::fromStdString(str));
     }
+	((propertyguizeug::PropertyBrowser*)m_propertyDockWidget->widget())->expandAllGroups();
 }
 
 gloperate::ResourceManager * Viewer::resourceManager()

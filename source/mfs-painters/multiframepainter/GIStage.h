@@ -45,8 +45,10 @@ public:
     globjects::ref_ptr<globjects::Texture> giBuffer;
     std::unique_ptr<Shadowmap> shadowmap;
     std::unique_ptr<ImperfectShadowmap> ism;
+
     glm::vec3 lightPosition;
     glm::vec3 lightDirection;
+    float lightIntensity;
 
     std::unique_ptr<RasterizationStage> rsmRenderer;
 
@@ -69,4 +71,15 @@ protected:
     std::unique_ptr<gloperate::OrthographicProjectionCapability> m_lightProjection;
     std::unique_ptr<gloperate::AbstractViewportCapability> m_lightViewport;
     std::unique_ptr<gloperate::AbstractCameraCapability> m_lightCamera;
+	
+    float giIntensityFactor;
+    float vplClampingValue;
+
+    int vplStartIndex;
+    int vplEndIndex;
+    bool scaleISMs;
+    bool pointsOnlyIntoScaledISMs;
+    float tessLevelFactor;
+
+    bool showLightPositions;
 };

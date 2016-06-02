@@ -15,6 +15,7 @@
 #include <gloperate/painter/AbstractCameraCapability.h>
 
 #include <reflectionzeug/property/extensions/GlmProperties.h>
+#include <reflectionzeug/property/PropertyGroup.h>
 
 #include "KernelGenerationStage.h"
 #include "ModelLoadingStage.h"
@@ -30,6 +31,7 @@ namespace
 }
 
 DeferredShadingStage::DeferredShadingStage()
+: m_exposure(1.0)
 {
 }
 
@@ -39,7 +41,20 @@ DeferredShadingStage::~DeferredShadingStage()
 
 void DeferredShadingStage::initProperties(MultiFramePainter& painter)
 {
+
+    auto group = painter.addGroup("DeferredShading");
+    group->addProperty<float>("Exposure",
+        [this]() { return m_exposure; },
+        [this](const float & exposure) {
+            m_exposure = exposure;
+        }
+    )->setOptions({
+        { "minimum", 0.0f },
+        { "step", 0.1f },
+        { "precision", 2u },
+    });
 }
+
 
 void DeferredShadingStage::initialize()
 {
@@ -61,8 +76,6 @@ void DeferredShadingStage::initialize()
 void DeferredShadingStage::process()
 {
     AutoGLPerfCounter c("Deferred Shading");
-
-
 
     gl::glViewport(viewport->x(),
         viewport->y(),
@@ -100,12 +113,15 @@ void DeferredShadingStage::process()
     m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
     m_screenAlignedQuad->program()->setUniform("viewMatrix", camera->view());
     m_screenAlignedQuad->program()->setUniform("viewInvertedMatrix", camera->viewInverted());
-    m_screenAlignedQuad->program()->setUniform("worldLightPos", *lightPosition);
     m_screenAlignedQuad->program()->setUniform("biasedLightViewProjectionMatrix", *biasedShadowTransform);
     m_screenAlignedQuad->program()->setUniform("cameraEye", camera->eye());
     m_screenAlignedQuad->program()->setUniform("zFar", projection->zFar());
     m_screenAlignedQuad->program()->setUniform("zNear", projection->zNear());
     m_screenAlignedQuad->program()->setUniform("screenSize", screenSize);
+
+    m_screenAlignedQuad->program()->setUniform("worldLightPos", *lightPosition);
+    m_screenAlignedQuad->program()->setUniform("lightIntensity", *lightIntensity);
+    m_screenAlignedQuad->program()->setUniform("exposure", m_exposure);
 
     m_screenAlignedQuad->draw();
 

@@ -13,10 +13,10 @@ struct VPL {
     vec4 color;
 };
 
-const int numVPLs = 256;
+const int totalVplCount = 256;
 layout (std140, binding = 0) uniform vplBuffer_
 {
-    VPL vplBuffer[numVPLs];
+    VPL vplBuffer[totalVplCount];
 };
 
 out vec3 outColor;
@@ -32,6 +32,18 @@ uniform mat4 viewInvertedMatrix;
 uniform float zFar;
 uniform float zNear;
 
+uniform float giIntensityFactor;
+uniform float vplClampingValue;
+
+// don't forget that these uniforms eat performance
+uniform int vplStartIndex = 0;
+uniform int vplEndIndex = 256;
+int vplCount = vplEndIndex - vplStartIndex;
+uniform bool scaleISMs = false;
+int ismCount = (scaleISMs) ? vplCount : totalVplCount;
+int ismIndices1d = int(ceil(sqrt(ismCount)));
+
+uniform bool showLightPositions = false;
 
 void main()
 {
@@ -43,13 +55,8 @@ void main()
 
     vec3 acc = vec3(0.0);
 
-    const ivec2 ismCount = ivec2(16,16);
-    ivec2 from = ivec2(0, 0);
-    ivec2 to = ivec2(16, 16);
-    int numIterations = (to.x - from.x) * (to.y - from.y);
-
-    for (int i = 0; i < vplBuffer.length(); i++) {
-        VPL vpl = vplBuffer[i];
+    for (int vplIndex = vplStartIndex; vplIndex < vplEndIndex; vplIndex++) {
+        VPL vpl = vplBuffer[vplIndex];
 
         vec3 vplWorldcoords = vpl.position.xyz;
         vec3 vplNormal = vpl.normal.xyz;
@@ -61,8 +68,8 @@ void main()
 
         // debug splotch
         float isNearLight = 1.0 - step(15.0, dist);
-        vec3 debugSplotch = isNearLight * vplColor / dist / dist * 30.0;
-        acc += debugSplotch;
+        vec3 debugSplotch = isNearLight * vplColor / dist / dist * 1;
+        acc += debugSplotch * float(showLightPositions);
 
         // angle and attenuation
         float angleFactor = max(0.0, dot(vplNormal, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff));
@@ -85,22 +92,20 @@ void main()
         // scale and bias to texcoords
         v.xy += 1.0;
         v.xy /= 2.0;
-        ivec2 ismIndex = ivec2(i % ismCount.x, i / ismCount.x);
-        v.xy += vec2(ismIndex);
-        v.xy /= ismCount;
+        int ismIndex = scaleISMs ? vplIndex - vplStartIndex : vplIndex;
+        ivec2 ismIndex2d = ivec2(ismIndex % ismIndices1d, ismIndex / ismIndices1d);
+        v.xy += vec2(ismIndex2d);
+        v.xy /= ismIndices1d;
 
         // ISM shadowing
         float occluderDepth = texture(ismDepthSampler, v.xy).x;
         float shadowValue = v.z - occluderDepth;
         shadowValue = smoothstep(0.90, 1.0, 1 - shadowValue);
 
-        float arbitraryIntensityFactor = 10000.0;
-        float arbitraryClampingValue = arbitraryIntensityFactor * 0.001;
-        float factor =  angleFactor * attenuation * shadowValue * arbitraryIntensityFactor;
-        factor = min(factor, arbitraryClampingValue);
+        float geometryTerm = angleFactor * attenuation;
+        geometryTerm = min(geometryTerm, vplClampingValue);
 
-        acc += vplColor * factor / numIterations;
+        acc += vplColor * geometryTerm * shadowValue;
     }
-
-    outColor = vec3(acc);
+    outColor = vec3(acc * giIntensityFactor / vplCount);
 }

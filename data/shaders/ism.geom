@@ -6,23 +6,35 @@
 
 uniform ivec2 viewport;
 
-struct vpl {
+struct VPL {
     vec4 position;
     vec4 normal;
     vec4 color;
 };
 
+const int totalVplCount = 256;
 layout (std140, binding = 0) uniform vplBuffer_
 {
-    vpl vplBuffer[256];
+    VPL vplBuffer[totalVplCount];
 };
 
 
 layout(points) in;
 layout(points, max_vertices = 1) out;
 
-const int ism_count1d = 16;
-const int ism_count = ism_count1d * ism_count1d;
+
+
+uniform int vplStartIndex = 0;
+uniform int vplEndIndex = 256;
+uniform bool scaleISMs = false;
+uniform bool pointsOnlyIntoScaledISMs = false;
+
+int vplCount = vplEndIndex - vplStartIndex;
+int sampledVplCount = pointsOnlyIntoScaledISMs ? vplCount : totalVplCount;
+int ismCount = (scaleISMs) ? vplCount : totalVplCount;
+int ismIndices1d = int(ceil(sqrt(ismCount)));
+int vplIdOffset = pointsOnlyIntoScaledISMs ? vplStartIndex : 0;
+
 const float infinity = 1. / 0.;
 
 
@@ -30,17 +42,19 @@ void main()
 {
     vec4 position = gl_in[0].gl_Position;
 
-    int ismID = (int(rand(position.xyz) * ism_count) + gl_PrimitiveIDIn) % ism_count;
-    //ismID += 146;
-
-    ivec2 ismIndex = ivec2(ismID % ism_count1d, ismID / ism_count1d);
-    ismIndex %= ism_count1d; //for debugging
-    vec2 ismIndexFloat = vec2(ismIndex) / ism_count1d;
+    int vplID = (int(rand(position.xyz) * sampledVplCount) + gl_PrimitiveIDIn) % sampledVplCount;
+    if (pointsOnlyIntoScaledISMs)
+        vplID += vplIdOffset;
 
 
-    vec3 vplNormal = vplBuffer[ismID].normal.xyz;
+    int ismIndex = scaleISMs ? vplID - vplStartIndex : vplID;
+
+    ivec2 ismIndex2d = ivec2(ismIndex % ismIndices1d, ismIndex / ismIndices1d);
+    vec2 ismIndexFloat = vec2(ismIndex2d) / ismIndices1d;
+
+    vec3 vplNormal = vplBuffer[vplID].normal.xyz;
     mat3 vplView = lookAtRH(vplNormal);
-    vec3 vplPosition = vplBuffer[ismID].position.xyz;
+    vec3 vplPosition = vplBuffer[vplID].position.xyz;
 
     vec3 v = position.xyz - vplPosition;
     v = vplView * v;
@@ -61,7 +75,7 @@ void main()
 
     v.xy += 1.0;
     v.xy /= 2.0;
-    v.xy /= ism_count1d;
+    v.xy /= ismIndices1d;
     v.xy += ismIndexFloat;
     v.xy *= 2.0;
     v.xy -= 1.0;

@@ -121,6 +121,7 @@ void MultiFramePainter::onInitialize()
     deferredShadingStage->biasedShadowTransform = &giStage->vplProcessor->biasedShadowTransform;
     deferredShadingStage->lightDirection = &giStage->lightDirection;
     deferredShadingStage->lightPosition = &giStage->lightPosition;
+    deferredShadingStage->lightIntensity = &giStage->lightIntensity;
     deferredShadingStage->initialize();
     deferredShadingStage->initProperties(*this);
 

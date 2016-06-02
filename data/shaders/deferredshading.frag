@@ -22,7 +22,6 @@ uniform sampler2D occlusionSampler;
 uniform mat4 projectionMatrix;
 uniform mat4 projectionInverseMatrix;
 uniform mat4 biasedLightViewProjectionMatrix;
-uniform vec3 worldLightPos;
 uniform vec3 cameraEye;
 uniform mat4 viewMatrix;
 uniform mat4 viewInvertedMatrix;
@@ -30,14 +29,13 @@ uniform float zFar;
 uniform float zNear;
 uniform vec2 screenSize;
 
-const float ambientFactor = 1.00;
-const float specularFactor = 0.75;
-const float diffuseFactor = 3.0;
+uniform vec3 worldLightPos;
+uniform float lightIntensity;
+uniform float exposure;
 
 
 vec3 tonemap(vec3 color)
 {
-    float exposure = 1.0;
     color *= exposure;
     color /= 1 + color; // that's the reinhard operator
     return color;
@@ -70,8 +68,9 @@ void main()
     vec3 specularColor = toLinear(texture(specularSampler, v_uv, 0).xyz);
     vec3 giColor = texture(giSampler, v_uv, 0).xyz;
     float occlusionFactor = texture(occlusionSampler, v_uv, 0).x;
-    vec3 ambientTerm = ambientFactor * giColor * diffuseColor * occlusionFactor;
-    vec3 diffuseTerm = diffuseColor * (max(0.0, ndotl) * shadowFactor) * diffuseFactor;
+    vec3 ambientTerm = giColor * diffuseColor * occlusionFactor;
+    vec3 diffuseTerm = diffuseColor * (max(0.0, ndotl) * shadowFactor) * lightIntensity;
+    const float specularFactor = 0.75;
     vec3 specularTerm = specularFactor * specularColor * pow(max(0.0, ndotH), 20.0) * shadowFactor;
 
     outColor = ambientTerm + diffuseTerm + specularTerm;

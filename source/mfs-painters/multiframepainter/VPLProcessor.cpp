@@ -25,8 +25,7 @@ struct vpl {
     glm::vec4 color;
 };
 
-VPLProcessor::VPLProcessor(const RasterizationStage& rsmRenderer)
-: m_rsmRenderer(rsmRenderer)
+VPLProcessor::VPLProcessor()
 {
     m_program = new globjects::Program();
 
@@ -36,7 +35,7 @@ VPLProcessor::VPLProcessor(const RasterizationStage& rsmRenderer)
 
     vplBuffer = new globjects::Buffer();
 
-    vplBuffer->setData(sizeof(vpl) * 256, nullptr, GL_STATIC_DRAW);
+    vplBuffer->setData(sizeof(vpl) * 1024, nullptr, GL_STATIC_DRAW);
 }
 
 VPLProcessor::~VPLProcessor()
@@ -44,7 +43,7 @@ VPLProcessor::~VPLProcessor()
 
 }
 
-void VPLProcessor::process()
+void VPLProcessor::process(const RasterizationStage& rsmRenderer, float lightIntensity)
 {
 
     auto shadowBias = glm::mat4(
@@ -53,16 +52,17 @@ void VPLProcessor::process()
         , 0.0f, 0.0f, 0.5f, 0.0f
         , 0.5f, 0.5f, 0.5f, 1.0f);
 
-    biasedShadowTransform = shadowBias * m_rsmRenderer.projection->projection() * m_rsmRenderer.camera->view();
+    biasedShadowTransform = shadowBias * rsmRenderer.projection->projection() * rsmRenderer.camera->view();
 
-    m_rsmRenderer.diffuseBuffer->bindActive(0);
-    m_rsmRenderer.faceNormalBuffer->bindActive(1);
-    m_rsmRenderer.depthBuffer->bindActive(2);
+    rsmRenderer.diffuseBuffer->bindActive(0);
+    rsmRenderer.faceNormalBuffer->bindActive(1);
+    rsmRenderer.depthBuffer->bindActive(2);
 
     m_program->setUniform("rsmDiffuseSampler", 0);
     m_program->setUniform("rsmNormalSampler", 1);
     m_program->setUniform("rsmDepthSampler", 2);
     m_program->setUniform("biasedLightViewProjectionInverseMatrix", glm::inverse(biasedShadowTransform));
+    m_program->setUniform("lightIntensity", lightIntensity);
 
     vplBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
 

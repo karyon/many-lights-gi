@@ -7,10 +7,12 @@ uniform sampler2D rsmNormalSampler;
 uniform sampler2D rsmDepthSampler;
 
 uniform mat4 biasedLightViewProjectionInverseMatrix;
+uniform float lightIntensity;
 
+const int totalVplCount = 256;
 layout (local_size_x = 64) in;
 
-struct vpl {
+struct VPL {
 	vec4 position;
 	vec4 normal;
 	vec4 color;
@@ -18,16 +20,17 @@ struct vpl {
 
 layout (std140, binding = 0) buffer vplBuffer_
 {
-	vpl vplBuffer[];
+	VPL vplBuffer[];
 };
 
+const uint rsmSamples1d = uint(ceil(sqrt(totalVplCount)));
 
 void main()
 {
     uint resultIndex = gl_WorkGroupID.x * gl_WorkGroupSize.x + gl_LocalInvocationID.x;
     uint totalWorkCount = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
 
-    uvec2 lightsOnAxis = uvec2(16u, totalWorkCount / 16u);
+    uvec2 lightsOnAxis = uvec2(rsmSamples1d, totalWorkCount / rsmSamples1d);
 
     ivec2 samplerSize = textureSize(rsmDiffuseSampler, 0);
 
@@ -41,5 +44,7 @@ void main()
     vec4 worldcoords = biasedLightViewProjectionInverseMatrix * vec4(texCoordsf, depth, 1.0);
     worldcoords.xyz /= worldcoords.w;
 
-    vplBuffer[resultIndex] = vpl(vec4(worldcoords.xyz, 0.0), vec4(normal, 0.0), vec4(diffuse, 0.0));
+    vec3 lightColor = diffuse * lightIntensity;
+
+    vplBuffer[resultIndex] = VPL(vec4(worldcoords.xyz, 0.0), vec4(normal, 0.0), vec4(lightColor, 0.0));
 }

@@ -54,6 +54,7 @@ public:
     glm::mat4* biasedShadowTransform;
     glm::vec3* lightPosition;
     glm::vec3* lightDirection;
+    float* lightIntensity;
 
     globjects::ref_ptr<globjects::Texture> shadedFrame;
 
@@ -63,4 +64,6 @@ protected:
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_screenAlignedQuad;
     globjects::ref_ptr<globjects::Program> m_program;
+
+    float m_exposure;
 };
