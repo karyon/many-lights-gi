@@ -127,7 +127,7 @@ void GIStage::initProperties(MultiFramePainter& painter)
         }
     )->setOptions({
         { "minimum", 0.0f },
-        { "step", 0.001f },
+        { "step", 0.05f },
         { "precision", 3u },
     });
 
@@ -155,7 +155,7 @@ void GIStage::initialize()
     m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(m_program);
 
 
-    lightPosition = { -50.0, 1870.0, -250.0 };
+    lightPosition = { -0.5, 18.70, -2.50 };
     lightDirection = { 0.0, -1.0, 0.25 };
     lightIntensity = 5.0f;
 
@@ -165,17 +165,17 @@ void GIStage::initialize()
     vplEndIndex = 256;
     scaleISMs = false;
     pointsOnlyIntoScaledISMs = false;
-    tessLevelFactor = 0.02;
+    tessLevelFactor = 2.0f;
     showLightPositions = false;
 
     rsmRenderer->camera = m_lightCamera.get();
 
     m_lightViewport->setViewport(0, 0, 512, 128);
     rsmRenderer->viewport = m_lightViewport.get();
-    m_lightProjection->setHeight(500);
+    m_lightProjection->setHeight(5);
 
-    m_lightProjection->setZFar(5000);
-    m_lightProjection->setZNear(5);
+    m_lightProjection->setZFar(50);
+    m_lightProjection->setZNear(0.05);
 
     rsmRenderer->projection = m_lightProjection.get();
 
@@ -212,7 +212,7 @@ void GIStage::process()
 
     {
         AutoGLPerfCounter c("ISM");
-        ism->render(modelLoadingStage.getDrawablesMap(), *vplProcessor.get(), vplStartIndex, vplEndIndex, scaleISMs, pointsOnlyIntoScaledISMs, tessLevelFactor);
+        ism->render(modelLoadingStage.getDrawablesMap(), *vplProcessor.get(), vplStartIndex, vplEndIndex, scaleISMs, pointsOnlyIntoScaledISMs, tessLevelFactor, m_lightProjection->zFar());
     }
 
     AutoGLPerfCounter c("GI");

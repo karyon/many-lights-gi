@@ -5,6 +5,7 @@
 #include </data/shaders/common/ism_utils.glsl>
 
 uniform ivec2 viewport;
+uniform float zFar;
 
 struct VPL {
     vec4 position;
@@ -70,7 +71,7 @@ void main()
 
     v.z = 1.0 - v.z;
     v.xy /= v.z;
-    v.z = dist / (2000.0);
+    v.z = dist / zFar;
     v.z = v.z * 2.0 - 1.0; // to [-1; 1] to match usual NDC coordinates
 
     v.xy += 1.0;
@@ -81,13 +82,11 @@ void main()
     v.xy -= 1.0;
 
     gl_Position = vec4(v, 1.0);
-    float pointSize = dist /= 2000;
-    pointSize = 1.0 - pointSize;
-    pointSize *= pointSize;
-    float arbitraryPointSizeDivisor = 200;
-    float arbitraryPointSizeMinimum = 2;
-    float maximumPointSize = viewport.x / arbitraryPointSizeDivisor;
-    pointSize = mix(arbitraryPointSizeMinimum, maximumPointSize, pointSize);
+
+    float pointsPerMeter = 20.0; // actual number unknown, needs to be calculated during tesselation
+    float pointSize = 1.0 / pointsPerMeter / dist / 3.14 * viewport.x; // approximation that breaks especially for near points.
+    float maximumPointSize = 10.0;
+    pointSize = min(pointSize, maximumPointSize);
 
     gl_PointSize = pointSize;
     EmitVertex();

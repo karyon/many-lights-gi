@@ -27,7 +27,7 @@ public:
     ImperfectShadowmap();
     ~ImperfectShadowmap();
 
-    void render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor) const;
+    void render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, float zFar) const;
 
     globjects::ref_ptr<globjects::Texture> depthBuffer;
 

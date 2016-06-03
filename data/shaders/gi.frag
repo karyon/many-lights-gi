@@ -67,8 +67,8 @@ void main()
         vec3 normalizedDiff = diff / dist;
 
         // debug splotch
-        float isNearLight = 1.0 - step(15.0, dist);
-        vec3 debugSplotch = isNearLight * vplColor / dist / dist * 1;
+        float isNearLight = 1.0 - step(0.15, dist);
+        vec3 debugSplotch = isNearLight * vplColor / dist / dist * 0.0001;
         acc += debugSplotch * float(showLightPositions);
 
         // angle and attenuation
@@ -76,8 +76,7 @@ void main()
         if (angleFactor <= 0.0)
             continue;
 
-        float toMetersFactor = 0.01;
-        float attenuation = 1.0 / pow(dist * toMetersFactor, 4.0);
+        float attenuation = 1.0 / pow(dist, 4.0);
 
         mat3 vplView = lookAtRH(vplNormal);
 
@@ -87,7 +86,7 @@ void main()
         v.xyz /= dist;
         v.z = 1.0 - v.z;
         v.xy /= v.z;
-        v.z = dist / (2000.0);
+        v.z = dist / zFar;
 
         // scale and bias to texcoords
         v.xy += 1.0;
@@ -100,7 +99,7 @@ void main()
         // ISM shadowing
         float occluderDepth = texture(ismDepthSampler, v.xy).x;
         float shadowValue = v.z - occluderDepth;
-        shadowValue = smoothstep(0.90, 1.0, 1 - shadowValue);
+        shadowValue = smoothstep(0.95, 1.0, 1 - shadowValue);
 
         float geometryTerm = angleFactor * attenuation;
         geometryTerm = min(geometryTerm, vplClampingValue);

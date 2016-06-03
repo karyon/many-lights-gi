@@ -49,8 +49,7 @@ protected:
 
     globjects::ref_ptr<globjects::Texture> loadTexture(const std::string& filename) const;
     Material loadMaterial(aiMaterial* mat, const std::string& directory);
-    gloperate::Scene * convertScene(const aiScene * scene) const;
-    gloperate::PolygonalGeometry * convertGeometry(const aiMesh * mesh) const;
+    gloperate::PolygonalGeometry * convertGeometry(const aiMesh * mesh, float vertexScale) const;
 
     static PresetInformation getPresetInformation(Preset preset);
     static std::string getFilename(Preset preset);

@@ -3,7 +3,7 @@
 layout (vertices = 3) out;
 
 
-uniform float tessLevelFactor = 0.02;
+uniform float tessLevelFactor = 2.0f;
 
 void main(void)
 {

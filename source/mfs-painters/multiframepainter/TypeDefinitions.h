@@ -39,4 +39,5 @@ struct PresetInformation
     float zThickness;
     float focalDist;
     float focalPoint;
+    float vertexScale;
 };

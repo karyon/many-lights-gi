@@ -79,7 +79,7 @@ void ImperfectShadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Textur
 }
 
 
-void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor) const
+void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, float zFar) const
 {
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
@@ -93,6 +93,7 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     vplProcessor.vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
 
     m_shadowmapProgram->setUniform("viewport", glm::ivec2(size, size));
+    m_shadowmapProgram->setUniform("zFar", zFar);
     m_shadowmapProgram->setUniform("vplStartIndex", vplStartIndex);
     m_shadowmapProgram->setUniform("vplEndIndex", vplEndIndex);
     m_shadowmapProgram->setUniform("scaleISMs", scaleISMs);
