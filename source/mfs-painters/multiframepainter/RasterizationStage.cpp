@@ -80,6 +80,17 @@ void RasterizationStage::initialize()
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT3, normalBuffer);
     m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depthBuffer);
 
+    diffuseBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
+    diffuseBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
+    specularBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
+    specularBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
+    faceNormalBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
+    faceNormalBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
+    normalBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
+    normalBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
+    depthBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
+    depthBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
+
     m_program = new globjects::Program();
     m_program->attach(
         globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/model.vert"),
