@@ -40,6 +40,7 @@ uniform int vplStartIndex = 0;
 uniform int vplEndIndex = 256;
 int vplCount = vplEndIndex - vplStartIndex;
 uniform bool scaleISMs = false;
+float ismIndexOffset = scaleISMs ? vplStartIndex : 0;
 int ismCount = (scaleISMs) ? vplCount : totalVplCount;
 int ismIndices1d = int(ceil(sqrt(ismCount)));
 
@@ -78,23 +79,9 @@ void main()
 
         float attenuation = 1.0 / pow(dist, 4.0);
 
-        mat3 vplView = lookAtRH(vplNormal);
-
-        vec3 v = vplView * diff;
-
         // paraboloid projection
-        v.xyz /= dist;
-        v.z = 1.0 - v.z;
-        v.xy /= v.z;
-        v.z = dist / zFar;
-
-        // scale and bias to texcoords
-        v.xy += 1.0;
-        v.xy /= 2.0;
-        int ismIndex = scaleISMs ? vplIndex - vplStartIndex : vplIndex;
-        ivec2 ismIndex2d = ivec2(ismIndex % ismIndices1d, ismIndex / ismIndices1d);
-        v.xy += vec2(ismIndex2d);
-        v.xy /= ismIndices1d;
+        float ismIndex = vplIndex - ismIndexOffset;
+        vec3 v = paraboloid_project(diff, dist, vplNormal, zFar, ismIndex, ismIndices1d);
 
         // ISM shadowing
         float occluderDepth = texture(ismDepthSampler, v.xy).x;
