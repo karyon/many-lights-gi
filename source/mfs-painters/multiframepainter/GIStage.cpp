@@ -89,13 +89,13 @@ void GIStage::initProperties(MultiFramePainter& painter)
     });
 
     painter.addProperty<int>("VPLStartIndex",
-	    [this]() { return vplStartIndex; },
-	    [this](const int & value) {
-	    vplStartIndex = value;
-	    }
+        [this]() { return vplStartIndex; },
+        [this](const int & value) {
+        vplStartIndex = value;
+        }
     )->setOptions({
-	    { "minimum", 0 },
-	    { "maximum", 256}
+        { "minimum", 0 },
+        { "maximum", 256}
     });
 
     painter.addProperty<int>("VPLEndIndex",
@@ -131,6 +131,12 @@ void GIStage::initProperties(MultiFramePainter& painter)
         { "precision", 3u },
     });
 
+    painter.addProperty<bool>("GIShadowing",
+        [this]() { return enableShadowing; },
+        [this](const bool & value) {
+            enableShadowing = value;
+    });
+
     painter.addProperty<bool>("ShowLightPositions",
         [this]() { return showLightPositions; },
         [this](const bool & value) {
@@ -146,13 +152,12 @@ void GIStage::initialize()
     m_fbo = new globjects::Framebuffer();
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, giBuffer);
 
-
-    m_program = new globjects::Program();
-    m_program->attach(
+    auto program = new globjects::Program();
+    program->attach(
         globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/deferredshading.vert"),
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi.frag"));
 
-    m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(m_program);
+    m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(program);
 
 
     lightPosition = { -0.5, 18.70, -2.50 };
@@ -166,6 +171,7 @@ void GIStage::initialize()
     scaleISMs = false;
     pointsOnlyIntoScaledISMs = false;
     tessLevelFactor = 2.0f;
+    enableShadowing = true;
     showLightPositions = false;
 
     rsmRenderer->camera = m_lightCamera.get();
@@ -175,7 +181,7 @@ void GIStage::initialize()
     m_lightProjection->setHeight(5);
 
     m_lightProjection->setZFar(50);
-    m_lightProjection->setZNear(0.05);
+    m_lightProjection->setZNear(0.05f);
 
     rsmRenderer->projection = m_lightProjection.get();
 
@@ -184,6 +190,43 @@ void GIStage::initialize()
     shadowmap = std::make_unique<Shadowmap>();
     ism = std::make_unique<ImperfectShadowmap>();
     vplProcessor = std::make_unique<VPLProcessor>();
+}
+
+void GIStage::render()
+{
+    m_fbo->bind();
+    m_fbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+    faceNormalBuffer->bindActive(0);
+    depthBuffer->bindActive(1);
+    ism->depthBuffer->bindActive(2);
+
+
+    vplProcessor->vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
+
+
+    m_screenAlignedQuad->program()->setUniform("faceNormalSampler", 0);
+    m_screenAlignedQuad->program()->setUniform("depthSampler", 1);
+    m_screenAlignedQuad->program()->setUniform("ismDepthSampler", 2);
+
+    m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
+    m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
+    m_screenAlignedQuad->program()->setUniform("viewport", glm::uvec2(viewport->width(), viewport->height()));
+    m_screenAlignedQuad->program()->setUniform("viewMatrix", camera->view());
+    m_screenAlignedQuad->program()->setUniform("viewInvertedMatrix", camera->viewInverted());
+    m_screenAlignedQuad->program()->setUniform("zFar", projection->zFar());
+    m_screenAlignedQuad->program()->setUniform("zNear", projection->zNear());
+    m_screenAlignedQuad->program()->setUniform("giIntensityFactor", giIntensityFactor);
+    m_screenAlignedQuad->program()->setUniform("vplClampingValue", vplClampingValue);
+    m_screenAlignedQuad->program()->setUniform("vplStartIndex", vplStartIndex);
+    m_screenAlignedQuad->program()->setUniform("vplEndIndex", vplEndIndex);
+    m_screenAlignedQuad->program()->setUniform("scaleISMs", scaleISMs);
+    m_screenAlignedQuad->program()->setUniform("enableShadowing", enableShadowing);
+    m_screenAlignedQuad->program()->setUniform("showLightPositions", showLightPositions);
+
+    m_screenAlignedQuad->draw();
+
+    m_fbo->unbind();
 }
 
 void GIStage::process()
@@ -215,50 +258,20 @@ void GIStage::process()
         ism->render(modelLoadingStage.getDrawablesMap(), *vplProcessor.get(), vplStartIndex, vplEndIndex, scaleISMs, pointsOnlyIntoScaledISMs, tessLevelFactor, m_lightProjection->zFar());
     }
 
-    AutoGLPerfCounter c("GI");
-
-
     gl::glViewport(viewport->x(),
         viewport->y(),
         viewport->width(),
         viewport->height());
 
-    const auto screenSize = glm::vec2(viewport->width(), viewport->height());
-
-    if (viewport->hasChanged())
+    if (viewport->hasChanged()) {
         resizeTexture(viewport->width(), viewport->height());
+    }
 
-    m_fbo->bind();
-    m_fbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
+    {
+        AutoGLPerfCounter c("GI");
+        render();
+    }
 
-    faceNormalBuffer->bindActive(0);
-    depthBuffer->bindActive(1);
-    ism->depthBuffer->bindActive(2);
-
-
-    vplProcessor->vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
-
-
-    m_screenAlignedQuad->program()->setUniform("faceNormalSampler", 0);
-    m_screenAlignedQuad->program()->setUniform("depthSampler", 1);
-    m_screenAlignedQuad->program()->setUniform("ismDepthSampler", 2);
-
-    m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
-    m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
-    m_screenAlignedQuad->program()->setUniform("viewMatrix", camera->view());
-    m_screenAlignedQuad->program()->setUniform("viewInvertedMatrix", camera->viewInverted());
-    m_screenAlignedQuad->program()->setUniform("zFar", projection->zFar());
-    m_screenAlignedQuad->program()->setUniform("zNear", projection->zNear());
-    m_screenAlignedQuad->program()->setUniform("giIntensityFactor", giIntensityFactor);
-    m_screenAlignedQuad->program()->setUniform("vplClampingValue", vplClampingValue);
-    m_screenAlignedQuad->program()->setUniform("vplStartIndex", vplStartIndex);
-    m_screenAlignedQuad->program()->setUniform("vplEndIndex", vplEndIndex);
-    m_screenAlignedQuad->program()->setUniform("scaleISMs", scaleISMs);
-    m_screenAlignedQuad->program()->setUniform("showLightPositions", showLightPositions);
-
-    m_screenAlignedQuad->draw();
-
-    m_fbo->unbind();
 }
 
 void GIStage::resizeTexture(int width, int height)

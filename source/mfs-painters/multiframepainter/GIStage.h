@@ -62,16 +62,16 @@ public:
 
 protected:
     void resizeTexture(int width, int height);
+    void render();
 
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_screenAlignedQuad;
-    globjects::ref_ptr<globjects::Program> m_program;
 
     std::unique_ptr<gloperate::OrthographicProjectionCapability> m_lightProjection;
     std::unique_ptr<gloperate::AbstractViewportCapability> m_lightViewport;
     std::unique_ptr<gloperate::AbstractCameraCapability> m_lightCamera;
-	
+    
     float giIntensityFactor;
     float vplClampingValue;
 
@@ -80,6 +80,7 @@ protected:
     bool scaleISMs;
     bool pointsOnlyIntoScaledISMs;
     float tessLevelFactor;
+    bool enableShadowing;
 
     bool showLightPositions;
 };

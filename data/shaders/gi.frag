@@ -43,6 +43,7 @@ uniform bool scaleISMs = false;
 float ismIndexOffset = scaleISMs ? vplStartIndex : 0;
 int ismCount = (scaleISMs) ? vplCount : totalVplCount;
 int ismIndices1d = int(ceil(sqrt(ismCount)));
+uniform bool enableShadowing = true;
 
 uniform bool showLightPositions = false;
 
@@ -87,6 +88,7 @@ void main()
         float occluderDepth = texture(ismDepthSampler, v.xy).x;
         float shadowValue = v.z - occluderDepth;
         shadowValue = smoothstep(0.95, 1.0, 1 - shadowValue);
+        shadowValue = mix(1.0, shadowValue, float(enableShadowing));
 
         float geometryTerm = angleFactor * attenuation;
         geometryTerm = min(geometryTerm, vplClampingValue);
