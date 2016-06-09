@@ -231,7 +231,7 @@ void GIStage::render()
 
     //m_screenAlignedQuad->draw();
 
-    m_screenAlignedQuad->program()->dispatchCompute(viewport->width() / 4 / 8 + 1, viewport->height() /4 / 8 + 1, 16);
+    m_screenAlignedQuad->program()->dispatchCompute(viewport->width() / 4 / 8 + 1, viewport->height() / 4 / 8 + 1, 16);
 
     m_fbo->unbind();
 }
