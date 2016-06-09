@@ -58,8 +58,8 @@ void main()
     // vec3 fragViewCoord = d * v_viewRay;
     // vec3 fragWorldCoord = (viewInvertedMatrix * vec4(fragViewCoord, 1.0)).xyz;
 
-    // ivec2 fragCoord = ivec2((gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy) * 4 + uvec2(gl_WorkGroupID.z % 4u, gl_WorkGroupID.z / 4u));
-    ivec2 fragCoord = ivec2((gl_WorkGroupID.xy * gl_WorkGroupSize.xy) + gl_LocalInvocationID.xy);
+    ivec2 fragCoord = ivec2((gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy) * 4 + uvec2(gl_WorkGroupID.z % 4u, gl_WorkGroupID.z / 4u));
+    // ivec2 fragCoord = ivec2((gl_WorkGroupID.xy * gl_WorkGroupSize.xy) + gl_LocalInvocationID.xy);
     vec2 v_uv = vec2(fragCoord) / viewport;
 
     // vec4 ndc = vec4(v_uv, texture(depthSampler, v_uv).r, 1.0) * 2.0 - 1.0;
@@ -87,9 +87,13 @@ void main()
     vec2 foo = vec2(fragCoord % 4);
     int index = int(gl_WorkGroupID.z * 16);
     // index = 140;
+    // vec2 foo = vec2(mod(v_uv * viewport, 4.0));
+    // int index = int((foo.x + foo.y * 4) * 16);
+    // imageStore(img_output, fragCoord, vec4(vec3(index) / 255, 1.0));
+    // return;
 
-    for (int vplIndex = vplStartIndex; vplIndex < vplEndIndex; vplIndex++) {
-        VPL vpl = vplBuffer[vplIndex];
+    for (int vplIndex = index; vplIndex < index + 256; vplIndex++) {
+        VPL vpl = vplBuffer[vplIndex % 256];
 
         // vpl = vplBuffer[vplIndex % 4 + 140];
 
