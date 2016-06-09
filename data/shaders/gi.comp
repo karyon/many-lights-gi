@@ -1,0 +1,143 @@
+#version 430
+
+#extension GL_ARB_shading_language_include : require
+#include </data/shaders/common/reprojection.glsl>
+#include </data/shaders/common/ism_utils.glsl>
+
+// in vec2 v_uv;
+// in vec3 v_viewRay;
+
+struct VPL {
+    vec4 position;
+    vec4 normal;
+    vec4 color;
+};
+
+layout (local_size_x = 8, local_size_y = 8, local_size_x = 1) in;
+layout (rgba32f, binding = 0) restrict writeonly uniform image2D img_output;
+
+const int totalVplCount = 256;
+layout (std140, binding = 0) uniform vplBuffer_
+{
+    VPL vplBuffer[totalVplCount];
+};
+
+// out vec3 outColor;
+
+uniform sampler2D faceNormalSampler;
+uniform sampler2D depthSampler;
+uniform sampler2D ismDepthSampler;
+
+uniform mat4 projectionMatrix;
+uniform mat4 projectionInverseMatrix;
+uniform mat4 viewMatrix;
+uniform mat4 viewInvertedMatrix;
+uniform mat4 viewProjectionInvertedMatrix;
+uniform float zFar;
+uniform float zNear;
+uniform ivec2 viewport;
+
+uniform float giIntensityFactor;
+uniform float vplClampingValue;
+
+// don't forget that these uniforms eat performance
+const int vplStartIndex = 0;
+const int vplEndIndex = 256;
+int vplCount = vplEndIndex - vplStartIndex;
+const bool scaleISMs = false;
+float ismIndexOffset = scaleISMs ? vplStartIndex : 0;
+int ismCount = (scaleISMs) ? vplCount : totalVplCount;
+int ismIndices1d = int(ceil(sqrt(ismCount)));
+const bool enableShadowing = true;
+
+const bool showLightPositions = false;
+
+void main()
+{
+    // float d = linearDepth(depthSampler, v_uv, projectionMatrix);
+    // vec3 fragViewCoord = d * v_viewRay;
+    // vec3 fragWorldCoord = (viewInvertedMatrix * vec4(fragViewCoord, 1.0)).xyz;
+
+    // ivec2 fragCoord = ivec2((gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy) * 4 + uvec2(gl_WorkGroupID.z % 4u, gl_WorkGroupID.z / 4u));
+    ivec2 fragCoord = ivec2((gl_WorkGroupID.xy * gl_WorkGroupSize.xy) + gl_LocalInvocationID.xy);
+    vec2 v_uv = vec2(fragCoord) / viewport;
+
+    // vec4 ndc = vec4(v_uv, texture(depthSampler, v_uv).r, 1.0) * 2.0 - 1.0;
+    // vec4 vPositionVS = projectionInverseMatrix * ndc;
+    // vPositionVS.xyz /= vPositionVS.w;
+    // vec3 fragWorldCoord = (viewInvertedMatrix * vec4(vPositionVS.xyz, 1.0)).xyz;
+
+
+    // ivec2 fragCoord = ivec2(gl_FragCoord.xy); // not sure why the 0.5 is necessary
+    vec4 ndc = vec4(v_uv, texelFetch(depthSampler, fragCoord, 0).r, 1.0) * 2.0 - 1.0;
+    vec4 fragWorldCoordWithW = viewProjectionInvertedMatrix * ndc;
+    vec3 fragWorldCoord = fragWorldCoordWithW.xyz / fragWorldCoordWithW.w;
+    // vec3 fragWorldCoord = vec3(0.0);
+
+    // vec3 fragWorldCoord = (viewInvertedMatrix * vec4(fragViewCoord, 1.0)).xyz;
+
+    vec3 fragNormal = texelFetch(faceNormalSampler, fragCoord, 0).xyz * 2.0 - 1.0;
+    // vec3 fragNormal = texelFetch(faceNormalSampler, ivec2(v_uv), 0).xyz * 2.0 - 1.0;
+    // imageStore(img_output, fragCoord, vec4(fragNormal * 0.5 + 0.5 , 1.0) );
+    // return;
+
+    vec3 acc = vec3(0.0);
+    int culled = 0;
+
+    vec2 foo = vec2(fragCoord % 4);
+    int index = int(gl_WorkGroupID.z * 16);
+    // index = 140;
+
+    for (int vplIndex = vplStartIndex; vplIndex < vplEndIndex; vplIndex++) {
+        VPL vpl = vplBuffer[vplIndex];
+
+        // vpl = vplBuffer[vplIndex % 4 + 140];
+
+        vec3 vplWorldcoords = vpl.position.xyz;
+        vec3 vplNormal = vpl.normal.xyz;
+        vec3 vplColor = vpl.color.xyz;
+
+        vec3 diff = fragWorldCoord - vplWorldcoords.xyz ;
+        float dist = length(diff);
+        vec3 normalizedDiff = diff / dist;
+
+        // debug splotch
+        float isNearLight = 1.0 - step(0.15, dist);
+        vec3 debugSplotch = isNearLight * vplColor / dist / dist * 0.0001;
+        acc += debugSplotch * float(showLightPositions);
+
+        // angle and attenuation
+        // float vplAngle = max(0.0, dot(vplNormal, normalizedDiff));
+        // float fragAngle = max(0.0, dot(fragNormal, -normalizedDiff));
+        // if (vplAngle == 0.0)
+        //     culled++;
+        float angleFactor = max(0.0, dot(vplNormal, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff));
+        if (angleFactor <= 0.0)
+            continue;
+
+        float attenuation = 1.0 / pow(dist, 4.0);
+
+        // paraboloid projection
+        float ismIndex = vplIndex - ismIndexOffset;
+        vec3 v = paraboloid_project(diff, dist, vplNormal, zFar, ismIndex, ismIndices1d);
+
+        // ISM shadowing
+        float occluderDepth = textureLod(ismDepthSampler, v.xy, 0).x;
+        float shadowValue = v.z - occluderDepth;
+        shadowValue = smoothstep(0.95, 1.0, 1 - shadowValue);
+        shadowValue = mix(1.0, shadowValue, float(enableShadowing));
+
+        float geometryTerm = angleFactor * attenuation;
+        // if (geometryTerm < 0.000001) {
+        //     culled++;
+        //     continue;
+        // }
+        geometryTerm = min(geometryTerm, vplClampingValue);
+
+        acc += vplColor * geometryTerm * shadowValue;
+    }
+    vec3 color = vec3(acc * giIntensityFactor / vplCount);
+    // outColor = color;
+    imageStore(img_output, fragCoord, vec4(color, 0.0));
+    // outColor = vec3(float(culled) / 255.0);
+}

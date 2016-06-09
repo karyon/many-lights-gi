@@ -6,6 +6,7 @@
 
 #include <glbinding/gl/enum.h>
 #include <glbinding/gl/functions.h>
+#include <glbinding/gl/boolean.h>
 
 #include <globjects/Texture.h>
 #include <globjects/Program.h>
@@ -154,8 +155,10 @@ void GIStage::initialize()
 
     auto program = new globjects::Program();
     program->attach(
-        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/deferredshading.vert"),
-        globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi.frag"));
+        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/gi.comp")
+        //globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/deferredshading.vert"),
+        //globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi.frag")
+    );
 
     m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(program);
 
@@ -196,6 +199,7 @@ void GIStage::render()
 {
     m_fbo->bind();
     m_fbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
+    giBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
     faceNormalBuffer->bindActive(0);
     depthBuffer->bindActive(1);
@@ -211,9 +215,10 @@ void GIStage::render()
 
     m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
     m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
-    m_screenAlignedQuad->program()->setUniform("viewport", glm::uvec2(viewport->width(), viewport->height()));
+    m_screenAlignedQuad->program()->setUniform("viewport", glm::ivec2(viewport->width(), viewport->height()));
     m_screenAlignedQuad->program()->setUniform("viewMatrix", camera->view());
     m_screenAlignedQuad->program()->setUniform("viewInvertedMatrix", camera->viewInverted());
+    m_screenAlignedQuad->program()->setUniform("viewProjectionInvertedMatrix", camera->viewInverted() * projection->projectionInverted());
     m_screenAlignedQuad->program()->setUniform("zFar", projection->zFar());
     m_screenAlignedQuad->program()->setUniform("zNear", projection->zNear());
     m_screenAlignedQuad->program()->setUniform("giIntensityFactor", giIntensityFactor);
@@ -224,7 +229,9 @@ void GIStage::render()
     m_screenAlignedQuad->program()->setUniform("enableShadowing", enableShadowing);
     m_screenAlignedQuad->program()->setUniform("showLightPositions", showLightPositions);
 
-    m_screenAlignedQuad->draw();
+    //m_screenAlignedQuad->draw();
+
+    m_screenAlignedQuad->program()->dispatchCompute(viewport->width() / 8 + 1, viewport->height() / 8 + 1, 1);
 
     m_fbo->unbind();
 }
