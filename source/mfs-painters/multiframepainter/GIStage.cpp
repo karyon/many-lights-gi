@@ -276,7 +276,7 @@ void GIStage::process()
 
 void GIStage::resizeTexture(int width, int height)
 {
-    giBuffer->image2D(0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+    giBuffer->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
     m_fbo->printStatus(true);
 }
 
