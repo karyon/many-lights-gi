@@ -23,6 +23,11 @@ layout (std140, binding = 0) buffer vplBuffer_
 	VPL vplBuffer[];
 };
 
+layout (packed, binding = 1) uniform shuffledIndicesBuffer_
+{
+	int shuffledIndicesBuffer[totalVplCount];
+};
+
 const uint rsmSamples1d = uint(ceil(sqrt(totalVplCount)));
 
 void main()
@@ -46,5 +51,6 @@ void main()
 
     vec3 lightColor = diffuse * lightIntensity;
 
+    resultIndex = shuffledIndicesBuffer[resultIndex];
     vplBuffer[resultIndex] = VPL(vec4(worldcoords.xyz, 0.0), vec4(normal, 0.0), vec4(lightColor, 0.0));
 }

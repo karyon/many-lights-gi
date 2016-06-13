@@ -69,7 +69,7 @@ void main()
         float depthSample = linearDepth(depthSampler, texcoord, projectionMatrix);
 
         float normalFactor = max(0, dot((N), normalSample));
-        float depthDiff = (depthSample - d) / 0.5;
+        float depthDiff = (depthSample - d) / 1;
         float factor =  weight(i - KERNEL_RADIUS, depthDiff) * normalFactor;
         factorAcc += factor;
         acc += giSample * factor;

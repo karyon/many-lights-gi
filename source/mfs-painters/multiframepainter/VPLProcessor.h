@@ -26,4 +26,5 @@ public:
 
 private:
     globjects::ref_ptr<globjects::Program> m_program;
+    globjects::ref_ptr<globjects::Buffer> m_shuffledIndicesBuffer;
 };

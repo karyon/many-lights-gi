@@ -1,5 +1,8 @@
 #include "VPLProcessor.h"
 
+#include <random>
+#include <numeric>
+
 #include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -34,8 +37,17 @@ VPLProcessor::VPLProcessor()
     );
 
     vplBuffer = new globjects::Buffer();
-
     vplBuffer->setData(sizeof(vpl) * 1024, nullptr, GL_STATIC_DRAW);
+
+    std::vector<int> v(256);
+    std::iota(v.begin(), v.end(), 0);
+
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(v.begin(), v.end(), g);
+
+    m_shuffledIndicesBuffer = new globjects::Buffer();
+    m_shuffledIndicesBuffer->setData(sizeof(int) * v.size(), v.data(), GL_STATIC_DRAW);
 }
 
 VPLProcessor::~VPLProcessor()
@@ -65,6 +77,7 @@ void VPLProcessor::process(const RasterizationStage& rsmRenderer, float lightInt
     m_program->setUniform("lightIntensity", lightIntensity);
 
     vplBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
+    m_shuffledIndicesBuffer->bindBase(GL_UNIFORM_BUFFER, 1);
 
     m_program->dispatchCompute(4, 1, 1);
 }
