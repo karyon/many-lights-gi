@@ -12,7 +12,7 @@ struct VPL {
 layout (local_size_x = 8, local_size_y = 8, local_size_x = 1) in;
 layout (r11f_g11f_b10f, binding = 0) restrict writeonly uniform image2D img_output;
 
-const int totalVplCount = 256;
+const int totalVplCount = 1024;
 layout (std140, binding = 0) uniform vplBuffer_
 {
     VPL vplBuffer[totalVplCount];
@@ -36,7 +36,7 @@ uniform float vplClampingValue;
 
 // don't forget that these uniforms eat performance
 uniform int vplStartIndex = 0;
-uniform int vplEndIndex = 256;
+uniform int vplEndIndex = totalVplCount;
 int vplCount = vplEndIndex - vplStartIndex;
 uniform bool scaleISMs = false;
 float ismIndexOffset = scaleISMs ? vplStartIndex : 0;
@@ -46,7 +46,8 @@ uniform bool enableShadowing = true;
 
 uniform bool showVPLPositions = false;
 const uint interleavedSize = 4;
-const uint vplsPerInvocation = 16;
+const uint interleavedPixels = interleavedSize*interleavedSize;
+const uint vplsPerInvocation = totalVplCount / interleavedPixels;
 
 void main()
 {
@@ -90,7 +91,7 @@ void main()
         float attenuation = 1.0 / pow(dist, 4.0);
 
         // paraboloid projection
-        float ismIndex = vplIndex % 256 - ismIndexOffset;
+        float ismIndex = vplIndex - ismIndexOffset;
         vec3 v = paraboloid_project(diff, dist, vplNormal, zFar, ismIndex, ismIndices1d);
 
         // ISM shadowing
@@ -104,6 +105,6 @@ void main()
 
         acc += vplColor * geometryTerm * shadowValue;
     }
-    vec3 resultColor = vec3(acc * giIntensityFactor / vplCount) * vplsPerInvocation;
+    vec3 resultColor = vec3(acc * giIntensityFactor / vplCount) * interleavedPixels;
     imageStore(img_output, fragCoord, vec4(resultColor, 0.0));
 }

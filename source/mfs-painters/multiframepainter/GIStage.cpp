@@ -118,7 +118,7 @@ void GIStage::initProperties(MultiFramePainter& painter)
         }
     )->setOptions({
         { "minimum", 0 },
-        { "maximum", 256}
+        { "maximum", 1024}
     });
 
     painter.addProperty<int>("VPLEndIndex",
@@ -128,7 +128,7 @@ void GIStage::initProperties(MultiFramePainter& painter)
         }
     )->setOptions({
         { "minimum", 0 },
-        { "maximum", 256 }
+        { "maximum", 1024 }
     });
 
     painter.addProperty<bool>("ScaleISMs",
@@ -223,7 +223,7 @@ void GIStage::initialize()
     giIntensityFactor = 3000.0f;
     vplClampingValue = 0.001f;
     vplStartIndex = 0;
-    vplEndIndex = 256;
+    vplEndIndex = 1024;
     scaleISMs = false;
     pointsOnlyIntoScaledISMs = false;
     tessLevelFactor = 2.0f;

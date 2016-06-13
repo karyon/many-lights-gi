@@ -13,7 +13,7 @@ struct VPL {
     vec4 color;
 };
 
-const int totalVplCount = 256;
+const int totalVplCount = 1024;
 layout (std140, binding = 0) uniform vplBuffer_
 {
     VPL vplBuffer[totalVplCount];
@@ -26,7 +26,7 @@ layout(points, max_vertices = 1) out;
 
 
 uniform int vplStartIndex = 0;
-uniform int vplEndIndex = 256;
+uniform int vplEndIndex = totalVplCount;
 uniform bool scaleISMs = false;
 uniform bool pointsOnlyIntoScaledISMs = false;
 

@@ -9,7 +9,7 @@ uniform sampler2D rsmDepthSampler;
 uniform mat4 biasedLightViewProjectionInverseMatrix;
 uniform float lightIntensity;
 
-const int totalVplCount = 256;
+const int totalVplCount = 1024;
 layout (local_size_x = 64) in;
 
 struct VPL {

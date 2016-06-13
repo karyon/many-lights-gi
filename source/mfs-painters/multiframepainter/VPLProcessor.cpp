@@ -21,6 +21,11 @@
 
 using namespace gl;
 
+namespace
+{
+    int maxVPLCount = 1024;
+}
+
 
 struct vpl {
     glm::vec4 position;
@@ -37,9 +42,9 @@ VPLProcessor::VPLProcessor()
     );
 
     vplBuffer = new globjects::Buffer();
-    vplBuffer->setData(sizeof(vpl) * 1024, nullptr, GL_STATIC_DRAW);
+    vplBuffer->setData(sizeof(vpl) * maxVPLCount, nullptr, GL_STATIC_DRAW);
 
-    std::vector<int> v(256);
+    std::vector<int> v(maxVPLCount);
     std::iota(v.begin(), v.end(), 0);
 
     std::random_device rd;
@@ -79,5 +84,6 @@ void VPLProcessor::process(const RasterizationStage& rsmRenderer, float lightInt
     vplBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
     m_shuffledIndicesBuffer->bindBase(GL_UNIFORM_BUFFER, 1);
 
-    m_program->dispatchCompute(4, 1, 1);
+    int localSize = 64; // must match shader
+    m_program->dispatchCompute(maxVPLCount / localSize, 1, 1);
 }
