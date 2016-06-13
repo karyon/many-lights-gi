@@ -30,6 +30,8 @@ uniform float zNear;
 uniform vec2 screenSize;
 
 uniform vec3 worldLightPos;
+uniform vec3 lightDirection;
+uniform vec3 normalizedInverseLightDirection;
 uniform float lightIntensity;
 uniform float exposure;
 
@@ -51,7 +53,7 @@ void main()
     vec3 viewCoord = d * v_viewRay;
     vec3 worldCoord = (viewInvertedMatrix * vec4(viewCoord, 1.0)).xyz;
 
-    vec3 L = normalize(worldLightPos - worldCoord);
+    vec3 L = normalizedInverseLightDirection;
     vec3 V = normalize(cameraEye - worldCoord);
     vec3 H = normalize(L + V);
     float ndotl = dot(N, L);

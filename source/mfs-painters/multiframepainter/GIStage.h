@@ -89,5 +89,8 @@ protected:
     float tessLevelFactor;
     bool enableShadowing;
 
-    bool showLightPositions;
+    float sunCyclePosition;
+    float sunCycleSpeed;
+    bool moveLight;
+    bool showVPLPositions;
 };

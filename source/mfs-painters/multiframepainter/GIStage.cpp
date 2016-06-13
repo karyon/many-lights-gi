@@ -45,16 +45,38 @@ GIStage::~GIStage()
 
 void GIStage::initProperties(MultiFramePainter& painter)
 {
-    painter.addProperty<glm::vec3>("RSMLightPosition",
-        [this]() { return lightPosition; },
-        [this](const glm::vec3 & pos) {
-            lightPosition = pos;
+    //painter.addProperty<glm::vec3>("RSMLightPosition",
+    //    [this]() { return m_lightCamera->eye(); },
+    //    [this](const glm::vec3 & pos) {
+    //        m_lightCamera->setEye(pos);
+    //    });
+    //painter.addProperty<glm::vec3>("RSMLightDirection",
+    //    [this]() { return m_lightCamera->center() - m_lightCamera->eye(); },
+    //    [this](const glm::vec3 & dir) {
+    //        m_lightCamera->setCenter(m_lightCamera->eye() + dir);
+    //    });
+    painter.addProperty<glm::vec3>("RSMLightCenter",
+        [this]() { return m_lightCamera->center(); },
+        [this](const glm::vec3 & center) {
+            m_lightCamera->setCenter(center);
         });
-    painter.addProperty<glm::vec3>("RSMLightDirection",
-        [this]() { return lightDirection; },
-        [this](const glm::vec3 & dir) {
-            lightDirection = dir;
+
+    painter.addProperty<bool>("MoveSun",
+        [this]() { return moveLight; },
+        [this](const bool & value) {
+        moveLight = value;
+    });
+
+    painter.addProperty<float>("SunCyclePosition",
+        [this]() { return sunCyclePosition; },
+        [this](const float & value) {
+            sunCyclePosition = value;
         });
+    painter.addProperty<float>("SunCycleSpeed",
+        [this]() { return sunCycleSpeed; },
+        [this](const float & value) {
+            sunCycleSpeed = value;
+    });
 
     painter.addProperty<float>("LightIntensity",
         [this]() { return lightIntensity; },
@@ -138,10 +160,10 @@ void GIStage::initProperties(MultiFramePainter& painter)
             enableShadowing = value;
     });
 
-    painter.addProperty<bool>("ShowLightPositions",
-        [this]() { return showLightPositions; },
+    painter.addProperty<bool>("ShowVPLPositions",
+        [this]() { return showVPLPositions; },
         [this](const bool & value) {
-            showLightPositions = value;
+            showVPLPositions = value;
     });
 }
 
@@ -195,8 +217,7 @@ void GIStage::initialize()
     m_blurXScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurXProgram);
     m_blurYScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurYProgram);
 
-    lightPosition = { -0.5, 18.70, -2.50 };
-    lightDirection = { 0.0, -1.0, 0.25 };
+    m_lightCamera->setCenter(glm::vec3(-0.5, 13.0, 0.0));
     lightIntensity = 5.0f;
 
     giIntensityFactor = 3000.0f;
@@ -207,7 +228,10 @@ void GIStage::initialize()
     pointsOnlyIntoScaledISMs = false;
     tessLevelFactor = 2.0f;
     enableShadowing = true;
-    showLightPositions = false;
+    showVPLPositions = false;
+    moveLight = false;
+    sunCyclePosition = 266.0f;
+    sunCycleSpeed = 0.1f;
 
     rsmRenderer->camera = m_lightCamera.get();
 
@@ -216,7 +240,7 @@ void GIStage::initialize()
     m_lightProjection->setHeight(5);
 
     m_lightProjection->setZFar(50);
-    m_lightProjection->setZNear(0.05f);
+    m_lightProjection->setZNear(1.0f);
 
     rsmRenderer->projection = m_lightProjection.get();
 
@@ -229,6 +253,9 @@ void GIStage::initialize()
 
 void GIStage::render()
 {
+    lightPosition = m_lightCamera->eye();
+    lightDirection = m_lightCamera->center() - m_lightCamera->eye();
+
     giBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R11F_G11F_B10F);
 
     faceNormalBuffer->bindActive(0);
@@ -257,7 +284,7 @@ void GIStage::render()
     m_screenAlignedQuad->program()->setUniform("vplEndIndex", vplEndIndex);
     m_screenAlignedQuad->program()->setUniform("scaleISMs", scaleISMs);
     m_screenAlignedQuad->program()->setUniform("enableShadowing", enableShadowing);
-    m_screenAlignedQuad->program()->setUniform("showLightPositions", showLightPositions);
+    m_screenAlignedQuad->program()->setUniform("showVPLPositions", showVPLPositions);
 
     //m_screenAlignedQuad->draw();
 
@@ -305,8 +332,15 @@ void GIStage::blur()
 
 void GIStage::process()
 {
-    m_lightCamera->setEye(lightPosition);
-    m_lightCamera->setCenter(lightPosition + lightDirection);
+    const float degreeSpan = 80.0f;
+    float degree = glm::abs(glm::mod(sunCyclePosition, degreeSpan*2) - degreeSpan) + (180.0-degreeSpan)/2;
+    float radians = glm::radians(degree);
+    glm::vec3 direction = { 0.0, -glm::sin(radians), glm::cos(radians) };
+    m_lightCamera->setEye(m_lightCamera->center() - direction);
+    if (moveLight) {
+        sunCyclePosition += sunCycleSpeed;
+        sunCyclePosition = glm::mod(sunCyclePosition, degreeSpan * 2);
+    }
 
     auto view = rsmRenderer->camera->view();
     auto viewProjection = rsmRenderer->projection->projection() * view;

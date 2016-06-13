@@ -120,6 +120,8 @@ void DeferredShadingStage::process()
     m_screenAlignedQuad->program()->setUniform("screenSize", screenSize);
 
     m_screenAlignedQuad->program()->setUniform("worldLightPos", *lightPosition);
+    m_screenAlignedQuad->program()->setUniform("lightDirection", *lightDirection);
+    m_screenAlignedQuad->program()->setUniform("normalizedInverseLightDirection", -glm::normalize(*lightDirection));
     m_screenAlignedQuad->program()->setUniform("lightIntensity", *lightIntensity);
     m_screenAlignedQuad->program()->setUniform("exposure", m_exposure);
 
