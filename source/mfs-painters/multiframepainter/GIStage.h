@@ -43,6 +43,8 @@ public:
     globjects::ref_ptr<globjects::Texture> depthBuffer;
 
     globjects::ref_ptr<globjects::Texture> giBuffer;
+    globjects::ref_ptr<globjects::Texture> giBlurTempBuffer;
+    globjects::ref_ptr<globjects::Texture> giBlurFinalBuffer;
     std::unique_ptr<Shadowmap> shadowmap;
     std::unique_ptr<ImperfectShadowmap> ism;
 
@@ -63,10 +65,15 @@ public:
 protected:
     void resizeTexture(int width, int height);
     void render();
+    void blur();
 
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
+    globjects::ref_ptr<globjects::Framebuffer> m_blurTempFbo;
+    globjects::ref_ptr<globjects::Framebuffer> m_blurFinalFbo;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_screenAlignedQuad;
+    globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_blurXScreenAlignedQuad;
+    globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_blurYScreenAlignedQuad;
 
     std::unique_ptr<gloperate::OrthographicProjectionCapability> m_lightProjection;
     std::unique_ptr<gloperate::AbstractViewportCapability> m_lightViewport;

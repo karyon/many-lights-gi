@@ -10,7 +10,7 @@ struct VPL {
 };
 
 layout (local_size_x = 8, local_size_y = 8, local_size_x = 1) in;
-layout (rgba32f, binding = 0) restrict writeonly uniform image2D img_output;
+layout (r11f_g11f_b10f, binding = 0) restrict writeonly uniform image2D img_output;
 
 const int totalVplCount = 256;
 layout (std140, binding = 0) uniform vplBuffer_
@@ -45,12 +45,15 @@ int ismIndices1d = int(ceil(sqrt(ismCount)));
 uniform bool enableShadowing = true;
 
 uniform bool showLightPositions = false;
+const uint interleavedSize = 4;
+const uint vplsPerInvocation = 16;
 
 void main()
 {
-    ivec2 fragCoord = ivec2((gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy) * 4 + uvec2(gl_WorkGroupID.z % 4u, gl_WorkGroupID.z / 4u));
+    uvec2 interleavedBlockPosition = uvec2((gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy) * interleavedSize);
+    uvec2 offset = uvec2(gl_WorkGroupID.z % interleavedSize, gl_WorkGroupID.z / interleavedSize);
+    ivec2 fragCoord = ivec2(interleavedBlockPosition + offset);
     vec2 v_uv = vec2(fragCoord) / viewport;
-
 
     float depthSample = texelFetch(depthSampler, fragCoord, 0).r;
     vec4 ndc = vec4(v_uv, depthSample, 1.0) * 2.0 - 1.0;
@@ -61,9 +64,9 @@ void main()
 
     vec3 acc = vec3(0.0);
 
-    int index = int(gl_WorkGroupID.z * 16);
+    int index = int(gl_WorkGroupID.z * vplsPerInvocation);
 
-    for (int vplIndex = index; vplIndex < index + 64; vplIndex++) {
+    for (int vplIndex = index; vplIndex < index + vplsPerInvocation; vplIndex++) {
         VPL vpl = vplBuffer[vplIndex];
 
         vec3 vplWorldcoords = vpl.position.xyz;
@@ -101,6 +104,6 @@ void main()
 
         acc += vplColor * geometryTerm * shadowValue;
     }
-    vec3 resultColor = vec3(acc * giIntensityFactor / vplCount);
+    vec3 resultColor = vec3(acc * giIntensityFactor / vplCount) * vplsPerInvocation;
     imageStore(img_output, fragCoord, vec4(resultColor, 0.0));
 }

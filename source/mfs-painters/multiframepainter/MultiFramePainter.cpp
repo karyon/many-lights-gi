@@ -112,7 +112,7 @@ void MultiFramePainter::onInitialize()
     deferredShadingStage->projection = m_projectionCapability;
     deferredShadingStage->diffuseBuffer = rasterizationStage->diffuseBuffer;
     deferredShadingStage->specularBuffer = rasterizationStage->specularBuffer;
-    deferredShadingStage->giBuffer = giStage->giBuffer;
+    deferredShadingStage->giBuffer = giStage->giBlurFinalBuffer;
     deferredShadingStage->occlusionBuffer = ssaoStage->occlusionBuffer;
     deferredShadingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
     deferredShadingStage->normalBuffer = rasterizationStage->normalBuffer;
@@ -150,6 +150,8 @@ void MultiFramePainter::onInitialize()
         giStage->rsmRenderer->depthBuffer,
         giStage->ism->depthBuffer,
         giStage->giBuffer,
+        giStage->giBlurTempBuffer,
+        giStage->giBlurFinalBuffer,
         ssaoStage->occlusionBuffer,
         deferredShadingStage->shadedFrame,
         frameAccumulationStage->accumulation

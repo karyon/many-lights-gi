@@ -163,6 +163,38 @@ void GIStage::initialize()
     m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(program);
 
 
+    giBlurTempBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    giBlurTempBuffer->setName("GI Temp Buffer");
+
+    giBlurFinalBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    giBlurFinalBuffer->setName("GI Final Buffer");
+
+    m_blurTempFbo = new globjects::Framebuffer();
+    m_blurTempFbo->attachTexture(GL_COLOR_ATTACHMENT0, giBlurTempBuffer);
+
+    m_blurFinalFbo = new globjects::Framebuffer();
+    m_blurFinalFbo->attachTexture(GL_COLOR_ATTACHMENT0, giBlurFinalBuffer);
+
+    globjects::Shader::globalReplace("#define DIRECTION ivec2(0,0)", "#define DIRECTION ivec2(1,0)");
+    auto blurFragShaderX = globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi_blur.frag");
+
+    globjects::Shader::clearGlobalReplacements();
+    globjects::Shader::globalReplace("#define DIRECTION ivec2(0,0)", "#define DIRECTION ivec2(0,1)");
+    auto blurFragShaderY = globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi_blur.frag");
+
+    auto blurXProgram = new globjects::Program();
+    blurXProgram->attach(
+        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/deferredshading.vert"),
+        blurFragShaderX);
+
+    auto blurYProgram = new globjects::Program();
+    blurYProgram->attach(
+        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/deferredshading.vert"),
+        blurFragShaderY);
+
+    m_blurXScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurXProgram);
+    m_blurYScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurYProgram);
+
     lightPosition = { -0.5, 18.70, -2.50 };
     lightDirection = { 0.0, -1.0, 0.25 };
     lightIntensity = 5.0f;
@@ -197,9 +229,7 @@ void GIStage::initialize()
 
 void GIStage::render()
 {
-    m_fbo->bind();
-    m_fbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
-    giBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    giBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R11F_G11F_B10F);
 
     faceNormalBuffer->bindActive(0);
     depthBuffer->bindActive(1);
@@ -232,8 +262,45 @@ void GIStage::render()
     //m_screenAlignedQuad->draw();
 
     m_screenAlignedQuad->program()->dispatchCompute(viewport->width() / 4 / 8 + 1, viewport->height() / 4 / 8 + 1, 16);
+    giBuffer->unbindImageTexture(0);
+}
 
-    m_fbo->unbind();
+void GIStage::blur()
+{
+    giBuffer->bindActive(0); 
+    faceNormalBuffer->bindActive(1);
+    depthBuffer->bindActive(2);
+
+    m_blurTempFbo->bind();
+    m_blurTempFbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+    m_blurXScreenAlignedQuad->program()->setUniform("giSampler", 0);
+    m_blurXScreenAlignedQuad->program()->setUniform("faceNormalSampler", 1);
+    m_blurXScreenAlignedQuad->program()->setUniform("depthSampler", 2);
+
+    m_blurXScreenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
+    m_blurXScreenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
+
+    m_blurXScreenAlignedQuad->draw();
+
+    m_blurTempFbo->unbind();
+
+
+    giBlurTempBuffer->bindActive(0);
+
+    m_blurFinalFbo->bind();
+    m_blurFinalFbo->setDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+    m_blurYScreenAlignedQuad->program()->setUniform("giSampler", 0);
+    m_blurYScreenAlignedQuad->program()->setUniform("faceNormalSampler", 1);
+    m_blurYScreenAlignedQuad->program()->setUniform("depthSampler", 2);
+
+    m_blurYScreenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
+    m_blurYScreenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
+
+    m_blurYScreenAlignedQuad->draw();
+
+    m_blurFinalFbo->unbind();
 }
 
 void GIStage::process()
@@ -279,11 +346,17 @@ void GIStage::process()
         render();
     }
 
+    {
+        AutoGLPerfCounter c("GI blur");
+        blur();
+    }
 }
 
 void GIStage::resizeTexture(int width, int height)
 {
-    giBuffer->image2D(0, GL_RGBA32F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+    giBuffer->image2D(0, GL_R11F_G11F_B10F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
+    giBlurTempBuffer->image2D(0, GL_R11F_G11F_B10F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+    giBlurFinalBuffer->image2D(0, GL_R11F_G11F_B10F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
     m_fbo->printStatus(true);
 }
 
