@@ -27,6 +27,7 @@ class Shadowmap;
 class ImperfectShadowmap;
 class ModelLoadingStage;
 class VPLProcessor;
+class ClusteredShading;
 
 
 class GIStage
@@ -47,6 +48,8 @@ public:
     globjects::ref_ptr<globjects::Texture> giBlurFinalBuffer;
     std::unique_ptr<Shadowmap> shadowmap;
     std::unique_ptr<ImperfectShadowmap> ism;
+    std::unique_ptr<VPLProcessor> vplProcessor;
+    std::unique_ptr<ClusteredShading> clusteredShading;
 
     glm::vec3 lightPosition;
     glm::vec3 lightDirection;
@@ -60,7 +63,6 @@ public:
 
     ModelLoadingStage& modelLoadingStage;
 
-    std::unique_ptr<VPLProcessor> vplProcessor;
 
 protected:
     void resizeTexture(int width, int height);

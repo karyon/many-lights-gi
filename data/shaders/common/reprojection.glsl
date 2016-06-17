@@ -1,7 +1,7 @@
 #ifndef REPROJECTION
 #define REPROJECTION
 
-// returns values in [nearZ:farZ]
+// returns values in [-nearZ:-farZ]
 // http://www.derschmale.com/2014/01/26/reconstructing-positions-from-the-depth-buffer/
 float linearDepth(float depthSample, mat4 projectionMatrix)
 {

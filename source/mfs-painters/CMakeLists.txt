@@ -45,6 +45,7 @@ set(headers
     ${include_path}/multiframepainter/KernelGenerationStage.h
     ${include_path}/multiframepainter/RasterizationStage.h
     ${include_path}/multiframepainter/GIStage.h
+    ${include_path}/multiframepainter/ClusteredShading.h
     ${include_path}/multiframepainter/DeferredShadingStage.h
     ${include_path}/multiframepainter/SSAOStage.h
     ${include_path}/multiframepainter/FrameAccumulationStage.h
@@ -68,6 +69,7 @@ set(sources
     ${source_path}/multiframepainter/KernelGenerationStage.cpp
     ${source_path}/multiframepainter/RasterizationStage.cpp
     ${source_path}/multiframepainter/GIStage.cpp
+    ${source_path}/multiframepainter/ClusteredShading.cpp
     ${source_path}/multiframepainter/SSAOStage.cpp
     ${source_path}/multiframepainter/DeferredShadingStage.cpp
     ${source_path}/multiframepainter/FrameAccumulationStage.cpp

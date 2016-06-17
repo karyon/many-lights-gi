@@ -25,6 +25,7 @@
 #include "PerfCounter.h"
 #include "Shadowmap.h"
 #include "ImperfectShadowmap.h"
+#include "ClusteredShading.h"
 #include "VPLProcessor.h"
 
 using namespace gl;
@@ -249,6 +250,7 @@ void GIStage::initialize()
     shadowmap = std::make_unique<Shadowmap>();
     ism = std::make_unique<ImperfectShadowmap>();
     vplProcessor = std::make_unique<VPLProcessor>();
+    clusteredShading = std::make_unique<ClusteredShading>();
 }
 
 void GIStage::render()
@@ -332,6 +334,10 @@ void GIStage::blur()
 
 void GIStage::process()
 {
+    if (viewport->hasChanged()) {
+        resizeTexture(viewport->width(), viewport->height());
+    }
+
     const float degreeSpan = 80.0f;
     float degree = glm::abs(glm::mod(sunCyclePosition, degreeSpan*2) - degreeSpan) + (180.0-degreeSpan)/2;
     float radians = glm::radians(degree);
@@ -371,8 +377,8 @@ void GIStage::process()
         viewport->width(),
         viewport->height());
 
-    if (viewport->hasChanged()) {
-        resizeTexture(viewport->width(), viewport->height());
+    {
+        clusteredShading->process(*vplProcessor.get(), projection->projection(), depthBuffer, glm::ivec2(viewport->width(), viewport->height()));
     }
 
     {
@@ -392,5 +398,6 @@ void GIStage::resizeTexture(int width, int height)
     giBlurTempBuffer->image2D(0, GL_R11F_G11F_B10F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
     giBlurFinalBuffer->image2D(0, GL_R11F_G11F_B10F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
     m_fbo->printStatus(true);
+    clusteredShading->resizeTexture(width, height);
 }
 

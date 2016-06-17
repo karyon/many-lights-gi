@@ -28,6 +28,7 @@
 #include "PerfCounter.h"
 #include "Shadowmap.h"
 #include "ImperfectShadowmap.h"
+#include "ClusteredShading.h"
 #include "VPLProcessor.h"
 
 
@@ -149,6 +150,7 @@ void MultiFramePainter::onInitialize()
         giStage->rsmRenderer->faceNormalBuffer,
         giStage->rsmRenderer->depthBuffer,
         giStage->ism->depthBuffer,
+        giStage->clusteredShading->clusterIDTexture,
         giStage->giBuffer,
         giStage->giBlurTempBuffer,
         giStage->giBlurFinalBuffer,
