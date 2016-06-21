@@ -23,7 +23,7 @@ using namespace gl;
 
 namespace
 {
-    int maxVPLCount = 1024;
+    const int maxVPLCount = 1024;
 }
 
 

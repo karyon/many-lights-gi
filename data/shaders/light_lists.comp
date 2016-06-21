@@ -1,0 +1,31 @@
+#version 430
+
+layout (local_size_x = 32, local_size_y = 1, local_size_x = 1) in;
+
+layout (r32ui, binding = 0) restrict readonly uniform uimage1D compactUsedClusterIDs;
+layout (r16ui, binding = 1) restrict writeonly uniform uimage2D lightLists;
+
+layout (std140, binding = 0) buffer atomicBuffer_
+{
+	uint numUsedClusters;
+};
+
+
+const uint maxNumLights = 1024;
+
+void main()
+{
+    uint id = gl_WorkGroupID.x * gl_WorkGroupSize.x + gl_LocalInvocationID.x;
+
+    if (id >= numUsedClusters)
+        return;
+
+    uint clusterID = imageLoad(compactUsedClusterIDs, int(id)).x;
+
+    for(int i = 0; i < maxNumLights; i++) {
+        imageStore(lightLists, ivec2(id, i), uvec4(i, 0, 0, 0));
+    }
+    // TODO don't simply overwrite the first one
+    imageStore(lightLists, ivec2(id, 0), uvec4(1024, 0, 0, 0));
+
+}

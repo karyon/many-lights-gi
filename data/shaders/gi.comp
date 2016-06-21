@@ -11,6 +11,9 @@ struct VPL {
 
 layout (local_size_x = 8, local_size_y = 8, local_size_x = 1) in;
 layout (r11f_g11f_b10f, binding = 0) restrict writeonly uniform image2D img_output;
+layout (r8ui, binding = 1) restrict readonly uniform uimage2D clusterIDs;
+layout (r16ui, binding = 2) restrict readonly uniform uimage3D normalToCompactIDs;
+layout (r16ui, binding = 3) restrict readonly uniform uimage2D lightLists;
 
 const int totalVplCount = 1024;
 layout (std140, binding = 0) uniform vplBuffer_
@@ -49,6 +52,8 @@ const uint interleavedSize = 4;
 const uint interleavedPixels = interleavedSize*interleavedSize;
 const uint vplsPerInvocation = totalVplCount / interleavedPixels;
 
+const uint clusterPixelSize = 64;
+
 void main()
 {
     uvec2 interleavedBlockPosition = uvec2((gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy) * interleavedSize);
@@ -66,8 +71,21 @@ void main()
     vec3 acc = vec3(0.0);
 
     int index = int(gl_WorkGroupID.z * vplsPerInvocation);
+    int startIndex = index;
+    int endIndex = int(index + vplsPerInvocation);
 
-    for (int vplIndex = index; vplIndex < index + vplsPerInvocation; vplIndex++) {
+    uint clusterZ = imageLoad(clusterIDs, fragCoord).r;
+    uvec2 clusterCoord = uvec2(fragCoord.xy) / clusterPixelSize;
+
+    uint compactClusterID = imageLoad(normalToCompactIDs, ivec3(clusterCoord, clusterZ)).r;
+    uint numVPLs = imageLoad(lightLists, ivec2(compactClusterID, 0)).r;
+    startIndex = int(float(numVPLs) / interleavedPixels * gl_WorkGroupID.z);
+    // startIndex = max(startIndex, 1); //TODO
+    endIndex = int(float(numVPLs) / interleavedPixels * (gl_WorkGroupID.z + 1));
+
+    for (int lightListIndex = startIndex; lightListIndex < endIndex; lightListIndex++) {
+        uint vplIndex = imageLoad(lightLists, ivec2(compactClusterID, lightListIndex)).r;
+        // uint vplIndex = lightListIndex;
         VPL vpl = vplBuffer[vplIndex];
 
         vec3 vplWorldcoords = vpl.position.xyz;

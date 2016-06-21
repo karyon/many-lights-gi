@@ -150,7 +150,7 @@ void MultiFramePainter::onInitialize()
         giStage->rsmRenderer->faceNormalBuffer,
         giStage->rsmRenderer->depthBuffer,
         giStage->ism->depthBuffer,
-        giStage->clusteredShading->clusterIDTexture,
+        giStage->clusteredShading->clusterIDs,
         giStage->giBuffer,
         giStage->giBlurTempBuffer,
         giStage->giBlurFinalBuffer,

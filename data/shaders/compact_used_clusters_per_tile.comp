@@ -4,6 +4,7 @@ layout (local_size_x = 8, local_size_y = 8, local_size_x = 1) in;
 
 layout (r8ui, binding = 0) restrict readonly uniform uimage3D usedClustersPerTile;
 layout (r32ui, binding = 1) restrict writeonly uniform uimage1D compactUsedIDs;
+layout (r16ui, binding = 2) restrict writeonly uniform uimage3D normalToCompactIDs;
 
 layout (std140, binding = 0) buffer atomicBuffer_
 {
@@ -20,6 +21,7 @@ void main()
 
     uvec2 clusterCoord = uvec2(fragCoord.xy);
 
+    // collect IDs of used clusters
     uint counter = 0;
     uint values[numDepthSlices];
     for (uint i = 0; i < numDepthSlices; i++) {
@@ -31,8 +33,19 @@ void main()
         counter++;
     }
 
+    // write IDs to compactUsedIDs
     uint startIndex = atomicAdd(atomicCounter, counter);
     for(int i = 0; i < counter; i++) {
         imageStore(compactUsedIDs, int(startIndex+i), uvec4(values[i], 0, 0, 0));
+    }
+
+    // write back id mapping to normalToCompactIDs
+    counter = 0;
+    for (uint i = 0; i < numDepthSlices; i++) {
+        uint clusterUsed = imageLoad(usedClustersPerTile, ivec3(fragCoord, i)).x; // 0 or 1
+        if (clusterUsed == 0)
+            continue;
+        imageStore(normalToCompactIDs, ivec3(fragCoord, i), uvec4(startIndex + counter, 0, 0, 0)); // 0 or 1
+        counter++;
     }
 }
