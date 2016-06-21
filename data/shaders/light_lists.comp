@@ -4,14 +4,41 @@ layout (local_size_x = 32, local_size_y = 1, local_size_x = 1) in;
 
 layout (r32ui, binding = 0) restrict readonly uniform uimage1D compactUsedClusterIDs;
 layout (r16ui, binding = 1) restrict writeonly uniform uimage2D lightLists;
+layout (rgba32f, binding = 2) restrict writeonly uniform image2D clusterCorners;
+
+struct VPL {
+    vec4 position;
+    vec4 normal;
+    vec4 color;
+};
+
+const int totalVplCount = 1024;
+layout (std140, binding = 0) uniform vplBuffer_
+{
+    VPL vplBuffer[totalVplCount];
+};
 
 layout (std140, binding = 0) buffer atomicBuffer_
 {
 	uint numUsedClusters;
 };
 
+uniform ivec2 viewport;
+uniform mat4 viewInverseMatrix;
+uniform mat4 projectionInverseMatrix;
 
+const uint pixelsPerCluster = 64;
 const uint maxNumLights = 1024;
+
+const float farPlane = 50;
+const int numDepthSlices = 16;
+const int numSlicesIntoFirstSlice = 3;
+const float scaleFactor = (numDepthSlices + numSlicesIntoFirstSlice) / log2(farPlane);
+
+float sliceToZ(uint slice)
+{
+    return -pow(2, (slice + numSlicesIntoFirstSlice) / scaleFactor);
+}
 
 void main()
 {
@@ -22,10 +49,71 @@ void main()
 
     uint clusterID = imageLoad(compactUsedClusterIDs, int(id)).x;
 
-    for(int i = 0; i < maxNumLights; i++) {
-        imageStore(lightLists, ivec2(id, i), uvec4(i, 0, 0, 0));
-    }
-    // TODO don't simply overwrite the first one
-    imageStore(lightLists, ivec2(id, 0), uvec4(1024, 0, 0, 0));
+    uint clusterX = clusterID & 0xFFu;
+    uint clusterY = clusterID >> 8 & 0xFFu;
+    uint clusterZ = clusterID >> 16 & 0xFFu;
+    uvec3 clusterCoord = uvec3(clusterX, clusterY, clusterZ);
 
+    float viewSpaceZFront = sliceToZ(clusterZ);
+    float viewSpaceZBack = sliceToZ(clusterZ + 1);
+
+    float ndcL = float(clusterCoord.x) * pixelsPerCluster / viewport.x;
+    float ndcR = float(clusterCoord.x + 1) * pixelsPerCluster / viewport.x;
+    float ndcB = float(clusterCoord.y) * pixelsPerCluster / viewport.y;
+    float ndcT = float(clusterCoord.y + 1) * pixelsPerCluster / viewport.y;
+
+    vec3 cornersOnPlanes[8];
+    cornersOnPlanes[0] = vec3(ndcL, ndcB, 0.0);
+    cornersOnPlanes[1] = vec3(ndcL, ndcB, 1.0);
+    cornersOnPlanes[2] = vec3(ndcR, ndcB, 0.0);
+    cornersOnPlanes[3] = vec3(ndcR, ndcB, 1.0);
+    cornersOnPlanes[4] = vec3(ndcL, ndcT, 0.0);
+    cornersOnPlanes[5] = vec3(ndcL, ndcT, 1.0);
+    cornersOnPlanes[6] = vec3(ndcL, ndcT, 0.0);
+    cornersOnPlanes[7] = vec3(ndcL, ndcT, 1.0);
+
+    for(int i = 0; i < 8; i++) {
+        vec4 v = vec4(cornersOnPlanes[i], 1.0);
+        v = v * 2.0 - 1.0;
+        v = projectionInverseMatrix * v;
+        cornersOnPlanes[i] = v.xyz / v.w;
+    }
+
+    vec3 corners[8];
+    for(int i = 0; i < 4; i++) {
+        vec3 interpolateA = cornersOnPlanes[i * 2];
+        vec3 interpolateB = cornersOnPlanes[i * 2 + 1];
+        float interpolator1 = (viewSpaceZFront - interpolateA.z) / (interpolateB.z - interpolateA.z);
+        float interpolator2 = (viewSpaceZBack - interpolateA.z) / (interpolateB.z - interpolateA.z);
+        corners[i * 2] = mix(interpolateA, interpolateB, interpolator1);
+        corners[i * 2 + 1] = mix(interpolateA, interpolateB, interpolator2);
+    }
+
+    for (int i = 0; i < 8; i++) {
+        corners[i] = (viewInverseMatrix * vec4(corners[i], 1.0)).xyz;
+    }
+
+    // debug data buffer
+    // for (int i = 0; i < 8; i++) {
+    //     imageStore(clusterCorners, ivec2(id, i), vec4(corners[i], 0.0));
+    // }
+    // imageStore(clusterCorners, ivec2(id, 0), vec4(clusterCoord, 0.0));
+    // imageStore(clusterCorners, ivec2(id, 1), vec4(viewSpaceZFront, viewSpaceZBack, 0.0, 0.0));
+
+    int counter = 1;
+    for(int i = 0; i < maxNumLights; i++) {
+        VPL vpl = vplBuffer[i];
+        bool found = false;
+        for (int j = 0; j < 8; j++) {
+            vec3 corner = corners[j];
+            vec3 vplToCorner = corner - vpl.position.xyz;
+            found = found || (dot(vplToCorner, vpl.normal.xyz) >= 0);
+        }
+        // found = true;
+        if (found) {
+            imageStore(lightLists, ivec2(id, counter), uvec4(i, 0, 0, 0));
+            counter++;
+        }
+    }
+    imageStore(lightLists, ivec2(id, 0), uvec4(counter, 0, 0, 0));
 }

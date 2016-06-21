@@ -2,6 +2,7 @@
 
 #include <glm/mat4x4.hpp>
 #include <glm/integer.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 
 #include <glbinding/gl/enum.h>
 #include <glbinding/gl/boolean.h>
@@ -69,6 +70,9 @@ ClusteredShading::ClusteredShading()
     lightLists = globjects::Texture::createDefault(GL_TEXTURE_2D);
     //lightLists->texBuffer(GL_R16UI, lightListsBuffer);
     lightLists->setName("light lists");
+
+    clusterCorners = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    clusterCorners->setName("clusterCorners");
 }
 
 ClusteredShading::~ClusteredShading()
@@ -76,7 +80,7 @@ ClusteredShading::~ClusteredShading()
 
 }
 
-void ClusteredShading::process(const VPLProcessor& vplProcessor, const glm::mat4& projection, globjects::ref_ptr<globjects::Texture> depthBuffer, const glm::ivec2& viewport)
+void ClusteredShading::process(const VPLProcessor& vplProcessor, const glm::mat4& view, const glm::mat4& projection, globjects::ref_ptr<globjects::Texture> depthBuffer, const glm::ivec2& viewport, const globjects::ref_ptr<globjects::Buffer> vplBuffer)
 {
 
     {
@@ -90,6 +94,7 @@ void ClusteredShading::process(const VPLProcessor& vplProcessor, const glm::mat4
     {
         AutoGLPerfCounter c("uniqueIDsPerTile");
         clusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R8UI);
+        usedClustersPerTile->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(0));
         usedClustersPerTile->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R8UI);
         m_usedClusterIDsPerTileProgram->dispatchCompute(viewport.x / 8 + 1, viewport.y / 8 + 1, 1);
     }
@@ -107,10 +112,15 @@ void ClusteredShading::process(const VPLProcessor& vplProcessor, const glm::mat4
     {
         AutoGLPerfCounter c("light lists");
         compactUsedClusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32UI);
-        lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R16UI);
+        lightLists->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(0));
+        lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
+        clusterCorners->bindImageTexture(2, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
         m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
         //lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI); //uncomment this line to get the crash
         //lightListsBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 1);
+        m_lightListsProgram->setUniform("viewport", viewport);
+        m_lightListsProgram->setUniform("projectionInverseMatrix", glm::inverse(projection));
+        m_lightListsProgram->setUniform("viewInverseMatrix", glm::inverse(view));
         m_lightListsProgram->dispatchCompute(m_numClusters / 32 + 1, 1, 1);
     }
 }
@@ -128,5 +138,6 @@ void ClusteredShading::resizeTexture(int width, int height)
     normalToCompactIDs->image3D(0, GL_R16UI, m_numClustersX, m_numClustersY, numDepthSlices, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
     // TODO memory usage. m_numClusters is theoretical worst case.
     lightLists->image2D(0, GL_R16UI, m_numClusters, maxVPLCount, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+    clusterCorners->image2D(0, GL_RGBA32F, m_numClusters, 8, 0, GL_RGBA, GL_FLOAT, nullptr);
     //lightListsBuffer->setData(m_numClusters * maxVPLCount * sizeof(short), nullptr, GL_STATIC_DRAW);
 }

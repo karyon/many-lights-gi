@@ -27,7 +27,7 @@ public:
     ClusteredShading();
     ~ClusteredShading();
 
-    void process(const VPLProcessor& vplProcessor, const glm::mat4& projection, globjects::ref_ptr<globjects::Texture> depthBuffer, const glm::ivec2& viewport);
+    void process(const VPLProcessor& vplProcessor, const glm::mat4& view, const glm::mat4& projection, globjects::ref_ptr<globjects::Texture> depthBuffer, const glm::ivec2& viewport, const globjects::ref_ptr<globjects::Buffer> vplBuffer);
 
     void resizeTexture(int width, int height);
 
@@ -38,6 +38,7 @@ public:
     globjects::ref_ptr<globjects::Texture> normalToCompactIDs;
     globjects::ref_ptr<globjects::Buffer> lightListsBuffer;
     globjects::ref_ptr<globjects::Texture> lightLists;
+    globjects::ref_ptr<globjects::Texture> clusterCorners;
 
 private:
     int m_numClustersX;

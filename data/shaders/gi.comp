@@ -79,10 +79,11 @@ void main()
 
     uint compactClusterID = imageLoad(normalToCompactIDs, ivec3(clusterCoord, clusterZ)).r;
     uint numVPLs = imageLoad(lightLists, ivec2(compactClusterID, 0)).r;
-    startIndex = int(float(numVPLs) / interleavedPixels * gl_WorkGroupID.z);
-    // startIndex = max(startIndex, 1); //TODO
-    endIndex = int(float(numVPLs) / interleavedPixels * (gl_WorkGroupID.z + 1));
+    startIndex = int(float(numVPLs) / interleavedPixels * gl_WorkGroupID.z) + 1;
+    endIndex = int(float(numVPLs) / interleavedPixels * (gl_WorkGroupID.z + 1)) + 1;
 
+    // startIndex = 1;
+    // endIndex = int(numVPLs) + 1;
     for (int lightListIndex = startIndex; lightListIndex < endIndex; lightListIndex++) {
         uint vplIndex = imageLoad(lightLists, ivec2(compactClusterID, lightListIndex)).r;
         // uint vplIndex = lightListIndex;

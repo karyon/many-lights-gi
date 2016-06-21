@@ -381,7 +381,7 @@ void GIStage::process()
         viewport->height());
 
     {
-        clusteredShading->process(*vplProcessor.get(), projection->projection(), depthBuffer, glm::ivec2(viewport->width(), viewport->height()));
+        clusteredShading->process(*vplProcessor.get(), camera->view(), projection->projection(), depthBuffer, glm::ivec2(viewport->width(), viewport->height()), vplProcessor->vplBuffer);
     }
 
     {
