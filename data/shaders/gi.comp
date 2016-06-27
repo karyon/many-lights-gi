@@ -104,8 +104,6 @@ void main()
 
         // angle and attenuation
         float angleFactor = max(0.0, dot(vplNormal, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff));
-        if (angleFactor <= 0.0)
-            continue;
 
         float attenuation = 1.0 / pow(dist, 4.0);
 
