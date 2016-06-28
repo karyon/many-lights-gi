@@ -48,19 +48,27 @@ int ismIndices1d = int(ceil(sqrt(ismCount)));
 uniform bool enableShadowing = true;
 
 uniform bool showVPLPositions = false;
-const uint interleavedSize = 4;
-const uint interleavedPixels = interleavedSize*interleavedSize;
-const uint vplsPerInvocation = totalVplCount / interleavedPixels;
+
+uniform bool useInterleaving = true;
+uint interleavedSize = useInterleaving ? 4 : 1;
+uint interleavedPixels = interleavedSize*interleavedSize;
+uint vplsPerInvocation = totalVplCount / interleavedPixels;
 
 const uint clusterPixelSize = 64;
 
+
 void main()
 {
-    uvec2 interleavedBlockPosition = uvec2((gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy) * interleavedSize);
-    uvec2 offset = uvec2(gl_WorkGroupID.z % interleavedSize, gl_WorkGroupID.z / interleavedSize);
-    ivec2 fragCoord = ivec2(interleavedBlockPosition + offset);
+    uvec2 largeInterleaveBlockPosition = gl_WorkGroupID.xy * gl_WorkGroupSize.xy;
+    uvec2 offsetInLargeInterleaveBlock = gl_LocalInvocationID.xy;
+    uvec2 smallInterleavedBlockPosition = (largeInterleaveBlockPosition + offsetInLargeInterleaveBlock) * interleavedSize;
+    uint offsetInSmallInterleaveBlock1d = (gl_WorkGroupID.z) % 16u;
+    uvec2 offsetInSmallInterleaveBlock = uvec2(offsetInSmallInterleaveBlock1d % interleavedSize, offsetInSmallInterleaveBlock1d / interleavedSize);
+    ivec2 fragCoord = ivec2(smallInterleavedBlockPosition + offsetInSmallInterleaveBlock);
+
     vec2 v_uv = vec2(fragCoord) / viewport;
 
+    // TODO maybe view rays again? could re-use view z for cluster coord
     float depthSample = texelFetch(depthSampler, fragCoord, 0).r;
     vec4 ndc = vec4(v_uv, depthSample, 1.0) * 2.0 - 1.0;
     vec4 fragWorldCoordWithW = viewProjectionInvertedMatrix * ndc;
@@ -68,60 +76,47 @@ void main()
 
     vec3 fragNormal = texelFetch(faceNormalSampler, fragCoord, 0).xyz * 2.0 - 1.0;
 
-    vec3 acc = vec3(0.0);
-
-    int index = int(gl_WorkGroupID.z * vplsPerInvocation);
-    int startIndex = index;
-    int endIndex = int(index + vplsPerInvocation);
-
     uint clusterZ = imageLoad(clusterIDs, fragCoord).r;
     uvec2 clusterCoord = uvec2(fragCoord.xy) / clusterPixelSize;
-
+    //TODO read numVPL from same texture as clusterID
     uint compactClusterID = imageLoad(normalToCompactIDs, ivec3(clusterCoord, clusterZ)).r;
     uint numVPLs = imageLoad(lightLists, ivec2(compactClusterID, 0)).r;
-    startIndex = int(float(numVPLs) / interleavedPixels * gl_WorkGroupID.z) + 1;
-    endIndex = int(float(numVPLs) / interleavedPixels * (gl_WorkGroupID.z + 1)) + 1;
+    int startIndex = int(float(numVPLs) / interleavedPixels * offsetInSmallInterleaveBlock1d) + 1;
+    int endIndex = int(float(numVPLs) / interleavedPixels * (offsetInSmallInterleaveBlock1d + 1)) + 1;
 
-    // startIndex = 1;
-    // endIndex = int(numVPLs) + 1;
+    vec3 acc = vec3(0.0);
+
     for (int lightListIndex = startIndex; lightListIndex < endIndex; lightListIndex++) {
         uint vplIndex = imageLoad(lightLists, ivec2(compactClusterID, lightListIndex)).r;
-        // uint vplIndex = lightListIndex;
         VPL vpl = vplBuffer[vplIndex];
 
-        vec3 vplWorldcoords = vpl.position.xyz;
-        vec3 vplNormal = vpl.normal.xyz;
-        vec3 vplColor = vpl.color.xyz;
-
-        vec3 diff = fragWorldCoord - vplWorldcoords.xyz ;
+        vec3 diff = fragWorldCoord - vpl.position.xyz ;
         float dist = length(diff);
         vec3 normalizedDiff = diff / dist;
 
         // debug splotch
         float isNearLight = 1.0 - step(0.15, dist);
-        vec3 debugSplotch = isNearLight * vplColor / dist / dist * 0.0001;
+        vec3 debugSplotch = isNearLight * vpl.color.xyz / dist / dist * 0.0001;
         acc += debugSplotch * float(showVPLPositions);
 
-        // angle and attenuation
-        float angleFactor = max(0.0, dot(vplNormal, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff));
-
+        // geometry term
+        float angleFactor = max(0.0, dot(vpl.normal.xyz, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff));
         float attenuation = 1.0 / pow(dist, 4.0);
-
-        // paraboloid projection
-        float ismIndex = vplIndex - ismIndexOffset;
-        vec3 v = paraboloid_project(diff, dist, vplNormal, zFar, ismIndex, ismIndices1d);
+        float geometryTerm = angleFactor * attenuation;
+        geometryTerm = min(geometryTerm, vplClampingValue);
 
         // ISM shadowing
+        float ismIndex = vplIndex - ismIndexOffset;
+        vec3 v = paraboloid_project(diff, dist, vpl.normal.xyz, zFar, ismIndex, ismIndices1d);
         float occluderDepth = textureLod(ismDepthSampler, v.xy, 0).x;
         float shadowValue = v.z - occluderDepth;
         shadowValue = smoothstep(0.95, 1.0, 1 - shadowValue);
         shadowValue = mix(1.0, shadowValue, float(enableShadowing));
 
-        float geometryTerm = angleFactor * attenuation;
-        geometryTerm = min(geometryTerm, vplClampingValue);
-
-        acc += vplColor * geometryTerm * shadowValue;
+        acc += vpl.color.xyz * geometryTerm * shadowValue;
     }
+
     vec3 resultColor = vec3(acc * giIntensityFactor / vplCount) * interleavedPixels;
+
     imageStore(img_output, fragCoord, vec4(resultColor, 0.0));
 }

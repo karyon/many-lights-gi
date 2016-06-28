@@ -166,6 +166,12 @@ void GIStage::initProperties(MultiFramePainter& painter)
         [this](const bool & value) {
             showVPLPositions = value;
     });
+
+    painter.addProperty<bool>("UseInterleaving",
+        [this]() { return useInterleaving; },
+        [this](const bool & value) {
+        useInterleaving = value;
+    });
 }
 
 void GIStage::initialize()
@@ -218,7 +224,7 @@ void GIStage::initialize()
     m_blurXScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurXProgram);
     m_blurYScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurYProgram);
 
-    m_lightCamera->setCenter(glm::vec3(-0.5, 13.0, 0.0));
+    m_lightCamera->setCenter(glm::vec3(-0.5, 14.0, 0.0));
     lightIntensity = 5.0f;
 
     giIntensityFactor = 3000.0f;
@@ -233,6 +239,8 @@ void GIStage::initialize()
     moveLight = false;
     sunCyclePosition = 266.0f;
     sunCycleSpeed = 0.1f;
+
+    useInterleaving = true;
 
     rsmRenderer->camera = m_lightCamera.get();
 
@@ -259,9 +267,9 @@ void GIStage::render()
     lightDirection = m_lightCamera->center() - m_lightCamera->eye();
 
     giBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R11F_G11F_B10F);
-    clusteredShading->clusterIDs->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R8UI);
-    clusteredShading->normalToCompactIDs->bindImageTexture(2, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
-    clusteredShading->lightLists->bindImageTexture(3, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
+    clusteredShading->clusterIDs->bindImageTexture(1, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R8UI);
+    clusteredShading->normalToCompactIDs->bindImageTexture(2, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R16UI);
+    clusteredShading->lightLists->bindImageTexture(3, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R16UI);
 
     faceNormalBuffer->bindActive(0);
     depthBuffer->bindActive(1);
@@ -290,10 +298,15 @@ void GIStage::render()
     m_screenAlignedQuad->program()->setUniform("scaleISMs", scaleISMs);
     m_screenAlignedQuad->program()->setUniform("enableShadowing", enableShadowing);
     m_screenAlignedQuad->program()->setUniform("showVPLPositions", showVPLPositions);
+    m_screenAlignedQuad->program()->setUniform("useInterleaving", useInterleaving);
 
     //m_screenAlignedQuad->draw();
 
-    m_screenAlignedQuad->program()->dispatchCompute(viewport->width() / 4 / 8 + 1, viewport->height() / 4 / 8 + 1, 16);
+    if (useInterleaving)
+        m_screenAlignedQuad->program()->dispatchCompute(viewport->width() / 4 / 8 + 1, viewport->height() / 4 / 8 + 1, 16);
+    else
+        m_screenAlignedQuad->program()->dispatchCompute(viewport->width() / 8 + 1, viewport->height() / 8 + 1, 1);
+
     giBuffer->unbindImageTexture(0);
 }
 
@@ -342,10 +355,10 @@ void GIStage::process()
     }
 
     const float degreeSpan = 80.0f;
-    float degree = glm::abs(glm::mod(sunCyclePosition, degreeSpan*2) - degreeSpan) + (180.0-degreeSpan)/2;
+    float degree = glm::abs(glm::mod(sunCyclePosition, degreeSpan*2) - degreeSpan) + (180.0f-degreeSpan)/2;
     float radians = glm::radians(degree);
     glm::vec3 direction = { 0.0, -glm::sin(radians), glm::cos(radians) };
-    m_lightCamera->setEye(m_lightCamera->center() - direction);
+    m_lightCamera->setEye(m_lightCamera->center() - (direction * 2.0f));
     if (moveLight) {
         sunCyclePosition += sunCycleSpeed;
         sunCyclePosition = glm::mod(sunCyclePosition, degreeSpan * 2);
@@ -381,7 +394,15 @@ void GIStage::process()
         viewport->height());
 
     {
-        clusteredShading->process(*vplProcessor.get(), camera->view(), projection->projection(), depthBuffer, glm::ivec2(viewport->width(), viewport->height()), vplProcessor->vplBuffer);
+        clusteredShading->process(
+            *vplProcessor.get(),
+            camera->view(),
+            projection->projection(),
+            glm::ivec2(viewport->width(), viewport->height()),
+            vplStartIndex,
+            vplEndIndex,
+            depthBuffer,
+            vplProcessor->vplBuffer);
     }
 
     {

@@ -27,9 +27,13 @@ uniform ivec2 viewport;
 uniform mat4 viewInverseMatrix;
 uniform mat4 projectionInverseMatrix;
 
+uniform int vplStartIndex = 0;
+uniform int vplEndIndex = totalVplCount;
+
 const uint pixelsPerCluster = 64;
 const uint maxNumLights = 1024;
 
+const float nearPlane = 0.05;
 const float farPlane = 50;
 const int numDepthSlices = 16;
 const int numSlicesIntoFirstSlice = 3;
@@ -37,6 +41,8 @@ const float scaleFactor = (numDepthSlices + numSlicesIntoFirstSlice) / log2(farP
 
 float sliceToZ(uint slice)
 {
+    if (slice == 0)
+        return nearPlane;
     return -pow(2, (slice + numSlicesIntoFirstSlice) / scaleFactor);
 }
 
@@ -101,7 +107,7 @@ void main()
     // imageStore(clusterCorners, ivec2(id, 1), vec4(viewSpaceZFront, viewSpaceZBack, 0.0, 0.0));
 
     int counter = 1;
-    for(int i = 0; i < maxNumLights; i++) {
+    for(int i = vplStartIndex; i < vplEndIndex; i++) {
         VPL vpl = vplBuffer[i];
         bool found = false;
         for (int j = 0; j < 8; j++) {

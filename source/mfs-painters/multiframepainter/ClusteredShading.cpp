@@ -80,7 +80,15 @@ ClusteredShading::~ClusteredShading()
 
 }
 
-void ClusteredShading::process(const VPLProcessor& vplProcessor, const glm::mat4& view, const glm::mat4& projection, globjects::ref_ptr<globjects::Texture> depthBuffer, const glm::ivec2& viewport, const globjects::ref_ptr<globjects::Buffer> vplBuffer)
+void ClusteredShading::process(
+    const VPLProcessor& vplProcessor,
+    const glm::mat4& view,
+    const glm::mat4& projection,
+    const glm::ivec2& viewport,
+    int vplStartIndex,
+    int vplEndIndex,
+    globjects::ref_ptr<globjects::Texture> depthBuffer,
+    const globjects::ref_ptr<globjects::Buffer> vplBuffer)
 {
 
     {
@@ -121,6 +129,8 @@ void ClusteredShading::process(const VPLProcessor& vplProcessor, const glm::mat4
         m_lightListsProgram->setUniform("viewport", viewport);
         m_lightListsProgram->setUniform("projectionInverseMatrix", glm::inverse(projection));
         m_lightListsProgram->setUniform("viewInverseMatrix", glm::inverse(view));
+        m_lightListsProgram->setUniform("vplStartIndex", vplStartIndex);
+        m_lightListsProgram->setUniform("vplEndIndex", vplEndIndex);
         m_lightListsProgram->dispatchCompute(m_numClusters / 32 + 1, 1, 1);
     }
 }

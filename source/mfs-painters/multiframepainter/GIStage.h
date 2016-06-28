@@ -95,4 +95,5 @@ protected:
     float sunCycleSpeed;
     bool moveLight;
     bool showVPLPositions;
+    bool useInterleaving;
 };
