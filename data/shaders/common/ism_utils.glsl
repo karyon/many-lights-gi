@@ -12,17 +12,20 @@ mat3 lookAtRH(vec3 normalizedNormal)
     return transpose(mat3(s, u, -f));
 }
 
-vec3 paraboloid_project(vec3 positionRelativeToCamera, float distToCamera, vec3 vplNormal, float zFar, float ismIndex, int ismIndices1d)
+vec3 paraboloid_project(vec3 positionRelativeToCamera, float distToCamera, vec3 vplNormal, float zFar, float ismIndex, int ismIndices1d, bool preserveSign)
 {
     mat3 vplView = lookAtRH(vplNormal);
 
     vec3 v = vplView * positionRelativeToCamera;
+    float signOfV = sign(v.z);
 
     // paraboloid projection
     v.xyz /= distToCamera;
     v.z = 1.0 - v.z;
     v.xy /= v.z;
     v.z = distToCamera / zFar;
+    if (preserveSign)
+        v.z *= -signOfV;
 
     // scale and bias to texcoords
     v.xy += 1.0;

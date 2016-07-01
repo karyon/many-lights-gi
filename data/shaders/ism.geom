@@ -5,25 +5,18 @@
 #include </data/shaders/common/ism_utils.glsl>
 #include </data/shaders/common/floatpacking.glsl>
 
-uniform ivec2 viewport;
-uniform float zFar;
-
-struct VPL {
-    vec4 position;
-    vec4 color;
-};
-
-const int totalVplCount = 1024;
-layout (std140, binding = 0) uniform packedVplBuffer_
-{
-    vec4 packedVplBuffer[totalVplCount];
-};
-
 
 layout(points) in;
 layout(points, max_vertices = 1) out;
 
+const int totalVplCount = 1024;
+layout (std140, binding = 0) uniform packedVplBuffer_
+{
+    vec4 vplPositionNormalBuffer[totalVplCount];
+};
 
+uniform ivec2 viewport;
+uniform float zFar;
 
 uniform int vplStartIndex = 0;
 uniform int vplEndIndex = totalVplCount;
@@ -47,29 +40,21 @@ void main()
     if (pointsOnlyIntoScaledISMs)
         vplID += vplIdOffset;
 
-    vec3 vplPosition = packedVplBuffer[vplID].xyz;
-    vec3 vplNormal = Unpack3PNFromFP32(packedVplBuffer[vplID].w) * 2.0 - 1.0;
-    mat3 vplView = lookAtRH(vplNormal);
+    vec3 vplPosition = vplPositionNormalBuffer[vplID].xyz;
+    vec3 vplNormal = Unpack3PNFromFP32(vplPositionNormalBuffer[vplID].w) * 2.0 - 1.0;
 
-    // culling
     vec3 positionRelativeToCamera = position.xyz - vplPosition;
-    vec3 viewCoord = vplView * positionRelativeToCamera;
-    if (viewCoord.z > 0.0) {
-        viewCoord.z = infinity;
-        return; // makes it slower
-    }
 
     // paraboloid projection
     float distToCamera = length(positionRelativeToCamera);
     float ismIndex = scaleISMs ? float(vplID) - vplStartIndex : vplID;
-    vec3 v = paraboloid_project(positionRelativeToCamera, distToCamera, vplNormal, zFar, ismIndex, ismIndices1d);
+    vec3 v = paraboloid_project(positionRelativeToCamera, distToCamera, vplNormal, zFar, ismIndex, ismIndices1d, true);
+    bool cull = v.z <= 0.0;
 
     // to tex and NDC coords
     v.xy = v.xy * 2.0 - 1.0;
     v.z = v.z * 2.0 - 1.0;
 
-
-    gl_Position = vec4(0.5 * length(vplNormal + vplPosition) * 0.0000001, 0.5, 0.5, 1.0);
     gl_Position = vec4(v, 1.0);
 
     float pointsPerMeter = 20.0; // actual number unknown, needs to be calculated during tesselation
@@ -77,6 +62,6 @@ void main()
     float maximumPointSize = 10.0;
     pointSize = min(pointSize, maximumPointSize);
 
-    gl_PointSize = pointSize;
+    gl_PointSize = pointSize * float(!cull);
     EmitVertex();
 }

@@ -90,7 +90,6 @@ void main()
         uint vplIndex = imageLoad(lightLists, ivec2(compactClusterID, lightListIndex)).r;
         VPL vpl = vplBuffer[vplIndex];
 
-        vec3 vplNormal = vpl.normal.xyz;
         vec3 diff = fragWorldCoord - vpl.position.xyz ;
         float dist = length(diff);
         vec3 normalizedDiff = diff / dist;
@@ -101,14 +100,14 @@ void main()
         acc += debugSplotch * float(showVPLPositions);
 
         // geometry term
-        float angleFactor = max(0.0, dot(vplNormal, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff));
+        float angleFactor = max(0.0, dot(vpl.normal.xyz, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff));
         float attenuation = 1.0 / pow(dist, 4.0);
         float geometryTerm = angleFactor * attenuation;
         geometryTerm = min(geometryTerm, vplClampingValue);
 
         // ISM shadowing
         float ismIndex = vplIndex - ismIndexOffset;
-        vec3 v = paraboloid_project(diff, dist, vplNormal, zFar, ismIndex, ismIndices1d);
+        vec3 v = paraboloid_project(diff, dist, vpl.normal.xyz, zFar, ismIndex, ismIndices1d, false);
         float occluderDepth = textureLod(ismDepthSampler, v.xy, 0).x;
         float shadowValue = v.z - occluderDepth;
         shadowValue = smoothstep(0.95, 1.0, 1 - shadowValue);
