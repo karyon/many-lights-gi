@@ -33,12 +33,6 @@ Shadowmap::Shadowmap()
         globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/shadowmapping_nonomni.vert"),
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/shadowmapping.frag"));
 
-    m_blurProgram = new globjects::Program();
-    m_blurProgram->attach(
-        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/cubemapblur.vert"),
-        globjects::Shader::fromFile(GL_GEOMETRY_SHADER, "data/shaders/cubemapblur.geom"),
-        globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/cubemapblur.frag"));
-
     m_fbo = new globjects::Framebuffer();
     vsmBuffer = globjects::Texture::createDefault();
     depthBuffer = globjects::Texture::createDefault();
@@ -46,14 +40,6 @@ Shadowmap::Shadowmap()
 
 	vsmBuffer->setName("Shadowmap VSM");
 	depthBuffer->setName("Shadowmap Depth");
-
-    m_blurredFbo = new globjects::Framebuffer();
-    m_colorTextureBlur = globjects::Texture::createDefault();
-    setupSimpleFbo(*m_blurredFbo, *m_colorTextureBlur, size);
-
-    m_blurredFboTemp = new globjects::Framebuffer();
-    m_colorTextureBlurTemp = globjects::Texture::createDefault();
-    setupSimpleFbo(*m_blurredFboTemp, *m_colorTextureBlurTemp, size);
 }
 
 Shadowmap::~Shadowmap()
@@ -116,36 +102,6 @@ void Shadowmap::render(const glm::vec3 &eye, const glm::mat4 &viewProjection, co
     }
 
     m_shadowmapProgram->release();
-
-    //m_blurProgram->setUniform("transform", projection*view);
-    //m_blurProgram->setUniform("sizeFactor", 1.0f / size);
-    //m_blurProgram->setUniform("kernelsize", m_blurSize);
-    //m_blurProgram->setUniform("shadowMap", 0);
-
-    //// blur x pass
-    //m_blurProgram->use();
-
-    //m_blurredFboTemp->bind();
-    //m_colorTexture->bindActive(GL_TEXTURE0);
-    //m_blurProgram->setUniform("direction", glm::vec2(1.0f, 0.0f));
-
-    //m_cube->draw();
-
-    //// blur y pass
-    //m_blurredFbo->bind();
-    //m_colorTextureBlurTemp->bindActive(GL_TEXTURE0);
-    //m_blurProgram->setUniform("direction", glm::vec2(0.0f, 1.0f));
-
-    //m_cube->draw();
-
-    //m_colorTextureBlurTemp->unbindActive(GL_TEXTURE0);
-    //m_blurProgram->release();
-    //m_blurredFbo->unbind();
-}
-
-void Shadowmap::setBlurSize(int blurSize)
-{
-    m_blurSize = blurSize;
 }
 
 globjects::Program* Shadowmap::program() const

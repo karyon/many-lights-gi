@@ -42,7 +42,7 @@ VPLProcessor::VPLProcessor()
     m_program = new globjects::Program();
 
     m_program->attach(
-        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/vpl_processor.comp")
+        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/gi/vpl_processor.comp")
     );
 
     vplBuffer = new globjects::Buffer();

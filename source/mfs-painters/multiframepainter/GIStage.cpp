@@ -184,9 +184,7 @@ void GIStage::initialize()
 
     auto program = new globjects::Program();
     program->attach(
-        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/gi.comp")
-        //globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/deferredshading.vert"),
-        //globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi.frag")
+        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/gi/gi.comp")
     );
 
     m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(program);
@@ -205,11 +203,11 @@ void GIStage::initialize()
     m_blurFinalFbo->attachTexture(GL_COLOR_ATTACHMENT0, giBlurFinalBuffer);
 
     globjects::Shader::globalReplace("#define DIRECTION ivec2(0,0)", "#define DIRECTION ivec2(1,0)");
-    auto blurFragShaderX = globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi_blur.frag");
+    auto blurFragShaderX = globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi/gi_blur.frag");
 
     globjects::Shader::clearGlobalReplacements();
     globjects::Shader::globalReplace("#define DIRECTION ivec2(0,0)", "#define DIRECTION ivec2(0,1)");
-    auto blurFragShaderY = globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi_blur.frag");
+    auto blurFragShaderY = globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi/gi_blur.frag");
 
     auto blurXProgram = new globjects::Program();
     blurXProgram->attach(

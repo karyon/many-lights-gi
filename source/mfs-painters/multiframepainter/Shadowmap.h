@@ -26,7 +26,6 @@ public:
     ~Shadowmap();
 
     void render(const glm::vec3 &eye, const glm::mat4 &viewProjection, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const;
-    void setBlurSize(int blurSize);
 
     globjects::Program * program() const;
 
@@ -43,12 +42,5 @@ protected:
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<globjects::Framebuffer> m_fboFaces;
 
-    globjects::ref_ptr<globjects::Framebuffer> m_blurredFboTemp;
-    globjects::ref_ptr<globjects::Texture> m_colorTextureBlurTemp;
-
-    globjects::ref_ptr<globjects::Framebuffer> m_blurredFbo;
-    globjects::ref_ptr<globjects::Texture> m_colorTextureBlur;
-
     globjects::ref_ptr<globjects::Program> m_shadowmapProgram;
-	globjects::ref_ptr<globjects::Program> m_blurProgram;
 };

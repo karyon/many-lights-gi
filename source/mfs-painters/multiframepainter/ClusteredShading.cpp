@@ -36,7 +36,7 @@ ClusteredShading::ClusteredShading()
 
     m_clusterIDProgram = new globjects::Program();
     m_clusterIDProgram->attach(
-        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/cluster_ids.comp")
+        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/clustered_shading/cluster_ids.comp")
     );
 
     usedClustersPerTile = globjects::Texture::createDefault(GL_TEXTURE_3D);
@@ -44,7 +44,7 @@ ClusteredShading::ClusteredShading()
 
     m_usedClusterIDsPerTileProgram = new globjects::Program();
     m_usedClusterIDsPerTileProgram->attach(
-        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/used_clusters_per_tile.comp")
+        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/clustered_shading/used_clusters_per_tile.comp")
     );
 
     compactUsedClusterIDs = globjects::Texture::createDefault(GL_TEXTURE_1D);
@@ -54,7 +54,7 @@ ClusteredShading::ClusteredShading()
 
     m_compactUsedClusterIDsPerTileProgram = new globjects::Program();
     m_compactUsedClusterIDsPerTileProgram->attach(
-        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/compact_used_clusters_per_tile.comp")
+        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/clustered_shading/compact_used_clusters_per_tile.comp")
     );
 
     m_atomicCounter = new globjects::Buffer();
@@ -63,7 +63,7 @@ ClusteredShading::ClusteredShading()
 
     m_lightListsProgram = new globjects::Program();
     m_lightListsProgram->attach(
-        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/light_lists.comp")
+        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/clustered_shading/light_lists.comp")
     );
 
     //lightListsBuffer = new globjects::Buffer();

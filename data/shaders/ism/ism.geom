@@ -2,8 +2,8 @@
 
 #extension GL_ARB_shading_language_include : require
 #include </data/shaders/common/random.glsl>
-#include </data/shaders/common/ism_utils.glsl>
 #include </data/shaders/common/floatpacking.glsl>
+#include </data/shaders/ism/ism_utils.glsl>
 
 
 layout(points) in;

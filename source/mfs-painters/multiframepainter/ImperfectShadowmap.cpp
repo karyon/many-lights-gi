@@ -36,19 +36,13 @@ ImperfectShadowmap::ImperfectShadowmap()
 {
     m_shadowmapProgram = new globjects::Program();
     m_shadowmapProgram->attach(
-        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/ism.vert"),
-        globjects::Shader::fromFile(GL_TESS_CONTROL_SHADER, "data/shaders/ism.tesc"),
-        globjects::Shader::fromFile(GL_TESS_EVALUATION_SHADER, "data/shaders/ism.tese"),
-        globjects::Shader::fromFile(GL_GEOMETRY_SHADER, "data/shaders/ism.geom"),
+        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/ism/ism.vert"),
+        globjects::Shader::fromFile(GL_TESS_CONTROL_SHADER, "data/shaders/ism/ism.tesc"),
+        globjects::Shader::fromFile(GL_TESS_EVALUATION_SHADER, "data/shaders/ism/ism.tese"),
+        globjects::Shader::fromFile(GL_GEOMETRY_SHADER, "data/shaders/ism/ism.geom"),
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/empty.frag")
     );
 
-    m_blurProgram = new globjects::Program();
-    m_blurProgram->attach(
-        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/cubemapblur.vert"),
-        globjects::Shader::fromFile(GL_GEOMETRY_SHADER, "data/shaders/cubemapblur.geom"),
-        globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/cubemapblur.frag")
-    );
 
     m_fbo = new globjects::Framebuffer();
     depthBuffer = globjects::Texture::createDefault();
@@ -58,22 +52,9 @@ ImperfectShadowmap::ImperfectShadowmap()
     m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depthBuffer);
 
     m_fbo->printStatus(true);
-
-    //m_blurredFbo = new globjects::Framebuffer();
-    //m_colorTextureBlur = globjects::Texture::createDefault();
-    //setupSimpleFbo(*m_blurredFbo, *m_colorTextureBlur, size);
-
-    //m_blurredFboTemp = new globjects::Framebuffer();
-    //m_colorTextureBlurTemp = globjects::Texture::createDefault();
-    //setupSimpleFbo(*m_blurredFboTemp, *m_colorTextureBlurTemp, size);
 }
 
 ImperfectShadowmap::~ImperfectShadowmap()
-{
-
-}
-
-void ImperfectShadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Texture& depthBuffer, int size)
 {
 
 }
@@ -116,28 +97,4 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
 
     m_shadowmapProgram->release();
 
-    //m_blurProgram->setUniform("transform", projection*view);
-    //m_blurProgram->setUniform("sizeFactor", 1.0f / size);
-    //m_blurProgram->setUniform("kernelsize", m_blurSize);
-    //m_blurProgram->setUniform("shadowMap", 0);
-
-    //// blur x pass
-    //m_blurProgram->use();
-
-    //m_blurredFboTemp->bind();
-    //m_colorTexture->bindActive(GL_TEXTURE0);
-    //m_blurProgram->setUniform("direction", glm::vec2(1.0f, 0.0f));
-
-    //m_cube->draw();
-
-    //// blur y pass
-    //m_blurredFbo->bind();
-    //m_colorTextureBlurTemp->bindActive(GL_TEXTURE0);
-    //m_blurProgram->setUniform("direction", glm::vec2(0.0f, 1.0f));
-
-    //m_cube->draw();
-
-    //m_colorTextureBlurTemp->unbindActive(GL_TEXTURE0);
-    //m_blurProgram->release();
-    //m_blurredFbo->unbind();
 }
