@@ -90,7 +90,7 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
 
     m_fbo->clearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
 
-    vplProcessor.vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
+    vplProcessor.packedVplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
 
     m_shadowmapProgram->setUniform("viewport", glm::ivec2(size, size));
     m_shadowmapProgram->setUniform("zFar", zFar);

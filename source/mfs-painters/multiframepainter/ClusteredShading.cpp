@@ -122,6 +122,7 @@ void ClusteredShading::process(
         compactUsedClusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32UI);
         lightLists->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(0));
         lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
+        vplProcessor.packedVplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
         clusterCorners->bindImageTexture(2, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
         m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
         //lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI); //uncomment this line to get the crash

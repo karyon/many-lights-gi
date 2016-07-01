@@ -26,9 +26,14 @@ namespace
     const int maxVPLCount = 1024;
 }
 
+struct packedVPL {
+    glm::vec4 positionNormal;
+    // no color, ISMs / culling doesn't need it
+};
 
 struct vpl {
     glm::vec4 position;
+    glm::vec4 normal;
     glm::vec4 color;
 };
 
@@ -42,6 +47,10 @@ VPLProcessor::VPLProcessor()
 
     vplBuffer = new globjects::Buffer();
     vplBuffer->setData(sizeof(vpl) * maxVPLCount, nullptr, GL_STATIC_DRAW);
+
+    packedVplBuffer = new globjects::Buffer();
+    packedVplBuffer->setData(sizeof(packedVPL) * maxVPLCount, nullptr, GL_STATIC_DRAW);
+
 
     std::vector<int> v(maxVPLCount);
     std::iota(v.begin(), v.end(), 0);
@@ -81,6 +90,7 @@ void VPLProcessor::process(const RasterizationStage& rsmRenderer, float lightInt
     m_program->setUniform("lightIntensity", lightIntensity);
 
     vplBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
+    packedVplBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 1);
     m_shuffledIndicesBuffer->bindBase(GL_UNIFORM_BUFFER, 1);
 
     int localSize = 64; // must match shader

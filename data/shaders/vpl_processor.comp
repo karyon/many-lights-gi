@@ -16,8 +16,9 @@ const int totalVplCount = 1024;
 layout (local_size_x = 64) in;
 
 struct VPL {
-	vec4 position;
-	vec4 color;
+    vec4 position;
+    vec4 normal;
+    vec4 color;
 };
 
 layout (std140, binding = 0) buffer vplBuffer_
@@ -25,9 +26,14 @@ layout (std140, binding = 0) buffer vplBuffer_
 	VPL vplBuffer[];
 };
 
+layout (std140, binding = 1) buffer packedVplBuffer_
+{
+    vec4 packedVplBuffer[];
+};
+
 layout (packed, binding = 1) uniform shuffledIndicesBuffer_
 {
-	int shuffledIndicesBuffer[totalVplCount];
+    int shuffledIndicesBuffer[totalVplCount];
 };
 
 const uint rsmSamples1d = uint(ceil(sqrt(totalVplCount)));
@@ -56,5 +62,6 @@ void main()
 
     resultIndex = shuffledIndicesBuffer[resultIndex];
     float packedNormal = Pack3PNForFP32(vec3(normal * 0.5 + 0.5));
-    vplBuffer[resultIndex] = VPL(vec4(worldcoords.xyz, packedNormal), vec4(lightColor, 0.0));
+    vplBuffer[resultIndex] = VPL(vec4(worldcoords.xyz, packedNormal), vec4(normal, 0.0), vec4(lightColor, 0.0));
+    packedVplBuffer[resultIndex] = vec4(worldcoords.xyz, packedNormal);
 }

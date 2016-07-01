@@ -22,6 +22,7 @@ public:
     void process(const RasterizationStage& rsmRenderer, float lightIntensity);
 
     globjects::ref_ptr<globjects::Buffer> vplBuffer;
+    globjects::ref_ptr<globjects::Buffer> packedVplBuffer;
     glm::mat4 biasedShadowTransform;
 
 private:

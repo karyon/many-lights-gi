@@ -14,9 +14,9 @@ struct VPL {
 };
 
 const int totalVplCount = 1024;
-layout (std140, binding = 0) uniform vplBuffer_
+layout (std140, binding = 0) uniform packedVplBuffer_
 {
-    VPL vplBuffer[totalVplCount];
+    vec4 packedVplBuffer[totalVplCount];
 };
 
 
@@ -47,11 +47,9 @@ void main()
     if (pointsOnlyIntoScaledISMs)
         vplID += vplIdOffset;
 
-    // vec3 vplNormal = vplBuffer[vplID].normal.xyz;
-    vec3 vplPosition = vplBuffer[vplID].position.xyz;
-    vec3 vplNormal = Unpack3PNFromFP32(vplBuffer[vplID].position.w).xyz * 2.0 - 1.0;
+    vec3 vplPosition = packedVplBuffer[vplID].xyz;
+    vec3 vplNormal = Unpack3PNFromFP32(packedVplBuffer[vplID].w) * 2.0 - 1.0;
     mat3 vplView = lookAtRH(vplNormal);
-    // vplNormal = unpackedNormal;
 
     // culling
     vec3 positionRelativeToCamera = position.xyz - vplPosition;
