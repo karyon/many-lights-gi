@@ -17,6 +17,16 @@ protected:
     static void addMeasurement(const std::string & name, uint64_t nanoseconds);
 };
 
+
+class AutoGLDebugGroup
+{
+public:
+    AutoGLDebugGroup(std::string name);
+    ~AutoGLDebugGroup();
+protected:
+    std::string m_name;
+};
+
 class AutoGLPerfCounter
 {
 public:
@@ -24,6 +34,7 @@ public:
     ~AutoGLPerfCounter();
 protected:
     std::string m_name;
+    AutoGLDebugGroup m_debugGroup;
 };
 
 class AutoPerfCounter

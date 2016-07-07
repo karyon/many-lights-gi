@@ -9,6 +9,10 @@
 
 #include <iozeug/FilePath.h>
 
+#include <glbinding/gl/functions.h>
+#include <glbinding/gl/enum.h>
+#include <glbinding/gl/boolean.h>
+
 #include <gloperate/resources/ResourceManager.h>
 #include <gloperate/base/registernamedstrings.h>
 #include <gloperate/painter/ViewportCapability.h>
@@ -81,6 +85,10 @@ MultiFramePainter::~MultiFramePainter()
 void MultiFramePainter::onInitialize()
 {
     gloperate::registerNamedStrings("data/shaders", "glsl", true);
+
+    // disable debug group console output
+    gl::glDebugMessageControl(gl::GL_DEBUG_SOURCE_APPLICATION, gl::GL_DEBUG_TYPE_PUSH_GROUP, gl::GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, gl::GL_FALSE);
+    gl::glDebugMessageControl(gl::GL_DEBUG_SOURCE_APPLICATION, gl::GL_DEBUG_TYPE_POP_GROUP, gl::GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, gl::GL_FALSE);
 
     kernelGenerationStage->initialize();
 

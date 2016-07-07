@@ -75,7 +75,7 @@ void DeferredShadingStage::initialize()
 
 void DeferredShadingStage::process()
 {
-    AutoGLPerfCounter c("Deferred Shading");
+    AutoGLPerfCounter c("Deferred");
 
     gl::glViewport(viewport->x(),
         viewport->y(),

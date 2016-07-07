@@ -106,6 +106,7 @@ void PerfCounter::addMeasurement(const std::string & name, uint64_t nanoseconds)
 
 AutoGLPerfCounter::AutoGLPerfCounter(std::string name)
 : m_name(name)
+, m_debugGroup(name)
 {
     PerfCounter::beginGL(m_name);
 }
@@ -114,6 +115,19 @@ AutoGLPerfCounter::~AutoGLPerfCounter()
 {
     PerfCounter::endGL(m_name);
 }
+
+
+AutoGLDebugGroup::AutoGLDebugGroup(std::string name)
+: m_name(name)
+{
+    glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, name.data());
+}
+
+AutoGLDebugGroup::~AutoGLDebugGroup()
+{
+    glPopDebugGroup();
+}
+
 
 AutoPerfCounter::AutoPerfCounter(std::string name)
 : m_name(name)

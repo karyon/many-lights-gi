@@ -377,7 +377,7 @@ void GIStage::process()
     }
 
     {
-        AutoGLPerfCounter c("VPL processing");
+        AutoGLPerfCounter c("VPLP");
         vplProcessor->process(*rsmRenderer.get(), lightIntensity);
     }
 

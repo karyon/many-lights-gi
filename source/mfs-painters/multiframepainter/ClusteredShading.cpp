@@ -100,14 +100,14 @@ void ClusteredShading::process(
         m_clusterIDProgram->dispatchCompute(viewport.x / 8 + 1, viewport.y / 8 + 1, 1);
     }
     {
-        AutoGLPerfCounter c("uniqueIDsPerTile");
+        AutoGLPerfCounter c("UniqueIDs");
         clusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R8UI);
         usedClustersPerTile->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(0));
         usedClustersPerTile->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R8UI);
         m_usedClusterIDsPerTileProgram->dispatchCompute(viewport.x / 8 + 1, viewport.y / 8 + 1, 1);
     }
     {
-        AutoGLPerfCounter c("compactIDs");
+        AutoGLPerfCounter c("CompactIDs");
         gl::GLuint zero = 0;
         m_atomicCounter->clearData(GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
 
@@ -118,7 +118,7 @@ void ClusteredShading::process(
         m_compactUsedClusterIDsPerTileProgram->dispatchCompute(m_numClustersX / 8 + 1, m_numClustersY / 8 + 1, 1);
     }
     {
-        AutoGLPerfCounter c("light lists");
+        AutoGLPerfCounter c("Light Lists");
         compactUsedClusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32UI);
         lightLists->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(0));
         lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
