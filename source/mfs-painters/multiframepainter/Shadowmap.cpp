@@ -38,8 +38,8 @@ Shadowmap::Shadowmap()
     depthBuffer = globjects::Texture::createDefault();
     setupFbo(*m_fbo, *vsmBuffer, *depthBuffer, size);
 
-	vsmBuffer->setName("Shadowmap VSM");
-	depthBuffer->setName("Shadowmap Depth");
+    vsmBuffer->setName("Shadowmap VSM");
+    depthBuffer->setName("Shadowmap Depth");
 }
 
 Shadowmap::~Shadowmap()
@@ -54,7 +54,7 @@ void Shadowmap::setupSimpleFbo(globjects::Framebuffer& fbo, globjects::Texture& 
     glm::vec4 color(0.0, 0.0, 1.0, 0.0); // third channel is alpha
     glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (float*)&color);
 
-    VSMBuffer.image2D(0, GL_RGBA32F, size, size, 0, GL_RGB, GL_FLOAT, nullptr);
+    VSMBuffer.storage2D(1, GL_RGBA32F, size, size);
     VSMBuffer.unbind();
     fbo.attachTexture(GL_COLOR_ATTACHMENT0, &VSMBuffer);
 }
@@ -65,7 +65,7 @@ void Shadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Texture& VSMBuf
 
 
     depthBuffer.bind();
-	depthBuffer.image2D(0, GL_DEPTH_COMPONENT, size, size, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    depthBuffer.storage2D(1, GL_DEPTH_COMPONENT24, size, size);
     depthBuffer.unbind();
     fbo.attachTexture(GL_DEPTH_ATTACHMENT, &depthBuffer);
 

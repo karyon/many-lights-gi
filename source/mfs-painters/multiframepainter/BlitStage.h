@@ -40,6 +40,7 @@ public:
 
 protected:
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
-	std::string m_currentBuffer;
+    std::string m_currentBuffer;
+    int m_currentMipLevel;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_screenAlignedQuad;
 };

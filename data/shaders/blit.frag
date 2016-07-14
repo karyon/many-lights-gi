@@ -6,10 +6,11 @@ out vec3 outColor;
 
 uniform sampler2D someBuffer;
 uniform bool singleChannel;
+uniform int mipLevel;
 
 void main()
 {
-    outColor = texture(someBuffer, v_uv).rgb;
+    outColor = textureLod(someBuffer, v_uv, mipLevel).rgb;
 
     if (singleChannel)
         outColor = vec3(outColor.r);

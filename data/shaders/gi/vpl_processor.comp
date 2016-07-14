@@ -3,8 +3,6 @@
 #extension GL_ARB_shading_language_include : require
 #include </data/shaders/common/floatpacking.glsl>
 
-uniform writeonly image2D destTex;
-
 uniform sampler2D rsmDiffuseSampler;
 uniform sampler2D rsmNormalSampler;
 uniform sampler2D rsmDepthSampler;

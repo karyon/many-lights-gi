@@ -374,6 +374,7 @@ void GIStage::process()
     {
         AutoGLPerfCounter c("RSM");
         rsmRenderer->process();
+        rsmRenderer->viewport->setChanged(false);
     }
 
     {

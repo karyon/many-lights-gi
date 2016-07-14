@@ -31,6 +31,8 @@ void BlitStage::initialize()
     m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/blit.frag")
     );
+
+    m_currentMipLevel = 0;
 }
 
 
@@ -41,9 +43,14 @@ void BlitStage::initProperties(MultiFramePainter& painter)
         bufferNames.push_back(buffer->name());
     painter.addProperty<std::string>("Buffer",
         [this]() { return m_currentBuffer; },
-        [this](const std::string & buffer) {
-            m_currentBuffer = buffer;
+        [this](const std::string & value) {
+            m_currentBuffer = value;
         })->setOption("choices", bufferNames);
+    painter.addProperty<int>("MipLevel",
+        [this]() { return m_currentMipLevel; },
+        [this](const int & value) {
+            m_currentMipLevel = value;
+    });
 }
 
 void BlitStage::process()
@@ -59,8 +66,16 @@ void BlitStage::process()
         }
     }
 
-    bool singleChannel = m_currentBuffer.find("Occlusion") != std::string::npos || m_currentBuffer.find("Depth") != std::string::npos;
+    bool singleChannel =
+        m_currentBuffer.find("Occlusion") != std::string::npos ||
+        m_currentBuffer.find("Pull") != std::string::npos ||
+        m_currentBuffer.find("Push") != std::string::npos ||
+        m_currentBuffer.find("Depth") != std::string::npos;
     m_screenAlignedQuad->program()->setUniform("singleChannel", singleChannel);
+
+    buffer->bindActive(0);
+    m_screenAlignedQuad->program()->setUniform("someBuffer", 0);
+    m_screenAlignedQuad->program()->setUniform("mipLevel", m_currentMipLevel);
 
     auto rect = std::array<GLint, 4>{ {
         viewport->x(),
@@ -71,8 +86,6 @@ void BlitStage::process()
 
     glDepthMask(GL_FALSE);
     glDisable(GL_DEPTH_TEST);
-
-    buffer->bindActive(0);
 
     m_screenAlignedQuad->draw();
 
