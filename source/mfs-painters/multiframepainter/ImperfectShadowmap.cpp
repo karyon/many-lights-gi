@@ -79,6 +79,8 @@ ImperfectShadowmap::ImperfectShadowmap()
     pushBuffer = new globjects::Texture(GL_TEXTURE_2D);
     pushBuffer->setName("Push Buffer");
     pushBuffer->storage2D(10, GL_RGBA32F, size, size);
+    pushBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST_MIPMAP_NEAREST);
+    pushBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
 
     m_atomicCounter = new globjects::Buffer();
     m_atomicCounter->setName("atomic counter");

@@ -37,17 +37,15 @@ void main()
         # endif
 
         // radius check
-        vec2 pointOrigin = (vec2(pixelCoordinate * 2 + offsets[i]) + displacementVector);
-
         //TODO read radius from texture
-        float pointsPerMeter = 4.0; // actual number unknown, needs to be calculated during tesselation
+        float pointsPerMeter = 9.0; // actual number unknown, needs to be calculated during tesselation
         float distToCamera = depthSample * 50;
         float pointSize = 1.0 / pointsPerMeter / distToCamera / 3.14 * 2048; // approximation that breaks especially for near points.
-        // float maximumPointSize = 20.0;
-        // pointSize = min(pointSize, maximumPointSize);
+        float maximumPointSize = 6.0;
+        pointSize = min(pointSize, maximumPointSize);
 
         float radius = pointSize;
-        vec2 newDisplacementVector = vec2(pixelCoordinate) * 2 + 0.5 - pointOrigin;
+        vec2 newDisplacementVector = -offsets[i] + 0.5 + displacementVector / 2;
         float dist = length(newDisplacementVector);
 
         ivec2 coarserLevelSize = imageSize(img_output) * 2;
@@ -56,8 +54,9 @@ void main()
 
         depthSamples[i] = depthSample;
         maxDepths[i] = maxDepth;
-        displacementVectors[i] = displacementVector;
-        valid[i] = dist <= radius * 1 && depthSample != 1.0;
+        displacementVectors[i] = newDisplacementVector;
+        valid[i] = dist <= radius * 1 && depthSample != 1.0; // TODO the radius check basically does nothing.
+        // valid[i] = true; // TODO the radius check basically does nothing.
     }
 
     float minimum = 9001;
@@ -84,7 +83,7 @@ void main()
             continue;
 
         depthAcc += depthSamples[i];
-        displacementAcc += (displacementVectors[i] + (-offsets[i] + 0.5)) / 2;
+        displacementAcc += (displacementVectors[i]);
         maxValidMaxDepth = max(maxValidMaxDepth, maxDepths[i]);
         numValid++;
     }
