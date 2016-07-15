@@ -15,6 +15,11 @@ layout (std140, binding = 0) uniform packedVplBuffer_
     vec4 vplPositionNormalBuffer[totalVplCount];
 };
 
+layout (std140, binding = 0) buffer atomicBuffer_
+{
+	uint atomicCounter;
+};
+
 uniform ivec2 viewport;
 uniform float zFar;
 
@@ -36,7 +41,10 @@ void main()
 {
     vec4 position = gl_in[0].gl_Position;
 
+    uint counter = atomicAdd(atomicCounter, 1);
+
     int vplID = (int(rand(position.xyz) * sampledVplCount) + gl_PrimitiveIDIn) % sampledVplCount;
+    // vplID = int(counter) % 1024;
     if (pointsOnlyIntoScaledISMs)
         vplID += vplIdOffset;
 
@@ -57,11 +65,13 @@ void main()
 
     gl_Position = vec4(v, 1.0);
 
-    float pointsPerMeter = 20.0; // actual number unknown, needs to be calculated during tesselation
+    float pointsPerMeter = 10.0; // actual number unknown, needs to be calculated during tesselation
     float pointSize = 1.0 / pointsPerMeter / distToCamera / 3.14 * viewport.x; // approximation that breaks especially for near points.
     float maximumPointSize = 10.0;
     pointSize = min(pointSize, maximumPointSize);
 
-    gl_PointSize = pointSize * float(!cull);
+    pointSize *= float(!cull);
+    // pointSize = 1;
+    gl_PointSize = pointSize;
     EmitVertex();
 }

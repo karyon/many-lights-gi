@@ -27,15 +27,24 @@ public:
     ImperfectShadowmap();
     ~ImperfectShadowmap();
 
-    void render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, float zFar) const;
+    void process(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, float zFar) const;
 
     globjects::ref_ptr<globjects::Texture> depthBuffer;
+    globjects::ref_ptr<globjects::Texture> pullBuffer;
+    globjects::ref_ptr<globjects::Texture> pushBuffer;
 
 protected:
+    void render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, float zFar) const;
+    void pull() const;
 
     int m_blurSize;
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
 
     globjects::ref_ptr<globjects::Program> m_shadowmapProgram;
+    globjects::ref_ptr<globjects::Program> m_pullProgram;
+    globjects::ref_ptr<globjects::Program> m_pullFirstLevelProgram;
+    globjects::ref_ptr<globjects::Program> m_pushProgram;
+    globjects::ref_ptr<globjects::Program> m_pushFirstLevelProgram;
+    globjects::ref_ptr<globjects::Buffer> m_atomicCounter;
 };

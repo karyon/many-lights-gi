@@ -1,0 +1,114 @@
+#version 430
+
+#define READ_FROM_TEXTURE
+
+layout (local_size_x = 8, local_size_y = 8) in;
+
+layout (binding = 0) uniform sampler2D pullSameLevelTexture;
+layout (rgba32f, binding = 0) restrict readonly uniform image2D pullSameLevelImage;
+layout (rgba32f, binding = 1) restrict readonly uniform image2D coarserLevel;
+layout (rgba32f, binding = 2) restrict writeonly uniform image2D img_output;
+
+
+vec4 read(ivec2 pixelCoordinate)
+{
+    # ifdef READ_FROM_TEXTURE
+        return texelFetch(pullSameLevelTexture, pixelCoordinate, 0);
+    # else
+        return imageLoad(pullSameLevelImage, pixelCoordinate);
+    # endif
+}
+
+void main()
+{
+    ivec2 pixelCoordinate = ivec2(gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy);
+
+    vec4 origSample = read(pixelCoordinate);
+
+    bool invalid = origSample.r == 1.0;
+
+    vec4 coarserSample = imageLoad(coarserLevel, pixelCoordinate / 2);
+    bool coarserSampleInvalid = coarserSample.r == 1.0;
+    bool occluded = origSample.r > coarserSample.g;
+
+    vec4 result = vec4(0.0);
+    float depthAverage = 0.0;
+    vec2 displacementAverage = vec2(0.0);
+    float maxDepthAverage = 0.0;
+    if (coarserSampleInvalid) {
+        if (invalid)
+            result = vec4(1.0, 0.0, 0.0, 0.0);
+        else
+            result = origSample;
+    }
+    else if (!invalid && !occluded) {
+        result = origSample;
+    }
+    else {
+        ivec2 pixelInCoarserPixel = pixelCoordinate % 2;
+        ivec2 offset = pixelInCoarserPixel * 2 - 1; // -1 or 1
+
+        float depthAcc = 0.0;
+        vec2 displacementAcc = vec2(0.0);
+        int weightAcc = 0;
+
+        ivec2[4] offsets = { {0,0}, {0,1}, {1,0}, {1,1} };
+        int[4] weights = { 9, 3, 3, 1};
+
+        // iteration 0
+        if (coarserSample.r != 1.0) {
+            // depthAcc += coarserSample.r * weights[0];
+            // weightAcc += weights[0];
+        }
+        ivec2 origTexCoord = pixelCoordinate / 2;
+        ivec2 coarserLevelSize = imageSize(coarserLevel);
+        ivec2 sizePerISM = coarserLevelSize / 32;
+        for (int i = 0; i < 4; i++) {
+            ivec2 texCoord = pixelCoordinate / 2 + offset * offsets[i];
+            // don't go over ISM borders
+            // convert to vec2 to not do integer divisions
+            if (floor(vec2(origTexCoord + sizePerISM) / sizePerISM) != floor(vec2(texCoord+sizePerISM) / sizePerISM))
+                weights[i] = 0;
+
+            vec4 coarserSample2 = imageLoad(coarserLevel, texCoord);
+            bool invalid = coarserSample2.r == 1.0;
+            if (invalid)
+                weights[i] = 0;
+
+            // radius check
+            vec2 pointOrigin = (vec2(texCoord) + coarserSample2.ba);
+
+            //TODO read radius from texture
+            float pointsPerMeter = 4.0; // actual number unknown, needs to be calculated during tesselation
+            float distToCamera = coarserSample2.r * 50;
+            float pointSize = 1.0 / pointsPerMeter / distToCamera / 3.14 * 2048; // approximation that breaks especially for near points.
+            float maximumPointSize = 20.0;
+
+            // TODO too complex, might be buggy. maybe do it always in full res coordinates.
+            float radius = pointSize;
+            vec2 newDisplacementVector = vec2(pixelCoordinate / 2 + offset * 0.25) - pointOrigin;
+            float dist = length(newDisplacementVector);
+
+            radius *= float(sizePerISM.x) / 64;
+            //TODO get radius to 1
+            if (dist > radius * 1)
+                weights[i] = 0;
+
+            depthAcc += coarserSample2.r * weights[i];
+            displacementAcc += newDisplacementVector * weights[i];
+            maxDepthAverage += coarserSample2.g * weights[i];
+            weightAcc += weights[i];
+        }
+
+        if (weightAcc != 0) {
+            result.r = depthAcc / weightAcc;
+            result.g = maxDepthAverage / weightAcc;
+            result.ba = displacementAcc / weightAcc;
+        } else {
+            result = vec4(1.0, 0.0, 0.0, 0.0);
+        }
+
+    }
+    // result = origSample;
+    imageStore(img_output, pixelCoordinate, vec4(result));
+}

@@ -271,7 +271,7 @@ void GIStage::render()
 
     faceNormalBuffer->bindActive(0);
     depthBuffer->bindActive(1);
-    ism->depthBuffer->bindActive(2);
+    ism->pushBuffer->bindActive(2);
 
 
     vplProcessor->vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
@@ -383,8 +383,7 @@ void GIStage::process()
     }
 
     {
-        AutoGLPerfCounter c("ISM");
-        ism->render(modelLoadingStage.getDrawablesMap(), *vplProcessor.get(), vplStartIndex, vplEndIndex, scaleISMs, pointsOnlyIntoScaledISMs, tessLevelFactor, m_lightProjection->zFar());
+        ism->process(modelLoadingStage.getDrawablesMap(), *vplProcessor.get(), vplStartIndex, vplEndIndex, scaleISMs, pointsOnlyIntoScaledISMs, tessLevelFactor, m_lightProjection->zFar());
     }
 
     gl::glViewport(viewport->x(),
