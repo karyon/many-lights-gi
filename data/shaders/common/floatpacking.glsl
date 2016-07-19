@@ -4,47 +4,69 @@
 // based on http://diaryofagraphicsprogrammer.blogspot.de/2009/10/bitmasks-packing-data-into-fp-render.html
 float Pack3PNForFP32(vec3 channel)
 {
- // layout of a 32-bit fp register
- // SEEEEEEEEMMMMMMMMMMMMMMMMMMMMMMM
- // 1 sign bit; 8 bits for the exponent and 23 bits for the mantissa
  uint uValue;
 
- // pack x
- uValue = (uint(channel.x * 1023.0 + 0.5)); // goes from bit 0 to 15
+ uValue = (uint(channel.x * 1023.0 + 0.5));
 
- // pack y in EMMMMMMM
  uValue |= (uint(channel.y * 1023.0 + 0.5)) << 10;
 
- // pack z in SEEEEEEE
- // the last E will never be 1b because the upper value is 254
- // max value is 11111110 == 254
- // this prevents the bits of the exponents to become all 1
- // range is 1.. 254
  // to prevent an exponent that is 0 we add 1.0
  uValue |= (uint(channel.z * 1021.0 + 1.5)) << 20;
 
  return uintBitsToFloat(uValue);
 }
 
-// unpack three positive normalized values from a 32-bit float
 vec3 Unpack3PNFromFP32(float fFloatFromFP32)
 {
- float a, b, c, d;
+ float a, b, c;
  uint uValue;
 
  uint uInputFloat = floatBitsToUint(fFloatFromFP32);
 
- // unpack a
- // mask out all the stuff above 16-bit with 0xFFFF
  a = float((uInputFloat) & 0x3FFu) / 1023.0;
 
  b = float((uInputFloat >> 10) & 0x3FFu) / 1023.0;
 
- // extract the 1..254 value range and subtract 1
- // ending up with 0..253
  c = (float((uInputFloat >> 20) & 0x3FFu) - 1.5) / 1021.0;
 
  return vec3(a, b, c);
+}
+
+// don't use [un]packHalf2x16 as that wastes exponent and sign on normalized values
+float Pack2PNForFP32(vec2 channel)
+{
+ uint uValue;
+
+ uValue = (uint(channel.x * 65535.0 + 0.5));
+
+ // to prevent an exponent that is 0 we add 1.0
+ uValue |= (uint(channel.y * 65533.0 + 1.5)) << 16;
+
+ return uintBitsToFloat(uValue);
+}
+
+vec2 Unpack2PNFromFP32(float fFloatFromFP32)
+{
+ float a, b;
+ uint uValue;
+
+ uint uInputFloat = floatBitsToUint(fFloatFromFP32);
+
+ a = float((uInputFloat) & 0xFFFFu) / 65535.0;
+
+ b = float((uInputFloat >> 16) & 0xFFFFu) / 65535.0;
+
+ return vec2(a, b);
+}
+
+float Pack2ForFP32(vec2 channel)
+{
+  return uintBitsToFloat(packHalf2x16(channel));
+}
+
+vec2 Unpack2FromFP32(float fFloatFromFP32)
+{
+  return unpackHalf2x16(floatBitsToUint(fFloatFromFP32));
 }
 
 #endif

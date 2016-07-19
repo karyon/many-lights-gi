@@ -9,6 +9,8 @@
 layout(points) in;
 layout(points, max_vertices = 1) out;
 
+out float g_radius;
+
 const int totalVplCount = 1024;
 layout (std140, binding = 0) uniform packedVplBuffer_
 {
@@ -65,13 +67,14 @@ void main()
 
     gl_Position = vec4(v, 1.0);
 
-    float pointsPerMeter = 10.0; // actual number unknown, needs to be calculated during tesselation
+    float pointsPerMeter = 5.0; // actual number unknown, needs to be calculated during tesselation
     float pointSize = 1.0 / pointsPerMeter / distToCamera / 3.14 * viewport.x; // approximation that breaks especially for near points.
-    float maximumPointSize = 10.0;
+    float maximumPointSize = 15.0;
     pointSize = min(pointSize, maximumPointSize);
 
+    g_radius = pointSize;
+    pointSize = 1;
     pointSize *= float(!cull);
-    // pointSize = 1;
     gl_PointSize = pointSize;
     EmitVertex();
 }

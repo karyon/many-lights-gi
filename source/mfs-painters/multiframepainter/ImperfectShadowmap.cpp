@@ -41,7 +41,7 @@ ImperfectShadowmap::ImperfectShadowmap()
         globjects::Shader::fromFile(GL_TESS_CONTROL_SHADER, "data/shaders/ism/ism.tesc"),
         globjects::Shader::fromFile(GL_TESS_EVALUATION_SHADER, "data/shaders/ism/ism.tese"),
         globjects::Shader::fromFile(GL_GEOMETRY_SHADER, "data/shaders/ism/ism.geom"),
-        globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/empty.frag")
+        globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/ism/ism.frag")
     );
 
     m_pullFirstLevelProgram = new globjects::Program();
@@ -65,9 +65,15 @@ ImperfectShadowmap::ImperfectShadowmap()
     depthBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
     depthBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
     depthBuffer->setName("ISM Depth");
-
-    depthBuffer->storage2D(3, GL_DEPTH_COMPONENT32F, size, size);
+    depthBuffer->storage2D(1, GL_DEPTH_COMPONENT32F, size, size);
     m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depthBuffer);
+
+    attributeBuffer = globjects::Texture::createDefault();
+    attributeBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
+    attributeBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
+    attributeBuffer->setName("ISM Attributes");
+    attributeBuffer->storage2D(1, GL_R32F, size, size);
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, attributeBuffer);
 
     m_fbo->printStatus(true);
 
@@ -97,6 +103,7 @@ void ImperfectShadowmap::pull() const
     AutoGLDebugGroup c("ISM pushpull");
 
     depthBuffer->bindActive(0);
+    attributeBuffer->bindActive(1);
 
     // TODO investigate why 2nd level is only 2 times faster
     // TODO maybe merge this and let one dispatch do multiple levels

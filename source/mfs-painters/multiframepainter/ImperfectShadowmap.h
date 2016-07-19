@@ -30,6 +30,7 @@ public:
     void process(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, float zFar) const;
 
     globjects::ref_ptr<globjects::Texture> depthBuffer;
+    globjects::ref_ptr<globjects::Texture> attributeBuffer;
     globjects::ref_ptr<globjects::Texture> pullBuffer;
     globjects::ref_ptr<globjects::Texture> pushBuffer;
 

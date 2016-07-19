@@ -1,16 +1,16 @@
 #version 430
 
+#extension GL_ARB_shading_language_include : require
+#include </data/shaders/common/floatpacking.glsl>
+
 #define READ_FROM_TEXTURE
 
 layout (local_size_x = 8, local_size_y = 8) in;
 
 layout (binding = 0) uniform sampler2D ismDepthTexture;
+layout (binding = 1) uniform sampler2D ismAttributeTexture;
 layout (rgba32f, binding = 0) restrict readonly uniform image2D ismDepthImage;
 layout (rgba32f, binding = 1) restrict writeonly uniform image2D img_output;
-
-
-
-const float radius = 0.005; // TODO this is totally arbitrary
 
 
 void main()
@@ -21,41 +21,38 @@ void main()
 
     float[4] depthSamples;
     float[4] maxDepths;
+    float[4] radiuses;
     vec2[4] displacementVectors;
     bool[4] valid;
     for (int i = 0; i < 4; i++) {
         # ifdef READ_FROM_TEXTURE
             float depthSample = texelFetch(ismDepthTexture, pixelCoordinate * 2 + offsets[i], 0).r;
             // TODO actually read radius from color buffer. small triangles have smaller radiuses than the tesselation results.
-            float maxDepth = depthSample + radius;
+            float radius = texelFetch(ismAttributeTexture, pixelCoordinate * 2 + offsets[i], 0).r;
+            //  radius = 1;
+            float maxDepth = depthSample + 0.005; // TODO use radius somehow instead?
             vec2 displacementVector = vec2(0.0);
         # else
             vec4 read = imageLoad(ismDepthImage, pixelCoordinate * 2 + offsets[i]);
             float depthSample = read.r;
             float maxDepth = read.g;
-            vec2 displacementVector = read.ba;
+            float radius = read.b;
+            vec2 displacementVector = Unpack2FromFP32(read.a);
         # endif
 
         // radius check
-        //TODO read radius from texture
-        float pointsPerMeter = 9.0; // actual number unknown, needs to be calculated during tesselation
-        float distToCamera = depthSample * 50;
-        float pointSize = 1.0 / pointsPerMeter / distToCamera / 3.14 * 2048; // approximation that breaks especially for near points.
-        float maximumPointSize = 6.0;
-        pointSize = min(pointSize, maximumPointSize);
-
-        float radius = pointSize;
         vec2 newDisplacementVector = -offsets[i] + 0.5 + displacementVector / 2;
         float dist = length(newDisplacementVector);
 
         ivec2 coarserLevelSize = imageSize(img_output) * 2;
         ivec2 sizePerISM = coarserLevelSize / 32;
-        radius *= float(sizePerISM.x) / 64;
+        float scaledRadius = radius * float(sizePerISM.x) / 64;
 
         depthSamples[i] = depthSample;
         maxDepths[i] = maxDepth;
-        displacementVectors[i] = newDisplacementVector;
-        valid[i] = dist <= radius * 1 && depthSample != 1.0; // TODO the radius check basically does nothing.
+        radiuses[i] = radius;
+        displacementVectors[i] = newDisplacementVector; // TODO blocky results, but are round when displacment vector set to 0
+        valid[i] = dist <= scaledRadius * 1 && depthSample != 1.0; // TODO the radius check basically does nothing.
         // valid[i] = true; // TODO the radius check basically does nothing.
     }
 
@@ -75,6 +72,7 @@ void main()
     }
 
     float depthAcc = 0.0;
+    float radiusAcc = 0.0;
     vec2 displacementAcc = vec2(0.0);
     uint numValid = 0;
     float maxValidMaxDepth = 0.0;
@@ -83,7 +81,8 @@ void main()
             continue;
 
         depthAcc += depthSamples[i];
-        displacementAcc += (displacementVectors[i]);
+        displacementAcc += displacementVectors[i];
+        radiusAcc += radiuses[i];
         maxValidMaxDepth = max(maxValidMaxDepth, maxDepths[i]);
         numValid++;
     }
@@ -92,7 +91,8 @@ void main()
     if (numValid > 0) {
         result.r = depthAcc / numValid;
         result.g = maxValidMaxDepth;
-        result.ba = displacementAcc / numValid;
+        result.b = radiusAcc / numValid;
+        result.a = Pack2ForFP32(displacementAcc / numValid);
     } else {
         result = vec4(1.0, 0.0, 0.0, 0.0);
     }
