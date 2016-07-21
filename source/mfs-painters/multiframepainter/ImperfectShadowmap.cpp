@@ -2,6 +2,7 @@
 
 #include <limits>
 #include <memory>
+#include <iostream>
 
 #include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
@@ -156,6 +157,8 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     m_fbo->bind();
 
     m_fbo->clearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
+
+    m_fbo->clearBuffer(GL_COLOR, 0, glm::vec4(0.0f));
 
     vplProcessor.packedVplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
     m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);

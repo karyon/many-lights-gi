@@ -1,10 +1,10 @@
 #version 330
 
-in float g_radius;
+in float g_normalRadius;
 
-layout(location = 0) out float outRadius;
+layout(location = 0) out float outNormalRadius;
 
 void main()
 {
-    outRadius = g_radius;
+    outNormalRadius = g_normalRadius;
 }

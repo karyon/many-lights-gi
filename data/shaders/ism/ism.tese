@@ -1,7 +1,9 @@
 #version 430
 
-layout (triangles, equal_spacing, point_mode) in;
+layout (triangles, equal_spacing) in;
 
+in uint[] tc_normal;
+out uint te_normal;
 
 vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2)
 {
@@ -16,4 +18,5 @@ void main()
         gl_in[2].gl_Position.xyz
     );
     gl_Position.w = 1.0;
+    te_normal = tc_normal[0];
 }

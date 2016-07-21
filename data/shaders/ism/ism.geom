@@ -6,10 +6,12 @@
 #include </data/shaders/ism/ism_utils.glsl>
 
 
-layout(points) in;
+layout(triangles) in;
 layout(points, max_vertices = 1) out;
 
-out float g_radius;
+in uint[] te_normal;
+
+out float g_normalRadius;
 
 const int totalVplCount = 1024;
 layout (std140, binding = 0) uniform packedVplBuffer_
@@ -41,7 +43,8 @@ const float infinity = 1. / 0.;
 
 void main()
 {
-    vec4 position = gl_in[0].gl_Position;
+    vec4 position = (gl_in[0].gl_Position + gl_in[1].gl_Position + gl_in[2].gl_Position) / 3;
+    float maxdist = max(max(length(position - gl_in[0].gl_Position), length(position - gl_in[1].gl_Position)), length(position - gl_in[2].gl_Position));
 
     uint counter = atomicAdd(atomicCounter, 1);
 
@@ -67,14 +70,16 @@ void main()
 
     gl_Position = vec4(v, 1.0);
 
-    float pointsPerMeter = 5.0; // actual number unknown, needs to be calculated during tesselation
+    float pointsPerMeter = 20.0; // actual number unknown, needs to be calculated during tesselation
+    pointsPerMeter = 1.0 / maxdist;
+    pointsPerMeter *= 2.5;
     float pointSize = 1.0 / pointsPerMeter / distToCamera / 3.14 * viewport.x; // approximation that breaks especially for near points.
-    float maximumPointSize = 15.0;
+    float maximumPointSize = 8.0;
     pointSize = min(pointSize, maximumPointSize);
 
-    g_radius = pointSize;
-    pointSize = 1;
-    pointSize *= float(!cull);
-    gl_PointSize = pointSize;
+    g_normalRadius = uintBitsToFloat(te_normal[0] | uint(pointSize / 8.0 * 253.0 + 1.5) << 24);
+
+    gl_PointSize = 1;
+    gl_PointSize *= float(!cull);
     EmitVertex();
 }

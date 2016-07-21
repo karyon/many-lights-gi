@@ -2,6 +2,9 @@
 
 layout (vertices = 3) out;
 
+in uint[] v_normal;
+out uint[] ts_normal;
+
 
 uniform float tessLevelFactor = 2.0f;
 
@@ -16,4 +19,5 @@ void main(void)
 
     gl_TessLevelInner[0] = max(max(gl_TessLevelOuter[0], gl_TessLevelOuter[1]), gl_TessLevelOuter[2]);
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
+    ts_normal[gl_InvocationID] = v_normal[gl_InvocationID];
 }

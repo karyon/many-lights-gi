@@ -17,42 +17,52 @@ void main()
 {
     ivec2 pixelCoordinate = ivec2(gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy);
 
+    ivec2 thisLevelSize = imageSize(img_output);
+    ivec2 sizePerISM = thisLevelSize / 32;
+
     ivec2[4] offsets = { {0,0}, {0,1}, {1,0}, {1,1} };
 
     float[4] depthSamples;
     float[4] maxDepths;
     float[4] radiuses;
+    vec3[4] normals;
     vec2[4] displacementVectors;
     bool[4] valid;
+
     for (int i = 0; i < 4; i++) {
         # ifdef READ_FROM_TEXTURE
             float depthSample = texelFetch(ismDepthTexture, pixelCoordinate * 2 + offsets[i], 0).r;
             // TODO actually read radius from color buffer. small triangles have smaller radiuses than the tesselation results.
-            float radius = texelFetch(ismAttributeTexture, pixelCoordinate * 2 + offsets[i], 0).r;
-            //  radius = 1;
+            float normalRadius = texelFetch(ismAttributeTexture, pixelCoordinate * 2 + offsets[i], 0).r;
             float maxDepth = depthSample + 0.005; // TODO use radius somehow instead?
             vec2 displacementVector = vec2(0.0);
         # else
             vec4 read = imageLoad(ismDepthImage, pixelCoordinate * 2 + offsets[i]);
             float depthSample = read.r;
             float maxDepth = read.g;
-            float radius = read.b;
+            float normalRadius = read.b;
             vec2 displacementVector = Unpack2FromFP32(read.a);
         # endif
 
+        vec4 normalRadiusUnpacked = Unpack4PNFromFP32(normalRadius);
+        vec3 normal = normalRadiusUnpacked.xyz;
+        float radius = normalRadiusUnpacked.w * 8.0;
+
         // radius check
-        vec2 newDisplacementVector = -offsets[i] + 0.5 + displacementVector / 2;
+        vec2 newDisplacementVector = (offsets[i] - 0.5 + displacementVector) / 2;
         float dist = length(newDisplacementVector);
 
-        ivec2 coarserLevelSize = imageSize(img_output) * 2;
-        ivec2 sizePerISM = coarserLevelSize / 32;
         float scaledRadius = radius * float(sizePerISM.x) / 64;
+
+        bool radiusCheckPassed = dist <= scaledRadius * 1;
+        radiusCheckPassed = true;
 
         depthSamples[i] = depthSample;
         maxDepths[i] = maxDepth;
         radiuses[i] = radius;
+        normals[i] = normal;
         displacementVectors[i] = newDisplacementVector; // TODO blocky results, but are round when displacment vector set to 0
-        valid[i] = dist <= scaledRadius * 1 && depthSample != 1.0; // TODO the radius check basically does nothing.
+        valid[i] = radiusCheckPassed && depthSample != 1.0; // TODO the radius check basically does nothing.
         // valid[i] = true; // TODO the radius check basically does nothing.
     }
 
@@ -91,7 +101,7 @@ void main()
     if (numValid > 0) {
         result.r = depthAcc / numValid;
         result.g = maxValidMaxDepth;
-        result.b = radiusAcc / numValid;
+        result.b = Pack4PNToFP32(vec4(normals[0], radiusAcc / numValid / 8.0));
         result.a = Pack2ForFP32(displacementAcc / numValid);
     } else {
         result = vec4(1.0, 0.0, 0.0, 0.0);
