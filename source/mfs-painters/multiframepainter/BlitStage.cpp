@@ -70,12 +70,18 @@ void BlitStage::process()
         m_currentBuffer.find("Occlusion") != std::string::npos ||
         m_currentBuffer.find("Pull") != std::string::npos ||
         m_currentBuffer.find("Push") != std::string::npos ||
+        m_currentBuffer.find("softrender") != std::string::npos ||
         m_currentBuffer.find("Depth") != std::string::npos;
     m_screenAlignedQuad->program()->setUniform("singleChannel", singleChannel);
 
     buffer->bindActive(0);
+    buffer->bindActive(1);
     m_screenAlignedQuad->program()->setUniform("someBuffer", 0);
+    m_screenAlignedQuad->program()->setUniform("softRenderBuffer", 1);
     m_screenAlignedQuad->program()->setUniform("mipLevel", m_currentMipLevel);
+
+    bool softRenderBufferActive = m_currentBuffer.find("softrender") != std::string::npos;
+    m_screenAlignedQuad->program()->setUniform("softRenderBufferActive", softRenderBufferActive);
 
     auto rect = std::array<GLint, 4>{ {
         viewport->x(),

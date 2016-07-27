@@ -66,15 +66,14 @@ ImperfectShadowmap::ImperfectShadowmap()
     depthBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
     depthBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
     depthBuffer->setName("ISM Depth");
-    depthBuffer->storage2D(1, GL_DEPTH_COMPONENT32F, size, size);
+    depthBuffer->storage2D(1, GL_DEPTH_COMPONENT16, size, size);
     m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depthBuffer);
 
-    attributeBuffer = globjects::Texture::createDefault();
-    attributeBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
-    attributeBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
-    attributeBuffer->setName("ISM Attributes");
-    attributeBuffer->storage2D(1, GL_R32F, size, size);
-    m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, attributeBuffer);
+    softrenderBuffer = globjects::Texture::createDefault(GL_TEXTURE_3D);
+    softrenderBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
+    softrenderBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
+    softrenderBuffer->setName("ISM softrender");
+    softrenderBuffer->storage3D(1, GL_R32UI, size, size, 2);
 
     m_fbo->printStatus(true);
 
@@ -88,6 +87,13 @@ ImperfectShadowmap::ImperfectShadowmap()
     pushBuffer->storage2D(10, GL_RGBA32F, size, size);
     pushBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST_MIPMAP_NEAREST);
     pushBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
+
+
+    pushPullResultBuffer = new globjects::Texture(GL_TEXTURE_2D);
+    pushPullResultBuffer->setName("Pushpull result");
+    pushPullResultBuffer->storage2D(1, GL_R16, size, size);
+    pushPullResultBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
+    pushPullResultBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
 
     m_atomicCounter = new globjects::Buffer();
     m_atomicCounter->setName("atomic counter");
@@ -103,8 +109,7 @@ void ImperfectShadowmap::pull() const
 {
     AutoGLDebugGroup c("ISM pushpull");
 
-    depthBuffer->bindActive(0);
-    attributeBuffer->bindActive(1);
+    softrenderBuffer->bindActive(0);
 
     // TODO investigate why 2nd level is only 2 times faster
     // TODO maybe merge this and let one dispatch do multiple levels
@@ -122,6 +127,8 @@ void ImperfectShadowmap::pull() const
             PerfCounter::endGL("PL" + std::to_string(i));
     }
 
+    pushPullResultBuffer->bindImageTexture(3, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16);
+
     for (int i = 5; i >= 0; i--) {
         if (i <= 2)
             PerfCounter::beginGL("PS" + std::to_string(i));
@@ -132,6 +139,7 @@ void ImperfectShadowmap::pull() const
         auto readTexture = (i == 5) ? pullBuffer : pushBuffer;
         readTexture->bindImageTexture(1, i+1, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
         pushBuffer->bindImageTexture(2, i, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+        auto currResultBuffer = (i == 0) ? pushPullResultBuffer : pushBuffer;
         auto program = (i == 0) ? m_pushFirstLevelProgram : m_pushProgram;
         program->dispatchCompute(size / int(std::pow(2, i)) / 8, size / int(std::pow(2, i)) / 8, 1);
 
@@ -140,13 +148,14 @@ void ImperfectShadowmap::pull() const
     }
 }
 
-void ImperfectShadowmap::process(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, float zFar) const
+void ImperfectShadowmap::process(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, bool usePushPull, float zFar) const
 {
-    render(drawablesMap, vplProcessor, vplStartIndex, vplEndIndex, scaleISMs, pointsOnlyIntoScaledISMs, tessLevelFactor, zFar);
-    pull();
+    render(drawablesMap, vplProcessor, vplStartIndex, vplEndIndex, scaleISMs, pointsOnlyIntoScaledISMs, tessLevelFactor, usePushPull, zFar);
+    if (usePushPull)
+        pull();
 }
 
-void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, float zFar) const
+void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, bool usePushPull, float zFar) const
 {
     AutoGLPerfCounter c("ISM render");
     glEnable(GL_DEPTH_TEST);
@@ -161,7 +170,12 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     m_fbo->clearBuffer(GL_COLOR, 0, glm::vec4(0.0f));
 
     vplProcessor.packedVplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
+    gl::GLuint zero = 0;
+    m_atomicCounter->clearData(GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
     m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
+
+    softrenderBuffer->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(1000000));
+    softrenderBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
     m_shadowmapProgram->setUniform("viewport", glm::ivec2(size, size));
     m_shadowmapProgram->setUniform("zFar", zFar);
@@ -169,6 +183,7 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     m_shadowmapProgram->setUniform("vplEndIndex", vplEndIndex);
     m_shadowmapProgram->setUniform("scaleISMs", scaleISMs);
     m_shadowmapProgram->setUniform("pointsOnlyIntoScaledISMs", pointsOnlyIntoScaledISMs);
+    m_shadowmapProgram->setUniform("usePushPull", usePushPull);
     m_shadowmapProgram->setUniform("tessLevelFactor", tessLevelFactor);
 
     m_shadowmapProgram->use();

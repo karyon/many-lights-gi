@@ -89,6 +89,7 @@ protected:
     bool scaleISMs;
     bool pointsOnlyIntoScaledISMs;
     float tessLevelFactor;
+    bool usePushPull;
     bool enableShadowing;
 
     float sunCyclePosition;

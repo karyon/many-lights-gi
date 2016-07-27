@@ -155,6 +155,12 @@ void GIStage::initProperties(MultiFramePainter& painter)
         { "precision", 3u },
     });
 
+    painter.addProperty<bool>("UsePushPull",
+        [this]() { return usePushPull; },
+        [this](const bool & value) {
+        usePushPull = value;
+    });
+
     painter.addProperty<bool>("GIShadowing",
         [this]() { return enableShadowing; },
         [this](const bool & value) {
@@ -232,6 +238,7 @@ void GIStage::initialize()
     scaleISMs = false;
     pointsOnlyIntoScaledISMs = false;
     tessLevelFactor = 2.0f;
+    usePushPull = true;
     enableShadowing = true;
     showVPLPositions = false;
     moveLight = false;
@@ -271,7 +278,8 @@ void GIStage::render()
 
     faceNormalBuffer->bindActive(0);
     depthBuffer->bindActive(1);
-    ism->pushBuffer->bindActive(2);
+    auto ismShadowMap = usePushPull ? ism->pushPullResultBuffer : ism->depthBuffer;
+    ismShadowMap->bindActive(2);
 
 
     vplProcessor->vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
@@ -383,7 +391,16 @@ void GIStage::process()
     }
 
     {
-        ism->process(modelLoadingStage.getDrawablesMap(), *vplProcessor.get(), vplStartIndex, vplEndIndex, scaleISMs, pointsOnlyIntoScaledISMs, tessLevelFactor, m_lightProjection->zFar());
+        ism->process(
+            modelLoadingStage.getDrawablesMap(),
+            *vplProcessor.get(),
+            vplStartIndex,
+            vplEndIndex,
+            scaleISMs,
+            pointsOnlyIntoScaledISMs,
+            tessLevelFactor,
+            usePushPull,
+            m_lightProjection->zFar());
     }
 
     gl::glViewport(viewport->x(),

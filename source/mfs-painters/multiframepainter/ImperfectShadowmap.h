@@ -27,15 +27,34 @@ public:
     ImperfectShadowmap();
     ~ImperfectShadowmap();
 
-    void process(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, float zFar) const;
+    void process(
+        const IdDrawablesMap& drawablesMap,
+        const VPLProcessor& vplProcessor,
+        int vplStartIndex,
+        int vplEndIndex,
+        bool scaleISMs,
+        bool pointsOnlyIntoScaledISMs,
+        float tessLevelFactor,
+        bool usePushPull,
+        float zFar) const;
 
     globjects::ref_ptr<globjects::Texture> depthBuffer;
-    globjects::ref_ptr<globjects::Texture> attributeBuffer;
+    globjects::ref_ptr<globjects::Texture> softrenderBuffer;
     globjects::ref_ptr<globjects::Texture> pullBuffer;
     globjects::ref_ptr<globjects::Texture> pushBuffer;
+    globjects::ref_ptr<globjects::Texture> pushPullResultBuffer;
 
 protected:
-    void render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, float zFar) const;
+    void render(
+        const IdDrawablesMap& drawablesMap,
+        const VPLProcessor& vplProcessor,
+        int vplStartIndex,
+        int vplEndIndex,
+        bool scaleISMs,
+        bool pointsOnlyIntoScaledISMs,
+        float tessLevelFactor,
+        bool usePushPull,
+        float zFar) const;
     void pull() const;
 
     int m_blurSize;

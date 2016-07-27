@@ -2,8 +2,8 @@
 
 layout (vertices = 3) out;
 
-in uint[] v_normal;
-out uint[] ts_normal;
+in vec3[] v_normal;
+out vec3[] ts_normal;
 
 
 uniform float tessLevelFactor = 2.0f;
