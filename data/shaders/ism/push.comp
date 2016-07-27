@@ -39,7 +39,8 @@ void main()
 
     ivec2[4] offsets = { {0,0}, {0,1}, {1,0}, {1,1} };
     int[4] weights = { 9, 3, 3, 1};
-    vec4[4] coarserSamples;
+    float[4] depths;
+    float[4] maxDepths;
     vec4[4] normalsRadiuses;
     vec2[4] displacementVectors;
     ivec2[4] texCoords;
@@ -56,12 +57,14 @@ void main()
 
 
     for (int i = 0 ; i < 4; i++) {
-        coarserSamples[i] = imageLoad(coarserLevel, texCoords[i]);
-        normalsRadiuses[i] = Unpack4PNFromFP32(coarserSamples[i].b);
+        vec4 coarserSample = imageLoad(coarserLevel, texCoords[i]);
+        depths[i] = coarserSample.r;
+        maxDepths[i] = coarserSample.g;
+        normalsRadiuses[i] = Unpack4PNFromFP32(coarserSample.b);
         normalsRadiuses[i].xyz = normalsRadiuses[i].xyz * 2.0 - 1.0;
         normalsRadiuses[i].w *= 15.0;
-        displacementVectors[i] = Unpack2FromFP32(coarserSamples[i].a);
-        bool invalid = coarserSamples[i].r == 1.0;
+        displacementVectors[i] = Unpack2FromFP32(coarserSample.a);
+        bool invalid = coarserSample.r == 1.0;
         if (invalid)
             weights[i] = 0;
     }
@@ -91,8 +94,8 @@ void main()
     float maxDepthAcc = 0.0;
 
     for (int i = 0; i < 4; i++) {
-        depthAcc += coarserSamples[i].r * weights[i];
-        maxDepthAcc += coarserSamples[i].g * weights[i];
+        depthAcc += depths[i] * weights[i];
+        maxDepthAcc += maxDepths[i] * weights[i];
         radiusAcc += normalsRadiuses[i].w * weights[i];
         normalAcc += normalsRadiuses[i].xyz * weights[i];
         displacementAcc += displacementVectors[i] * weights[i];
@@ -112,10 +115,10 @@ void main()
         result = origSample;
     }
 
-    bool coarserSampleInvalid = coarserSamples[0].r == 1.0;
+    bool coarserSampleInvalid = depths[0] == 1.0;
     // coarserSampleInvalid = weights[0] == 0;
     bool allSamplesInvalid = weightAcc == 0;
-    bool occluded = !coarserSampleInvalid && origSample.r > coarserSamples[0].g;
+    bool occluded = !coarserSampleInvalid && origSample.r > maxDepths[0];
     if (false || !invalid && !occluded) {
         result = origSample;
     }

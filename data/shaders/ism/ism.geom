@@ -83,7 +83,7 @@ void main()
     gl_Position = vec4(v, 1.0);
 
     float maxdist = max(max(length(position - gl_in[0].gl_Position), length(position - gl_in[1].gl_Position)), length(position - gl_in[2].gl_Position));
-    float pointsPerMeter = 1.0 / maxdist * 0.5;
+    float pointsPerMeter = 1.0 / (maxdist * 2.0);
     float pointSize = 1.0 / pointsPerMeter / distToCamera / 3.14 * viewport.x; // approximation that breaks especially for near points.
     float maximumPointSize = 10.0;
     pointSize = min(pointSize, maximumPointSize);
