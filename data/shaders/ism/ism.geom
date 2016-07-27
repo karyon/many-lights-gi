@@ -96,7 +96,9 @@ void main()
         uint original = imageAtomicMin(softrenderBuffer, ivec3(v.xy, 0), uint(v.z));
 
         if (original > uint(v.z)) {
-            uint g_normalRadius = Pack4PNToUint(vec4(te_normal[0] * 0.5 + 0.5, pointSize / 15.0));
+            float radius = pointSize / 2;
+            radius *= 1.3; // boost radius a bit to make circle area match the point rendering square area
+            uint g_normalRadius = Pack4PNToUint(vec4(te_normal[0] * 0.5 + 0.5, radius / 15.0));
             // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.
             // but this should almost never happen in practice, right?
             imageStore(softrenderBuffer, ivec3(v.xy, 1), uvec4(g_normalRadius, 0, 0, 0));
