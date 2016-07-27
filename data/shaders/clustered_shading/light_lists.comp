@@ -119,5 +119,5 @@ void main()
             counter++;
         }
     }
-    imageStore(lightLists, ivec2(id, 0), uvec4(counter, 0, 0, 0));
+    imageStore(lightLists, ivec2(id, 0), uvec4(counter-1, 0, 0, 0));
 }
