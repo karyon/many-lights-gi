@@ -6,6 +6,8 @@
 
 #include <glbinding/gl/enum.h>
 #include <glbinding/gl/boolean.h>
+#include <glbinding/gl/functions.h>
+#include <glbinding/gl/bitfield.h>
 
 #include <globjects/Program.h>
 #include <globjects/Buffer.h>
@@ -101,6 +103,7 @@ void ClusteredShading::process(
     }
     {
         AutoGLPerfCounter c("UniqueIDs");
+        gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         clusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R8UI);
         usedClustersPerTile->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(0));
         usedClustersPerTile->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R8UI);
@@ -108,6 +111,7 @@ void ClusteredShading::process(
     }
     {
         AutoGLPerfCounter c("CompactIDs");
+        gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         gl::GLuint zero = 0;
         m_atomicCounter->clearData(GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
 
@@ -119,6 +123,7 @@ void ClusteredShading::process(
     }
     {
         AutoGLPerfCounter c("Light Lists");
+        gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
         compactUsedClusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32UI);
         lightLists->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(0));
         lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
@@ -133,6 +138,7 @@ void ClusteredShading::process(
         m_lightListsProgram->setUniform("vplStartIndex", vplStartIndex);
         m_lightListsProgram->setUniform("vplEndIndex", vplEndIndex);
         m_lightListsProgram->dispatchCompute(m_numClusters / 32 + 1, 1, 1);
+        gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
     }
 }
 
