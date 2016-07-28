@@ -42,6 +42,7 @@ public:
     globjects::ref_ptr<globjects::Texture> softrenderBuffer;
     globjects::ref_ptr<globjects::Texture> pullBuffer;
     globjects::ref_ptr<globjects::Texture> pushBuffer;
+    globjects::ref_ptr<globjects::Texture> pointBuffer;
     globjects::ref_ptr<globjects::Texture> pushPullResultBuffer;
 
 protected:
@@ -66,5 +67,7 @@ protected:
     globjects::ref_ptr<globjects::Program> m_pullFirstLevelProgram;
     globjects::ref_ptr<globjects::Program> m_pushProgram;
     globjects::ref_ptr<globjects::Program> m_pushFirstLevelProgram;
+    globjects::ref_ptr<globjects::Program> m_pointSoftRenderProgram;
     globjects::ref_ptr<globjects::Buffer> m_atomicCounter;
+    globjects::ref_ptr<globjects::Texture> m_atomicCounterTexture;
 };

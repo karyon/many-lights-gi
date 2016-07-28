@@ -61,6 +61,9 @@ ImperfectShadowmap::ImperfectShadowmap()
     m_pushFirstLevelProgram = new globjects::Program();
     m_pushFirstLevelProgram->attach(globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/ism/push.comp"));
 
+    m_pointSoftRenderProgram = new globjects::Program();
+    m_pointSoftRenderProgram->attach(globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/ism/ism.comp"));
+
     m_fbo = new globjects::Framebuffer();
     depthBuffer = globjects::Texture::createDefault();
     depthBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
@@ -88,6 +91,12 @@ ImperfectShadowmap::ImperfectShadowmap()
     pushBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST_MIPMAP_NEAREST);
     pushBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
 
+    auto b = new globjects::Buffer();
+    b->setData(sizeof(glm::vec4) * (1 << 22) , nullptr, GL_STATIC_DRAW);
+    pointBuffer = new globjects::Texture(GL_TEXTURE_BUFFER);
+    pointBuffer->setName("Point Buffer");
+    pointBuffer->texBuffer(GL_RGBA32F, b);
+
 
     pushPullResultBuffer = new globjects::Texture(GL_TEXTURE_2D);
     pushPullResultBuffer->setName("Pushpull result");
@@ -97,7 +106,10 @@ ImperfectShadowmap::ImperfectShadowmap()
 
     m_atomicCounter = new globjects::Buffer();
     m_atomicCounter->setName("atomic counter");
-    m_atomicCounter->setData(sizeof(gl::GLuint), nullptr, GL_STATIC_DRAW);
+    m_atomicCounter->setData(sizeof(gl::GLuint)*1024 * 4, nullptr, GL_STATIC_DRAW);
+    m_atomicCounterTexture = new globjects::Texture(GL_TEXTURE_BUFFER);
+    m_atomicCounterTexture->setName("pointCounterTexture");
+    //m_atomicCounterTexture->texBuffer(GL_R32UI, b);
 }
 
 ImperfectShadowmap::~ImperfectShadowmap()
@@ -156,7 +168,6 @@ void ImperfectShadowmap::process(const IdDrawablesMap& drawablesMap, const VPLPr
 
 void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, bool usePushPull, float zFar) const
 {
-    AutoGLPerfCounter c("ISM render");
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
 
@@ -172,9 +183,11 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     gl::GLuint zero = 0;
     m_atomicCounter->clearData(GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
     m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
+    //m_atomicCounterTexture->bindImageTexture(2, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
     softrenderBuffer->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(5000));
     softrenderBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+    pointBuffer->bindImageTexture(1, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
     m_shadowmapProgram->setUniform("viewport", glm::ivec2(size, size));
     m_shadowmapProgram->setUniform("zFar", zFar);
@@ -190,6 +203,7 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     glEnable(GL_PROGRAM_POINT_SIZE);
     glPatchParameteri(GL_PATCH_VERTICES, 3);
 
+    AutoGLPerfCounter c("ISM render");
     for (const auto& pair : drawablesMap)
     {
         auto& drawables = pair.second;
@@ -198,6 +212,23 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
             drawable->draw(GL_PATCHES);
         }
     }
-
     m_shadowmapProgram->release();
+
+    if (usePushPull) {
+        gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        gl::glMemoryBarrier(gl::GL_SHADER_STORAGE_BARRIER_BIT);
+
+        m_pointSoftRenderProgram->setUniform("viewport", glm::ivec2(size, size));
+        m_pointSoftRenderProgram->setUniform("zFar", zFar);
+        m_pointSoftRenderProgram->setUniform("vplStartIndex", vplStartIndex);
+        m_pointSoftRenderProgram->setUniform("vplEndIndex", vplEndIndex);
+        m_pointSoftRenderProgram->setUniform("scaleISMs", scaleISMs);
+        m_pointSoftRenderProgram->setUniform("pointsOnlyIntoScaledISMs", pointsOnlyIntoScaledISMs);
+        m_pointSoftRenderProgram->setUniform("usePushPull", usePushPull);
+        m_pointSoftRenderProgram->setUniform("tessLevelFactor", tessLevelFactor);
+        m_pointSoftRenderProgram->dispatchCompute(1024, 1, 1);
+
+    }
+
+
 }
