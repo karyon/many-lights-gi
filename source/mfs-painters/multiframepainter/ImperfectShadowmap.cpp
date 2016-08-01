@@ -185,7 +185,7 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
     //m_atomicCounterTexture->bindImageTexture(2, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
-    softrenderBuffer->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(5000));
+    softrenderBuffer->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(500000));
     softrenderBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
     pointBuffer->bindImageTexture(1, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 

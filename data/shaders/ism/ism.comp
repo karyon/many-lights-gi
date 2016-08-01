@@ -6,7 +6,7 @@
 #include </data/shaders/ism/ism_utils.glsl>
 
 
-layout (local_size_x = 64) in;
+layout (local_size_x = 128) in;
 
 
 const int totalVplCount = 1024;
@@ -41,145 +41,114 @@ int vplIdOffset = pointsOnlyIntoScaledISMs ? vplStartIndex : 0;
 
 const float infinity = 1. / 0.;
 
-shared vec4[64] vpls;
+const int maxVplTestCount = 16; // don't make this greater than local_size_x
+shared vec4[maxVplTestCount] vpls;
+shared int[maxVplTestCount] vplIDs;
+
+
+const int maxVplCollectCount = 4; // don't make this greater than maxVplTestCount
+// this is not a local array since that was slower (perhaps put into global memory)
+shared int[gl_WorkGroupSize.x * maxVplCollectCount] usedVplIDs;
 
 
 void main()
 {
+    if (pointsOnlyIntoScaledISMs && (gl_WorkGroupID.x > vplCount))
+        return;
 
-    uint id = gl_WorkGroupID.x * gl_WorkGroupSize.x + gl_LocalInvocationID.x;
-
-    // return;
-
-    for (int i = 0; i < 1; i++) {
-        uint index = (gl_WorkGroupID.x + gl_LocalInvocationID.x) % 1024u;
+    if (gl_LocalInvocationID.x < maxVplTestCount) {
+        int index = int(gl_WorkGroupID.x + gl_LocalInvocationID.x);
+        index %= 1024;
+        if (pointsOnlyIntoScaledISMs) {
+            index %= vplCount;
+            index += vplStartIndex;
+        }
+        vplIDs[gl_LocalInvocationID.x] = index;
         vpls[gl_LocalInvocationID.x] = vplPositionNormalBuffer[index];
     }
 
-        // if (id > atomicCounter[gl_WorkGroupID.x])
-        //     return;
-    for(int j = 0; j < atomicCounter[gl_WorkGroupID.x] / 64 +1; j++)
+    barrier();
+    memoryBarrierShared();
+
+    // for each point
+    for(int j = 0; j < atomicCounter[gl_WorkGroupID.x] / gl_WorkGroupSize.x + 1; j++)
     {
 
-    vec4 read = imageLoad(pointBuffer, int(gl_WorkGroupID.x * 4096 + j * 64 + gl_LocalInvocationID.x));
+        int pointIdInISM = int(j * gl_WorkGroupSize.x + gl_LocalInvocationID.x);
+        if (j * gl_WorkGroupSize.x + gl_LocalInvocationID.x >= atomicCounter[gl_WorkGroupID.x])
+            break;
 
-    vec3 position = read.xyz;
-    float g_normalRadius = read.w;
-    vec4 normalRadiusUnpacked = Unpack4PNFromFP32(g_normalRadius);
+        vec4 read = imageLoad(pointBuffer, int(gl_WorkGroupID.x * (imageSize(pointBuffer).x / sampledVplCount) + pointIdInISM));
+        // vec4 read = imageLoad(pointBuffer2, ivec2(gl_WorkGroupID.x, pointIdInISM));
 
-    vec3 pointNormal = normalRadiusUnpacked.xyz;
-    pointNormal  = pointNormal * 2.0 - 1.0;
+        vec3 position = read.xyz;
+        float g_normalRadius = read.w;
+        vec4 normalRadiusUnpacked = Unpack4PNFromFP32(g_normalRadius);
 
-    float maxdist = normalRadiusUnpacked.w;
+        vec3 pointNormal = normalRadiusUnpacked.xyz * 2.0 - 1.0;
 
+        float maxdist = normalRadiusUnpacked.w;
 
-    int vplID;
-    vec3 vplNormal;
-    vec3 positionRelativeToCamera;
-    bool found = false;
-    int i;
-    // int base = (int(random(position.xyz) * sampledVplCount) + 1);
-    // int base = int(id); // TODO
-    for(i = 0; i < 8; i++) {
-        int vplID2 = (i) % 1024;
-        // vplID = int(counter) % 1024;
-        // if (pointsOnlyIntoScaledISMs)
-        //     vplID2 += vplIdOffset;
+        int found = 0;
 
-        vec4 foo = vpls[vplID2];
-        vec3 vplPosition = foo.xyz;
-        vec3 vplNormal2 = Unpack3PNFromFP32(foo.w) * 2.0 - 1.0;
+        // gather up to maxVplCollectCount vpls that pass culling
+        int lastValue = 0;
+        for(int i = 0; i < maxVplTestCount; i++) {
+            vec4 vpl = vpls[i];
+            vec3 vplPosition = vpl.xyz;
+            vec3 vplNormal2 = Unpack3PNFromFP32(vpl.w) * 2.0 - 1.0;
 
-        vec3 positionRelativeToCamera2 = position.xyz - vplPosition;
+            vec3 positionRelativeToCamera2 = position.xyz - vplPosition;
 
-        bool cull = dot(vplNormal2, positionRelativeToCamera2) < 0 || dot(pointNormal, -positionRelativeToCamera2) < 0;
-        found = found || !cull;
-        if (!cull) {
-            vplID = (vplID2 + int(gl_WorkGroupID.x)) % 1024;
-            vplNormal = vplNormal2;
-            positionRelativeToCamera = positionRelativeToCamera2;
-            // break;
+            bool cull = dot(vplNormal2, positionRelativeToCamera2) < 0 || dot(pointNormal, -positionRelativeToCamera2) < 0;
+
+            if (!cull && found < maxVplCollectCount) {
+                usedVplIDs[gl_LocalInvocationID.x * maxVplCollectCount + found] = i;
+                found++;
+            }
         }
-    }
-    // if (!found)
-    //     continue;
 
-    // vec4 foo1 = vplPositionNormalBuffer[vplID];
-    // vec4 foo2 = vplPositionNormalBuffer[vplID];
-    // vec4 foo3 = vplPositionNormalBuffer[vplID];
-    // positionRelativeToCamera += (foo1.xyz + foo2.xyz + foo3.xyz + Unpack3PNFromFP32(foo1.w) + Unpack3PNFromFP32(foo2.w) + Unpack3PNFromFP32(foo3.w)) * 0.00001;
-    // positionRelativeToCamera.x += (dot(foo1.xyz, foo2.xyz) + dot(foo3.xyz, Unpack3PNFromFP32(foo3.w) )) * 0.00001;
+        // no barrier needed, usedVplIDs is read only from the thread that wrote it
 
-    // for(i = 0; i < 0; i++) {
-    //     int vplID2 = (base + i) % sampledVplCount;
-    //     // vplID = int(counter) % 1024;
-    //     if (pointsOnlyIntoScaledISMs)
-    //         vplID2 += vplIdOffset;
-    //
-    //     vec4 foo = vplPositionNormalBuffer[vplID2];
-    //     vec3 vplPosition = foo.xyz;
-    //     vec3 vplNormal2 = Unpack3PNFromFP32(foo.w) * 2.0 - 1.0;
-    //
-    //     vec3 positionRelativeToCamera2 = position.xyz - vplPosition;
-    //
-    //     bool cull = dot(vplNormal2, positionRelativeToCamera2) < 0 || dot(pointNormal, -positionRelativeToCamera2) < 0;
-    //     // found = found || !cull;
-    //     positionRelativeToCamera += min(positionRelativeToCamera2, 1) * 0.0001;
-    //     // if (!cull) {
-    //     //     vplID = vplID2;
-    //     //     vplNormal = vplNormal2;
-    //     //     positionRelativeToCamera = positionRelativeToCamera2;
-    //     //     // break;
-    //     // }
-    // }
+        // for each found vpl, render
+        for (int i = 0; i < found; i++)
+        {
+            int localVplID = usedVplIDs[gl_LocalInvocationID.x * maxVplCollectCount + i];
+            int globalVplID = vplIDs[localVplID];
+            // reconstruct vpl. saving the reconstructed stuff in arrays in the gather step was slower.
+            vec4 vpl = vpls[localVplID];
+            vec3 vplPosition = vpl.xyz;
+            vec3 vplNormal2 = Unpack3PNFromFP32(vpl.w) * 2.0 - 1.0;
 
+            vec3 positionRelativeToCamera2 = position.xyz - vplPosition;
+            // paraboloid projection
+            float distToCamera = length(positionRelativeToCamera2);
+            float ismIndex = scaleISMs ? float(globalVplID) - vplStartIndex : globalVplID;
+            vec3 v = paraboloid_project(positionRelativeToCamera2, distToCamera, vplNormal2, zFar, ismIndex, ismIndices1d, true);
 
+            vec3 normalPositionRelativeToCamera = positionRelativeToCamera2 + pointNormal * 0.1;
+            float normalDist = length(normalPositionRelativeToCamera);
+            vec3 normalV = paraboloid_project(normalPositionRelativeToCamera, normalDist, vplNormal2, zFar, ismIndex, ismIndices1d, true);
 
-    // vplNormal = Unpack3PNFromFP32(vplPositionNormalBuffer[vplID].w) * 2.0 - 1.0;
-    // vec3 vplPosition = vplPositionNormalBuffer[vplID].xyz;
-    // positionRelativeToCamera = position.xyz - vplPosition;
+            float pointsPerMeter = 1.0 / (maxdist * 2.0);
+            float pointSize = 1.0 / pointsPerMeter / distToCamera / 3.14 * viewport.x; // approximation that breaks especially for near points.
+            pointSize /= maxVplCollectCount;
+            float maximumPointSize = 10.0;
+            // pointSize = min(pointSize, maximumPointSize);
 
-    // paraboloid projection
-    float distToCamera = length(positionRelativeToCamera);
-    float ismIndex = scaleISMs ? float(vplID) - vplStartIndex : vplID;
-    vec3 v = paraboloid_project(positionRelativeToCamera, distToCamera, vplNormal, zFar, ismIndex, ismIndices1d, true);
-
-    vec3 normalPositionRelativeToCamera = positionRelativeToCamera + pointNormal * 0.1;
-    float normalDist = length(normalPositionRelativeToCamera);
-    vec3 normalV = paraboloid_project(normalPositionRelativeToCamera, normalDist, vplNormal, zFar, ismIndex, ismIndices1d, true);
-
-
-    // to tex and NDC coords
-    v.xy = v.xy * 2.0 - 1.0;
-    v.z = v.z * 2.0 - 1.0;
-
-    // gl_Position = vec4(v, 1.0);
-
-    float pointsPerMeter = 1.0 / (maxdist * 2.0);
-    float pointSize = 1.0 / pointsPerMeter / distToCamera / 3.14 * viewport.x; // approximation that breaks especially for near points.
-    pointSize *= 1.0;
-    float maximumPointSize = 15.0;
-    pointSize = min(pointSize, maximumPointSize);
-
-    // if (usePushPull) {
-        v.xy = v.xy * 0.5 + 0.5;
-        v.xy *= 2048;
-        v.z  = v.z * 0.5 + 0.5;
-        v.z *= 5000;
-        uint original = imageAtomicMin(softrenderBuffer, ivec3(v.xy, 0), uint(v.z));
-        if (original > uint(v.z)) {
-            float radius = pointSize / 2;
-            radius *= 1.3; // boost radius a bit to make circle area match the point rendering square area
-            uint g_normalRadius = Pack4PNToUint(vec4(pointNormal * 0.5 + 0.5, radius / 15.0));
-            // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.
-            // but this should almost never happen in practice, right?
-            imageStore(softrenderBuffer, ivec3(v.xy, 1), uvec4(g_normalRadius, 0, 0, 0));
+            v.xy *= 2048;
+            v.z *= 500000;
+            uint original = imageAtomicMin(softrenderBuffer, ivec3(v.xy, 0), uint(v.z));
+            if (original >= uint(v.z))
+            {
+                float radius = pointSize / 2;
+                radius *= 1.3; // boost radius a bit to make circle area match the point rendering square area
+                radius = min(radius, 15);
+                uint g_normalRadius = Pack4PNToUint(vec4(pointNormal * 0.5 + 0.5, radius / 15.0));
+                // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.
+                // but this should almost never happen in practice, right?
+                imageStore(softrenderBuffer, ivec3(v.xy, 1), uvec4(g_normalRadius, 0, 0, 0));
+            }
         }
-    // }
-    // else {
-    //     gl_PointSize = pointSize;
-    //     // gl_PointSize = 1;
-    //     EmitVertex();
-    // }
     }
 }

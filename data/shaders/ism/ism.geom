@@ -54,17 +54,15 @@ void main()
 
     float maxdist = max(max(length(position - gl_in[0].gl_Position.xyz), length(position - gl_in[1].gl_Position.xyz)), length(position - gl_in[2].gl_Position.xyz));
 
-    uint g_normalRadius2 = Pack4PNToUint(vec4(te_normal[0] * 0.5 + 0.5, maxdist / 15.0));
+    maxdist = min(maxdist, 1.0);
+    uint g_normalRadius2 = Pack4PNToUint(vec4(te_normal[0] * 0.5 + 0.5, maxdist));
 
-    int base = (int((random(position.xyz)) * 1024));
-    float r = random(position.xyz);
-    uint counter = atomicAdd(atomicCounter[base], 1);
+    int base = (int((random(position.xyz)) * sampledVplCount));
 
-    // imageStore(softrenderBuffer, ivec3(base, counter, 0), uvec4(g_normalRadius, 0, 0, 0));
     if(usePushPull) {
-        imageStore(pointBuffer, base * 4096 + int(counter), vec4(position.xyz, uintBitsToFloat(g_normalRadius2)));
+        uint counter = atomicAdd(atomicCounter[base], 1);
+        imageStore(pointBuffer, base * (imageSize(pointBuffer).x / sampledVplCount) + int(counter), vec4(position.xyz, uintBitsToFloat(g_normalRadius2)));
         return;
-
     }
 
     int vplID;
@@ -155,24 +153,25 @@ void main()
     pointSize = min(pointSize, maximumPointSize);
 
     if (usePushPull) {
-        // v.xy = v.xy * 0.5 + 0.5;
-        // v.xy *= 2048;
-        // v.z  = v.z * 0.5 + 0.5;
-        // v.z *= 5000;
-        // uint original = imageAtomicMin(softrenderBuffer, ivec3(v.xy, 0), uint(v.z));
-        //
-        // if (original > uint(v.z)) {
-        //     float radius = pointSize / 2;
-        //     radius *= 1.3; // boost radius a bit to make circle area match the point rendering square area
-        //     uint g_normalRadius = Pack4PNToUint(vec4(te_normal[0] * 0.5 + 0.5, radius / 15.0));
-        //     // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.
-        //     // but this should almost never happen in practice, right?
-        //     imageStore(softrenderBuffer, ivec3(v.xy, 1), uvec4(g_normalRadius, 0, 0, 0));
-        // }
+        v.xy = v.xy * 0.5 + 0.5;
+        v.xy *= 2048;
+        v.z  = v.z * 0.5 + 0.5;
+        v.z *= 500000;
+        uint original = imageAtomicMin(softrenderBuffer, ivec3(v.xy, 0), uint(v.z));
+
+        if (original > uint(v.z)) {
+            float radius = pointSize / 2;
+            radius *= 1.3; // boost radius a bit to make circle area match the point rendering square area
+            radius = min(radius, 15);
+            uint g_normalRadius = Pack4PNToUint(vec4(te_normal[0] * 0.5 + 0.5, radius / 15.0));
+            // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.
+            // but this should almost never happen in practice, right?
+            imageStore(softrenderBuffer, ivec3(v.xy, 1), uvec4(g_normalRadius, 0, 0, 0));
+        }
     }
-    // else {
+    else {
         gl_PointSize = pointSize;
-        gl_PointSize = 1;
+        // gl_PointSize = 1;
         EmitVertex();
-    // }
+    }
 }

@@ -115,7 +115,8 @@ void GIStage::initProperties(MultiFramePainter& painter)
     painter.addProperty<int>("VPLStartIndex",
         [this]() { return vplStartIndex; },
         [this](const int & value) {
-        vplStartIndex = value;
+            if (value < vplEndIndex)
+                vplStartIndex = value;
         }
     )->setOptions({
         { "minimum", 0 },
@@ -125,7 +126,8 @@ void GIStage::initProperties(MultiFramePainter& painter)
     painter.addProperty<int>("VPLEndIndex",
         [this]() { return vplEndIndex; },
         [this](const int & value) {
-            vplEndIndex = value;
+            if (value > vplStartIndex)
+                vplEndIndex = value;
         }
     )->setOptions({
         { "minimum", 0 },

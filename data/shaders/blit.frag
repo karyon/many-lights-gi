@@ -13,7 +13,7 @@ uniform int mipLevel;
 void main()
 {
     if (softRenderBufferActive) {
-        outColor = vec3(textureLod(softRenderBuffer, vec3(v_uv, 0), mipLevel).rgb) / 5000.0;
+        outColor = vec3(textureLod(softRenderBuffer, vec3(v_uv, 0), mipLevel).rgb) / 500000.0;
     } else {
         outColor = textureLod(someBuffer, v_uv, mipLevel).rgb;
     }

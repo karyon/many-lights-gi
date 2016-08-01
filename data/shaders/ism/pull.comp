@@ -30,7 +30,7 @@ void main()
 
     for (int i = 0; i < 4; i++) {
         # ifdef READ_FROM_TEXTURE
-            float depthSample = float(texelFetch(softrenderBuffer, ivec3(pixelCoordinate * 2 + offsets[i], 0), 0).r) / 5000.0;
+            float depthSample = float(texelFetch(softrenderBuffer, ivec3(pixelCoordinate * 2 + offsets[i], 0), 0).r) / 500000.0;
             uint normalRadius = texelFetch(softrenderBuffer, ivec3(pixelCoordinate * 2 + offsets[i], 1), 0).r;
             float maxDepth = depthSample + 0.005; // TODO use radius somehow instead?
             vec2 displacementVector = vec2(0.0);

@@ -17,7 +17,7 @@ layout (r16, binding = 3) restrict writeonly uniform image2D imgOutputLastStage;
 vec4 read(ivec2 pixelCoordinate)
 {
     # ifdef READ_FROM_TEXTURE
-        float depthSample = float(texelFetch(pullSameLevelTexture, ivec3(pixelCoordinate, 0), 0).r) / 5000.0;
+        float depthSample = float(texelFetch(pullSameLevelTexture, ivec3(pixelCoordinate, 0), 0).r) / 500000.0;
         return vec4(depthSample, 0.0, 0.0, 0.0);
     # else
         return imageLoad(pullSameLevelImage, pixelCoordinate);
