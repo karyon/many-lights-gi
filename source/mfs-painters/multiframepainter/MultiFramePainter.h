@@ -52,6 +52,7 @@ protected:
 
     /* Capabilities */
     gloperate::AbstractTargetFramebufferCapability * m_targetFramebufferCapability;
+    gloperate::AbstractViewportCapability * m_virtualViewportCapability;
     gloperate::AbstractViewportCapability * m_viewportCapability;
     gloperate::AbstractPerspectiveProjectionCapability * m_projectionCapability;
     gloperate::AbstractCameraCapability * m_cameraCapability;
@@ -64,4 +65,6 @@ protected:
     std::unique_ptr<DeferredShadingStage> deferredShadingStage;
     std::unique_ptr<FrameAccumulationStage> frameAccumulationStage;
     std::unique_ptr<BlitStage> blitStage;
+
+    bool m_useFullHD;
 };

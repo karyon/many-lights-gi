@@ -32,6 +32,7 @@ public:
     void process();
 
     gloperate::AbstractViewportCapability * viewport;
+    gloperate::AbstractViewportCapability * virtualViewport;
 
     globjects::ref_ptr<globjects::Texture> accumulation;
     globjects::ref_ptr<globjects::Texture> depth;

@@ -45,11 +45,13 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
 : Painter("MultiFramePainter", resourceManager, moduleInfo)
 , resourceManager(resourceManager)
 , preset(Preset::CrytekSponza)
+, m_useFullHD(false)
 {
     // Setup painter
     m_targetFramebufferCapability = addCapability(new gloperate::TargetFramebufferCapability());
+    m_virtualViewportCapability = new gloperate::ViewportCapability();
     m_viewportCapability = addCapability(new gloperate::ViewportCapability());
-    m_projectionCapability = addCapability(new gloperate::PerspectiveProjectionCapability(m_viewportCapability));
+    m_projectionCapability = addCapability(new gloperate::PerspectiveProjectionCapability(m_virtualViewportCapability));
     m_cameraCapability = addCapability(new gloperate::CameraCapability());
 
 
@@ -84,6 +86,17 @@ MultiFramePainter::~MultiFramePainter()
 
 void MultiFramePainter::onInitialize()
 {
+    this->addProperty<bool>("useFullHD",
+        [this]() { return m_useFullHD; },
+        [this](const bool & value) {
+            m_useFullHD = value;
+            if (m_useFullHD)
+                m_virtualViewportCapability->setViewport(0, 0, 1920, 1080);
+            else
+                m_viewportCapability->setChanged(true); // actual update happens below
+
+    });
+
     gloperate::registerNamedStrings("data/shaders", "glsl", true);
 
     // disable debug group console output
@@ -94,13 +107,13 @@ void MultiFramePainter::onInitialize()
 
     rasterizationStage->projection = m_projectionCapability;
     rasterizationStage->camera = m_cameraCapability;
-    rasterizationStage->viewport = m_viewportCapability;
+    rasterizationStage->viewport = m_virtualViewportCapability;
     rasterizationStage->useDOF = useDOF;
     rasterizationStage->initialize();
     rasterizationStage->initProperties(*this);
     rasterizationStage->loadPreset(modelLoadingStage->getCurrentPreset());
 
-    giStage->viewport = m_viewportCapability;
+    giStage->viewport = m_virtualViewportCapability;
     giStage->camera = m_cameraCapability;
     giStage->projection = m_projectionCapability;
     giStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
@@ -108,7 +121,7 @@ void MultiFramePainter::onInitialize()
     giStage->initialize();
     giStage->initProperties(*this);
 
-    ssaoStage->viewport = m_viewportCapability;
+    ssaoStage->viewport = m_virtualViewportCapability;
     ssaoStage->camera = m_cameraCapability;
     ssaoStage->projection = m_projectionCapability;
     ssaoStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
@@ -116,7 +129,7 @@ void MultiFramePainter::onInitialize()
     ssaoStage->depthBuffer = rasterizationStage->depthBuffer;
     ssaoStage->initialize();
 
-    deferredShadingStage->viewport = m_viewportCapability;
+    deferredShadingStage->viewport = m_virtualViewportCapability;
     deferredShadingStage->camera = m_cameraCapability;
     deferredShadingStage->projection = m_projectionCapability;
     deferredShadingStage->diffuseBuffer = rasterizationStage->diffuseBuffer;
@@ -134,13 +147,14 @@ void MultiFramePainter::onInitialize()
     deferredShadingStage->initialize();
     deferredShadingStage->initProperties(*this);
 
-    frameAccumulationStage->viewport = m_viewportCapability;
+    frameAccumulationStage->viewport = m_virtualViewportCapability;
     frameAccumulationStage->currentFrame = rasterizationStage->currentFrame;
     frameAccumulationStage->frame = deferredShadingStage->shadedFrame;
     frameAccumulationStage->depth = rasterizationStage->depthBuffer;
     frameAccumulationStage->initialize();
 
     blitStage->viewport = m_viewportCapability;
+    blitStage->virtualViewport = m_virtualViewportCapability;
     blitStage->accumulation = frameAccumulationStage->accumulation;
     blitStage->depth = frameAccumulationStage->depth;
 
@@ -177,6 +191,10 @@ void MultiFramePainter::onInitialize()
 
 void MultiFramePainter::onPaint()
 {
+    if (!m_useFullHD && m_viewportCapability->hasChanged()) {
+        m_virtualViewportCapability->setViewport(0, 0, m_viewportCapability->width(), m_viewportCapability->height());
+    }
+
     {
     AutoGLPerfCounter c("GBuffer");
     rasterizationStage->process();
@@ -187,6 +205,7 @@ void MultiFramePainter::onPaint()
     frameAccumulationStage->process();
     blitStage->process();
 
+    m_virtualViewportCapability->setChanged(false);
     m_viewportCapability->setChanged(false);
     m_cameraCapability->setChanged(false);
     m_projectionCapability->setChanged(false);

@@ -83,12 +83,25 @@ void BlitStage::process()
     bool softRenderBufferActive = m_currentBuffer.find("softrender") != std::string::npos;
     m_screenAlignedQuad->program()->setUniform("softRenderBufferActive", softRenderBufferActive);
 
-    auto rect = std::array<GLint, 4>{ {
+    auto viewportRect = std::array<GLint, 4>{ {
         viewport->x(),
         viewport->y(),
         viewport->width(),
         viewport->height()
     }};
+    auto virtualViewportRect = std::array<GLint, 4>{ {
+        virtualViewport->x(),
+        virtualViewport->y(),
+        virtualViewport->width(),
+        virtualViewport->height()
+    }};
+
+    glViewport(
+        viewport->x(),
+        viewport->y(),
+        viewport->width(),
+        viewport->height()
+    );
 
     glDepthMask(GL_FALSE);
     glDisable(GL_DEPTH_TEST);
@@ -99,5 +112,5 @@ void BlitStage::process()
     glDepthMask(GL_TRUE);
 
     auto defaultFbo = globjects::Framebuffer::defaultFBO();
-    m_fbo->blit(GL_COLOR_ATTACHMENT0, rect, defaultFbo, GL_BACK_LEFT, rect, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+    m_fbo->blit(GL_COLOR_ATTACHMENT0, virtualViewportRect, defaultFbo, GL_BACK_LEFT, viewportRect, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 }
