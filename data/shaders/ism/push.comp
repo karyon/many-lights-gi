@@ -3,7 +3,7 @@
 #extension GL_ARB_shading_language_include : require
 #include </data/shaders/common/floatpacking.glsl>
 
-#define READ_FROM_TEXTURE
+#define LEVEL_ZERO
 
 layout (local_size_x = 8, local_size_y = 8) in;
 
@@ -13,10 +13,12 @@ layout (rgba32f, binding = 1) restrict readonly uniform image2D coarserLevel;
 layout (rgba32f, binding = 2) restrict writeonly uniform image2D img_output;
 layout (r16, binding = 3) restrict writeonly uniform image2D imgOutputLastStage;
 
+uniform int level;
+
 
 vec4 read(ivec2 pixelCoordinate)
 {
-    # ifdef READ_FROM_TEXTURE
+    # ifdef LEVEL_ZERO
         float depthSample = float(texelFetch(pullSameLevelTexture, ivec3(pixelCoordinate, 0), 0).r) / 500000.0;
         return vec4(depthSample, 0.0, 0.0, 0.0);
     # else
@@ -31,11 +33,9 @@ void main()
     ivec2 pixelInCoarserPixel = pixelCoordinate % 2;
     ivec2 offset = pixelInCoarserPixel * 2 - 1; // -1 or 1
 
-
     ivec2 origTexCoord = pixelCoordinate / 2;
     ivec2 coarserLevelSize = imageSize(coarserLevel);
     ivec2 coarserSizePerISM = coarserLevelSize / 32;
-
 
     ivec2[4] offsets = { {0,0}, {0,1}, {1,0}, {1,1} };
     int[4] weights = { 9, 3, 3, 1};
@@ -48,8 +48,9 @@ void main()
     for (int i = 1 ; i < 4; i++) {
         texCoords[i] = pixelCoordinate / 2 + offset * offsets[i];
         // don't go over ISM borders
-        // convert to vec2 to not do integer divisions
-        if (floor(vec2(origTexCoord + coarserSizePerISM) / coarserSizePerISM) != floor(vec2(texCoords[i]+coarserSizePerISM) / coarserSizePerISM)) {
+        // ISMs are 64px wide, so we ignore 6 bits of texture coordinates when reading from lowest level
+        // we do read from level+1
+        if (origTexCoord >> (6-(level+1)) != texCoords[i] >> (6-(level+1))) {
             weights[i] = 0;
             texCoords[i] = texCoords[0];
         }
@@ -69,10 +70,6 @@ void main()
             weights[i] = 0;
     }
 
-    bool anyValid = false;
-    for (int i = 0 ; i < 4; i++)
-        anyValid = anyValid || weights[i] > 0;
-
     for (int i = 0; i < 4; i++) {
         ivec2 texCoord = pixelCoordinate / 2 + offset * offsets[i];
 
@@ -81,8 +78,9 @@ void main()
         displacementVectors[i] = (vec2(-offset * 0.5) + offset * offsets[i] * 2 + displacementVectors[i]*2);
         float dist = length(displacementVectors[i]);
 
-        radius *= float(coarserSizePerISM.x) / 32;
-        if (dist > radius * 1)
+        radius *= pow(2, -level); // scale with miplevel
+
+        if (dist > radius)
             weights[i] = 0;
     }
 
@@ -140,7 +138,7 @@ void main()
 
     // bool checkerboardWhite = ((pixelCoordinate.x % 2) + (pixelCoordinate.y % 2)) % 2 == 0;
     // result.r = float(checkerboardWhite);
-    #ifdef READ_FROM_TEXTURE
+    #ifdef LEVEL_ZERO
         // uncomment to fill last push stage
         // imageStore(img_output, pixelCoordinate, result);
 

@@ -17,7 +17,7 @@ layout (std140, binding = 0) uniform packedVplBuffer_
 
 layout (shared, binding = 0) buffer atomicBuffer_
 {
-	uint[1024] atomicCounter;
+	uint[totalVplCount] atomicCounter;
 };
 
 layout (r32ui, binding = 0) coherent uniform uimage3D softrenderBuffer;
@@ -56,9 +56,10 @@ void main()
     if (pointsOnlyIntoScaledISMs && (gl_WorkGroupID.x > vplCount))
         return;
 
+    // cache a bunch of vpls into shared memory. store their IDs into vplIDs
     if (gl_LocalInvocationID.x < maxVplTestCount) {
         int index = int(gl_WorkGroupID.x + gl_LocalInvocationID.x);
-        index %= 1024;
+        index %= totalVplCount;
         if (pointsOnlyIntoScaledISMs) {
             index %= vplCount;
             index += vplStartIndex;
@@ -71,14 +72,13 @@ void main()
     memoryBarrierShared();
 
     // for each point
-    for(int j = 0; j < atomicCounter[gl_WorkGroupID.x] / gl_WorkGroupSize.x + 1; j++)
+    for(uint j = 0; j < atomicCounter[gl_WorkGroupID.x] / gl_WorkGroupSize.x + 1; j++)
     {
-        int pointIdInISM = int(j * gl_WorkGroupSize.x + gl_LocalInvocationID.x);
-        if (j * gl_WorkGroupSize.x + gl_LocalInvocationID.x >= atomicCounter[gl_WorkGroupID.x])
+        uint pointIdInISM = j * gl_WorkGroupSize.x + gl_LocalInvocationID.x;
+        if (pointIdInISM >= atomicCounter[gl_WorkGroupID.x])
             break;
 
         vec4 read = imageLoad(pointBuffer, int(gl_WorkGroupID.x * (imageSize(pointBuffer).x / sampledVplCount) + pointIdInISM));
-        // vec4 read = imageLoad(pointBuffer2, ivec2(gl_WorkGroupID.x, pointIdInISM));
 
         vec3 position = read.xyz;
         float g_normalRadius = read.w;
@@ -86,20 +86,16 @@ void main()
 
         vec3 pointNormal = normalRadiusUnpacked.xyz * 2.0 - 1.0;
 
-        float maxdist = normalRadiusUnpacked.w;
-
-        int found = 0;
-
         // gather up to maxVplCollectCount vpls that pass culling
-        int lastValue = 0;
+        int found = 0;
         for(int i = 0; i < maxVplTestCount; i++) {
             vec4 vpl = vpls[i];
             vec3 vplPosition = vpl.xyz;
             vec3 vplNormal2 = Unpack3PNFromFP32(vpl.w) * 2.0 - 1.0;
 
-            vec3 positionRelativeToCamera2 = position.xyz - vplPosition;
+            vec3 positionRelativeToCamera = position.xyz - vplPosition;
 
-            bool cull = dot(vplNormal2, positionRelativeToCamera2) < 0 || dot(pointNormal, -positionRelativeToCamera2) < 0;
+            bool cull = dot(vplNormal2, positionRelativeToCamera) < 0 || dot(pointNormal, -positionRelativeToCamera) < 0;
 
             if (!cull && found < maxVplCollectCount) {
                 usedVplIDs[gl_LocalInvocationID.x * maxVplCollectCount + found] = i;
@@ -119,17 +115,17 @@ void main()
             vec3 vplPosition = vpl.xyz;
             vec3 vplNormal2 = Unpack3PNFromFP32(vpl.w) * 2.0 - 1.0;
 
-            vec3 positionRelativeToCamera2 = position.xyz - vplPosition;
+            vec3 positionRelativeToCamera = position.xyz - vplPosition;
             // paraboloid projection
-            float distToCamera = length(positionRelativeToCamera2);
+            float distToCamera = length(positionRelativeToCamera);
             float ismIndex = scaleISMs ? float(globalVplID) - vplStartIndex : globalVplID;
-            vec3 v = paraboloid_project(positionRelativeToCamera2, distToCamera, vplNormal2, zFar, ismIndex, ismIndices1d, true);
+            vec3 v = paraboloid_project(positionRelativeToCamera, distToCamera, vplNormal2, zFar, ismIndex, ismIndices1d, true);
 
-            vec3 normalPositionRelativeToCamera = positionRelativeToCamera2 + pointNormal * 0.1;
+            vec3 normalPositionRelativeToCamera = positionRelativeToCamera + pointNormal * 0.1;
             float normalDist = length(normalPositionRelativeToCamera);
             vec3 normalV = paraboloid_project(normalPositionRelativeToCamera, normalDist, vplNormal2, zFar, ismIndex, ismIndices1d, true);
 
-            v.xy *= 2048;
+            v.xy *= imageSize(softrenderBuffer).xy;
             v.z *= 500000;
 
             uint currentDepthValue = uint(v.z);
@@ -144,7 +140,7 @@ void main()
 
             if (originalDepthValue >= currentDepthValue && writeVerified)
             {
-                float pointRadius = maxdist;
+                float pointRadius = normalRadiusUnpacked.w;
                 pointRadius /= maxVplCollectCount;
                 uint g_normalRadius = Pack4PNToUint(vec4(normalize(pointNormal) * 0.5 + 0.5, pointRadius));
                 // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.

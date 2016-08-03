@@ -64,9 +64,9 @@ protected:
 
     globjects::ref_ptr<globjects::Program> m_shadowmapProgram;
     globjects::ref_ptr<globjects::Program> m_pullProgram;
-    globjects::ref_ptr<globjects::Program> m_pullFirstLevelProgram;
+    globjects::ref_ptr<globjects::Program> m_pullLevelZeroProgram;
     globjects::ref_ptr<globjects::Program> m_pushProgram;
-    globjects::ref_ptr<globjects::Program> m_pushFirstLevelProgram;
+    globjects::ref_ptr<globjects::Program> m_pushLevelZeroProgram;
     globjects::ref_ptr<globjects::Program> m_pointSoftRenderProgram;
     globjects::ref_ptr<globjects::Buffer> m_atomicCounter;
     globjects::ref_ptr<globjects::Texture> m_atomicCounterTexture;

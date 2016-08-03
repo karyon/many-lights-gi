@@ -45,21 +45,21 @@ ImperfectShadowmap::ImperfectShadowmap()
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/ism/ism.frag")
     );
 
-    m_pullFirstLevelProgram = new globjects::Program();
-    m_pullFirstLevelProgram->attach(globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/ism/pull.comp"));
+    m_pullLevelZeroProgram = new globjects::Program();
+    m_pullLevelZeroProgram->attach(globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/ism/pull.comp"));
 
-    globjects::Shader::globalReplace("#define READ_FROM_TEXTURE", "#undef READ_FROM_TEXTURE");
+    globjects::Shader::globalReplace("#define LEVEL_ZERO", "#undef LEVEL_ZERO");
     m_pullProgram = new globjects::Program();
     m_pullProgram->attach(globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/ism/pull.comp"));
     globjects::Shader::clearGlobalReplacements();
 
-    globjects::Shader::globalReplace("#define READ_FROM_TEXTURE", "#undef READ_FROM_TEXTURE");
+    globjects::Shader::globalReplace("#define LEVEL_ZERO", "#undef LEVEL_ZERO");
     m_pushProgram = new globjects::Program();
     m_pushProgram->attach(globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/ism/push.comp"));
     globjects::Shader::clearGlobalReplacements();
 
-    m_pushFirstLevelProgram = new globjects::Program();
-    m_pushFirstLevelProgram->attach(globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/ism/push.comp"));
+    m_pushLevelZeroProgram = new globjects::Program();
+    m_pushLevelZeroProgram->attach(globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/ism/push.comp"));
 
     m_pointSoftRenderProgram = new globjects::Program();
     m_pointSoftRenderProgram->attach(globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/ism/ism.comp"));
@@ -132,7 +132,8 @@ void ImperfectShadowmap::pull() const
         gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         pullBuffer->bindImageTexture(0, i, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
         pullBuffer->bindImageTexture(1, i + 1, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-        auto program = (i == 0) ? m_pullFirstLevelProgram : m_pullProgram;
+        auto program = (i == 0) ? m_pullLevelZeroProgram : m_pullProgram;
+        program->setUniform("level", i);
         program->dispatchCompute(size / int(std::pow(2, i + 1)) / 8, size / int(std::pow(2, i + 1)) / 8, 1);
 
         if (i <= 2)
@@ -152,7 +153,8 @@ void ImperfectShadowmap::pull() const
         readTexture->bindImageTexture(1, i+1, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
         pushBuffer->bindImageTexture(2, i, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
         auto currResultBuffer = (i == 0) ? pushPullResultBuffer : pushBuffer;
-        auto program = (i == 0) ? m_pushFirstLevelProgram : m_pushProgram;
+        auto program = (i == 0) ? m_pushLevelZeroProgram : m_pushProgram;
+        program->setUniform("level", i);
         program->dispatchCompute(size / int(std::pow(2, i)) / 8, size / int(std::pow(2, i)) / 8, 1);
 
         if (i <= 2)
@@ -183,7 +185,6 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     gl::GLuint zero = 0;
     m_atomicCounter->clearData(GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
     m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
-    //m_atomicCounterTexture->bindImageTexture(2, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
 
     softrenderBuffer->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(500000));
     softrenderBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);

@@ -3,7 +3,7 @@
 #extension GL_ARB_shading_language_include : require
 #include </data/shaders/common/floatpacking.glsl>
 
-#define READ_FROM_TEXTURE
+#define LEVEL_ZERO
 
 layout (local_size_x = 8, local_size_y = 8) in;
 
@@ -11,13 +11,13 @@ layout (binding = 0) uniform usampler3D softrenderBuffer;
 layout (rgba32f, binding = 0) restrict readonly uniform image2D ismDepthImage;
 layout (rgba32f, binding = 1) restrict writeonly uniform image2D img_output;
 
+uniform int level;
+
+const float infinity = 1. / 0.;
 
 void main()
 {
     ivec2 pixelCoordinate = ivec2(gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy);
-
-    ivec2 thisLevelSize = imageSize(img_output);
-    ivec2 sizePerISM = thisLevelSize / 32;
 
     ivec2[4] offsets = { {0,0}, {0,1}, {1,0}, {1,1} };
 
@@ -29,7 +29,7 @@ void main()
     bool[4] valid;
 
     for (int i = 0; i < 4; i++) {
-        # ifdef READ_FROM_TEXTURE
+        # ifdef LEVEL_ZERO
             float depthSample = float(texelFetch(softrenderBuffer, ivec3(pixelCoordinate * 2 + offsets[i], 0), 0).r) / 500000.0;
             uint normalRadius = texelFetch(softrenderBuffer, ivec3(pixelCoordinate * 2 + offsets[i], 1), 0).r;
             vec2 displacementVector = vec2(0.0);
@@ -43,17 +43,18 @@ void main()
 
         vec4 normalRadiusUnpacked = Unpack4PNFromUint(normalRadius);
         vec3 normal = normalRadiusUnpacked.xyz * 2.0 - 1.0;
+        float radius = normalRadiusUnpacked.w * 15;
 
-        #ifdef READ_FROM_TEXTURE
-            float pointWorldRadius = normalRadiusUnpacked.w;
-            float distToCamera = depthSample * 50;
-            float viewport = 2048;
-            float radius = pointWorldRadius / distToCamera / 3.14 * viewport.x; // approximation that breaks especially for near points.
+        #ifdef LEVEL_ZERO
+            float zFar = 50.0;
+            float maxDepth = depthSample + (radius * 2) / zFar;
+            // radius is in world units so far, project & convert to pixels
+            // TODO replace with uniform
+            float ismSize = 64;
+            float distToCamera = depthSample * zFar;
+            radius = radius / distToCamera / 3.14 * ismSize; // approximation that breaks especially for near points.
             radius *= 1.3; // boost radius a bit to make circle area match the point rendering square area
             radius = min(radius, 15);
-            float maxDepth = depthSample + (pointWorldRadius * 2) / 50 * sqrt(1024);
-        #else
-            float radius = normalRadiusUnpacked.w * 15.0;
         #endif
 
 
@@ -61,10 +62,9 @@ void main()
         vec2 newDisplacementVector = (offsets[i] - 0.5 + displacementVector) / 2;
         float dist = length(newDisplacementVector);
 
-        float scaledRadius = radius * float(sizePerISM.x) / 64;
+        float scaledRadius = radius * pow(2, -(level+1));
 
-        bool radiusCheckPassed = dist <= scaledRadius * 1;
-        radiusCheckPassed = true;
+        bool radiusCheckPassed = dist <= scaledRadius;
 
         depthSamples[i] = depthSample;
         maxDepths[i] = maxDepth;
@@ -72,12 +72,10 @@ void main()
         normals[i] = normal;
         displacementVectors[i] = newDisplacementVector; // TODO blocky results, but are round when displacment vector set to 0
         valid[i] = depthSample != 1.0;
-        // valid[i] = valid[i] && radiusCheckPassed;
-        // valid[i] = radiusCheckPassed && depthSample != 1.0; // TODO the radius check basically does nothing.
-        valid[i] = true; // TODO the radius check basically does nothing.
+        valid[i] = valid[i] && radiusCheckPassed; // TODO unknown whether this helps
     }
 
-    float minimum = 9001;
+    float minimum = infinity;
     float maxDepth;
     for (int i = 0; i < 4; i++) {
         if (!valid[i])

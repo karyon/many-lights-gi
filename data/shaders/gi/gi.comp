@@ -62,7 +62,7 @@ void main()
     uvec2 largeInterleaveBlockPosition = gl_WorkGroupID.xy * gl_WorkGroupSize.xy;
     uvec2 offsetInLargeInterleaveBlock = gl_LocalInvocationID.xy;
     uvec2 smallInterleavedBlockPosition = (largeInterleaveBlockPosition + offsetInLargeInterleaveBlock) * interleavedSize;
-    uint offsetInSmallInterleaveBlock1d = (gl_WorkGroupID.z) % 16u;
+    uint offsetInSmallInterleaveBlock1d = (gl_WorkGroupID.z) % interleavedPixels;
     uvec2 offsetInSmallInterleaveBlock = uvec2(offsetInSmallInterleaveBlock1d % interleavedSize, offsetInSmallInterleaveBlock1d / interleavedSize);
     ivec2 fragCoord = ivec2(smallInterleavedBlockPosition + offsetInSmallInterleaveBlock);
 
