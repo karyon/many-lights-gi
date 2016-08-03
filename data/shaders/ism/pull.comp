@@ -32,7 +32,6 @@ void main()
         # ifdef READ_FROM_TEXTURE
             float depthSample = float(texelFetch(softrenderBuffer, ivec3(pixelCoordinate * 2 + offsets[i], 0), 0).r) / 500000.0;
             uint normalRadius = texelFetch(softrenderBuffer, ivec3(pixelCoordinate * 2 + offsets[i], 1), 0).r;
-            float maxDepth = depthSample + 0.005; // TODO use radius somehow instead?
             vec2 displacementVector = vec2(0.0);
         # else
             vec4 read = imageLoad(ismDepthImage, pixelCoordinate * 2 + offsets[i]);
@@ -43,9 +42,20 @@ void main()
         # endif
 
         vec4 normalRadiusUnpacked = Unpack4PNFromUint(normalRadius);
-        vec3 normal = normalRadiusUnpacked.xyz;
-        normal = normal * 2.0 - 1.0;
-        float radius = normalRadiusUnpacked.w * 15.0;
+        vec3 normal = normalRadiusUnpacked.xyz * 2.0 - 1.0;
+
+        #ifdef READ_FROM_TEXTURE
+            float pointWorldRadius = normalRadiusUnpacked.w;
+            float distToCamera = depthSample * 50;
+            float viewport = 2048;
+            float radius = pointWorldRadius / distToCamera / 3.14 * viewport.x; // approximation that breaks especially for near points.
+            radius *= 1.3; // boost radius a bit to make circle area match the point rendering square area
+            radius = min(radius, 15);
+            float maxDepth = depthSample + (pointWorldRadius * 2) / 50 * sqrt(1024);
+        #else
+            float radius = normalRadiusUnpacked.w * 15.0;
+        #endif
+
 
         // radius check
         vec2 newDisplacementVector = (offsets[i] - 0.5 + displacementVector) / 2;
@@ -61,8 +71,10 @@ void main()
         radiuses[i] = radius;
         normals[i] = normal;
         displacementVectors[i] = newDisplacementVector; // TODO blocky results, but are round when displacment vector set to 0
-        valid[i] = radiusCheckPassed && depthSample != 1.0; // TODO the radius check basically does nothing.
-        // valid[i] = true; // TODO the radius check basically does nothing.
+        valid[i] = depthSample != 1.0;
+        // valid[i] = valid[i] && radiusCheckPassed;
+        // valid[i] = radiusCheckPassed && depthSample != 1.0; // TODO the radius check basically does nothing.
+        valid[i] = true; // TODO the radius check basically does nothing.
     }
 
     float minimum = 9001;
