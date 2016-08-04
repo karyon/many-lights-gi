@@ -1,0 +1,84 @@
+#version 430
+
+#extension GL_ARB_shading_language_include : require
+#include </data/shaders/common/reprojection.glsl>
+
+layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+// layout (r8ui, binding = 0) restrict writeonly uniform uimage2D clusterIDs;
+layout (r32ui, binding = 0) restrict writeonly uniform uimage1D compactUsedIDs;
+layout (rg16ui, binding = 1) restrict writeonly uniform uimage3D normalToCompactIDs;
+
+uniform sampler2D depthSampler;
+
+layout (std140, binding = 0) buffer atomicBuffer_
+{
+	uint atomicCounter;
+};
+
+
+uniform mat4 projectionMatrix;
+uniform float zFar;
+
+const int numDepthSlices = 16;
+const int numSlicesIntoFirstSlice = 3;
+float scaleFactor = (numDepthSlices + numSlicesIntoFirstSlice) / log2(zFar);
+
+shared bool[numDepthSlices] usedDepthSlices;
+shared int counter;
+shared uint startIndex;
+
+void main()
+{
+    uvec2 clusterCoord = uvec2(gl_WorkGroupID.xy);
+
+    if (gl_LocalInvocationID.x == 0)
+        counter = 0;
+
+    if (gl_LocalInvocationID.x < 16)
+        usedDepthSlices[gl_LocalInvocationID.x] = false;
+
+    barrier();
+    memoryBarrierShared();
+
+    for(int i = 0; i < 128; i++) {
+        ivec2 fragCoord = ivec2(clusterCoord * 128) + ivec2(gl_LocalInvocationID.x, i);
+
+        float depth = linearDepth(depthSampler, fragCoord, projectionMatrix);
+
+        int depthSlice = int(max(log2(-depth) * scaleFactor - numSlicesIntoFirstSlice, 0));
+
+        bool inImageBounds = all(lessThan(fragCoord, textureSize(depthSampler, 0).xy));
+        if (inImageBounds)
+            usedDepthSlices[depthSlice] = true;
+    }
+
+    barrier();
+    memoryBarrierShared();
+
+    // from here on, each invocation processes one depth slice
+    if (gl_LocalInvocationID.x >= 16)
+        return;
+
+    uint depthSlice = gl_LocalInvocationID.x;
+
+    uint localCounter = 0;
+    if(usedDepthSlices[depthSlice]) {
+        localCounter = atomicAdd(counter, 1);
+    }
+
+    barrier();
+    memoryBarrierShared();
+
+    if (depthSlice == 0)
+        startIndex = atomicAdd(atomicCounter, counter);
+
+    barrier();
+    memoryBarrierShared();
+
+    if(usedDepthSlices[depthSlice]) {
+        uint clusterID = clusterCoord.x | clusterCoord.y << 8 | depthSlice << 16;
+        imageStore(compactUsedIDs, int(startIndex+localCounter), uvec4(clusterID, 0, 0, 0));
+        imageStore(normalToCompactIDs, ivec3(clusterCoord, depthSlice), uvec4(startIndex + localCounter, 0, 0, 0));
+    }
+}

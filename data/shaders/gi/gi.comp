@@ -2,6 +2,7 @@
 
 #extension GL_ARB_shading_language_include : require
 #include </data/shaders/ism/ism_utils.glsl>
+#include </data/shaders/common/reprojection.glsl>
 
 struct VPL {
     vec4 position;
@@ -11,9 +12,8 @@ struct VPL {
 
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout (r11f_g11f_b10f, binding = 0) restrict writeonly uniform image2D img_output;
-layout (r8ui, binding = 1) restrict readonly uniform uimage2D clusterIDs;
-layout (r16ui, binding = 2) restrict readonly uniform uimage3D normalToCompactIDs;
-layout (r16ui, binding = 3) restrict readonly uniform uimage2D lightLists;
+layout (r16ui, binding = 1) restrict readonly uniform uimage3D normalToCompactIDs;
+layout (r16ui, binding = 2) restrict readonly uniform uimage2D lightLists;
 
 const int totalVplCount = 1024;
 layout (std140, binding = 0) uniform vplBuffer_
@@ -74,10 +74,16 @@ void main()
     vec4 fragWorldCoordWithW = viewProjectionInvertedMatrix * ndc;
     vec3 fragWorldCoord = fragWorldCoordWithW.xyz / fragWorldCoordWithW.w;
 
+
     vec3 fragNormal = texelFetch(faceNormalSampler, fragCoord, 0).xyz * 2.0 - 1.0;
 
-    // TODO reconstruct this and then throw the buffer away?
-    uint clusterZ = imageLoad(clusterIDs, fragCoord).r;
+    const int numDepthSlices = 16;
+    const int numSlicesIntoFirstSlice = 3;
+    float scaleFactor = (numDepthSlices + numSlicesIntoFirstSlice) / log2(50);
+    float depth = linearDepth(depthSample, projectionMatrix);
+    int clusterZ = int(max(log2(-depth) * scaleFactor - numSlicesIntoFirstSlice, 0));
+
+
     uvec2 clusterCoord = uvec2(fragCoord.xy) / clusterPixelSize;
     //TODO read numVPL from same texture as clusterID
     uint compactClusterID = imageLoad(normalToCompactIDs, ivec3(clusterCoord, clusterZ)).r;

@@ -40,8 +40,6 @@ public:
     void resizeTexture(int width, int height);
 
     globjects::ref_ptr<globjects::Buffer> vplBuffer;
-    globjects::ref_ptr<globjects::Texture> clusterIDs;
-    globjects::ref_ptr<globjects::Texture> usedClustersPerTile;
     globjects::ref_ptr<globjects::Texture> compactUsedClusterIDs;
     globjects::ref_ptr<globjects::Texture> normalToCompactIDs;
     globjects::ref_ptr<globjects::Buffer> lightListsBuffer;
@@ -53,8 +51,6 @@ private:
     int m_numClustersY;
     int m_numClusters;
     globjects::ref_ptr<globjects::Program> m_clusterIDProgram;
-    globjects::ref_ptr<globjects::Program> m_usedClusterIDsPerTileProgram;
-    globjects::ref_ptr<globjects::Program> m_compactUsedClusterIDsPerTileProgram;
     globjects::ref_ptr<globjects::Program> m_lightListsProgram;
 
     globjects::ref_ptr<globjects::Buffer> m_atomicCounter;

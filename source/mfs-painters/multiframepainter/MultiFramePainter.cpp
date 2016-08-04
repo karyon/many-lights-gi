@@ -176,7 +176,6 @@ void MultiFramePainter::onInitialize()
         giStage->ism->pullBuffer,
         giStage->ism->pushBuffer,
         giStage->ism->pushPullResultBuffer,
-        giStage->clusteredShading->clusterIDs,
         giStage->giBuffer,
         giStage->giBlurTempBuffer,
         giStage->giBlurFinalBuffer,
