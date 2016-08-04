@@ -12,7 +12,6 @@ layout (std140, binding = 0) buffer atomicBuffer_
 };
 
 
-const uint clusterPixelSize = 64;
 const int numDepthSlices = 16;
 
 void main()

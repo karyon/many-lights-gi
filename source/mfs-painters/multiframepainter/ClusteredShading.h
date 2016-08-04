@@ -32,6 +32,7 @@ public:
         const glm::mat4& view,
         const glm::mat4& projection,
         const glm::ivec2& viewport,
+        float zFar,
         int vplStartIndex,
         int vplEndIndex,
         globjects::ref_ptr<globjects::Texture> depthBuffer,

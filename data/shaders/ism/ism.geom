@@ -40,7 +40,7 @@ uniform bool pointsOnlyIntoScaledISMs = false;
 int vplCount = vplEndIndex - vplStartIndex;
 int sampledVplCount = pointsOnlyIntoScaledISMs ? vplCount : totalVplCount;
 int ismCount = (scaleISMs) ? vplCount : totalVplCount;
-int ismIndices1d = int(ceil(sqrt(ismCount)));
+int ismIndices1d = int(pow(2, ceil(log2(ismCount) / 2))); // next even power of two
 int vplIdOffset = pointsOnlyIntoScaledISMs ? vplStartIndex : 0;
 
 

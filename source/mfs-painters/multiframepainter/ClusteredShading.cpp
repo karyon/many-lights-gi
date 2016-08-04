@@ -25,7 +25,7 @@ using namespace gl;
 
 namespace
 {
-    const int clusterPixelSize = 64;
+    const int clusterPixelSize = 128;
     const int numDepthSlices = 16;
     const int maxVPLCount = 1024;
 }
@@ -87,6 +87,7 @@ void ClusteredShading::process(
     const glm::mat4& view,
     const glm::mat4& projection,
     const glm::ivec2& viewport,
+    float zFar,
     int vplStartIndex,
     int vplEndIndex,
     globjects::ref_ptr<globjects::Texture> depthBuffer,
@@ -99,6 +100,7 @@ void ClusteredShading::process(
         clusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R8UI);
         m_clusterIDProgram->setUniform("depthSampler", 0);
         m_clusterIDProgram->setUniform("projectionMatrix", projection);
+        m_clusterIDProgram->setUniform("zFar", zFar);
         m_clusterIDProgram->dispatchCompute(viewport.x / 8 + 1, viewport.y / 8 + 1, 1);
     }
     {
@@ -135,6 +137,7 @@ void ClusteredShading::process(
         m_lightListsProgram->setUniform("viewport", viewport);
         m_lightListsProgram->setUniform("projectionInverseMatrix", glm::inverse(projection));
         m_lightListsProgram->setUniform("viewInverseMatrix", glm::inverse(view));
+        m_lightListsProgram->setUniform("zFar", zFar);
         m_lightListsProgram->setUniform("vplStartIndex", vplStartIndex);
         m_lightListsProgram->setUniform("vplEndIndex", vplEndIndex);
         m_lightListsProgram->dispatchCompute(m_numClusters / 32 + 1, 1, 1);

@@ -416,6 +416,7 @@ void GIStage::process()
             camera->view(),
             projection->projection(),
             glm::ivec2(viewport->width(), viewport->height()),
+            projection->zFar(),
             vplStartIndex,
             vplEndIndex,
             depthBuffer,

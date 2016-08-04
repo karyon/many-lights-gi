@@ -56,7 +56,7 @@ protected:
         float tessLevelFactor,
         bool usePushPull,
         float zFar) const;
-    void pull() const;
+    void pullpush(int ismPixelSize, float zFar) const;
 
     int m_blurSize;
 

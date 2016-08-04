@@ -31,7 +31,8 @@ using namespace gl;
 
 namespace
 {
-    const int size = 2048;
+    const int totalIsmPixelSize = 2048;
+    const int maxIsmCount = 1024;
 }
 
 ImperfectShadowmap::ImperfectShadowmap()
@@ -69,25 +70,25 @@ ImperfectShadowmap::ImperfectShadowmap()
     depthBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
     depthBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
     depthBuffer->setName("ISM Depth");
-    depthBuffer->storage2D(1, GL_DEPTH_COMPONENT16, size, size);
+    depthBuffer->storage2D(1, GL_DEPTH_COMPONENT16, totalIsmPixelSize, totalIsmPixelSize);
     m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depthBuffer);
 
     softrenderBuffer = globjects::Texture::createDefault(GL_TEXTURE_3D);
     softrenderBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
     softrenderBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
     softrenderBuffer->setName("ISM softrender");
-    softrenderBuffer->storage3D(1, GL_R32UI, size, size, 2);
+    softrenderBuffer->storage3D(1, GL_R32UI, totalIsmPixelSize, totalIsmPixelSize, 2);
 
     m_fbo->printStatus(true);
 
 
     pullBuffer = new globjects::Texture(GL_TEXTURE_2D);
     pullBuffer->setName("Pull Buffer");
-    pullBuffer->storage2D(10, GL_RGBA32F, size, size);
+    pullBuffer->storage2D(10, GL_RGBA32F, totalIsmPixelSize, totalIsmPixelSize);
 
     pushBuffer = new globjects::Texture(GL_TEXTURE_2D);
     pushBuffer->setName("Push Buffer");
-    pushBuffer->storage2D(10, GL_RGBA32F, size, size);
+    pushBuffer->storage2D(10, GL_RGBA32F, totalIsmPixelSize, totalIsmPixelSize);
     pushBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST_MIPMAP_NEAREST);
     pushBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
 
@@ -100,7 +101,7 @@ ImperfectShadowmap::ImperfectShadowmap()
 
     pushPullResultBuffer = new globjects::Texture(GL_TEXTURE_2D);
     pushPullResultBuffer->setName("Pushpull result");
-    pushPullResultBuffer->storage2D(1, GL_R16, size, size);
+    pushPullResultBuffer->storage2D(1, GL_R16, totalIsmPixelSize, totalIsmPixelSize);
     pushPullResultBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
     pushPullResultBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
 
@@ -117,7 +118,7 @@ ImperfectShadowmap::~ImperfectShadowmap()
 
 }
 
-void ImperfectShadowmap::pull() const
+void ImperfectShadowmap::pullpush(int ismPixelSize, float zFar) const
 {
     AutoGLDebugGroup c("ISM pushpull");
 
@@ -134,7 +135,9 @@ void ImperfectShadowmap::pull() const
         pullBuffer->bindImageTexture(1, i + 1, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
         auto program = (i == 0) ? m_pullLevelZeroProgram : m_pullProgram;
         program->setUniform("level", i);
-        program->dispatchCompute(size / int(std::pow(2, i + 1)) / 8, size / int(std::pow(2, i + 1)) / 8, 1);
+        program->setUniform("ismPixelSize", ismPixelSize);
+        program->setUniform("zFar", zFar);
+        program->dispatchCompute(totalIsmPixelSize / int(std::pow(2, i + 1)) / 8, totalIsmPixelSize / int(std::pow(2, i + 1)) / 8, 1);
 
         if (i <= 2)
             PerfCounter::endGL("PL" + std::to_string(i));
@@ -155,7 +158,7 @@ void ImperfectShadowmap::pull() const
         auto currResultBuffer = (i == 0) ? pushPullResultBuffer : pushBuffer;
         auto program = (i == 0) ? m_pushLevelZeroProgram : m_pushProgram;
         program->setUniform("level", i);
-        program->dispatchCompute(size / int(std::pow(2, i)) / 8, size / int(std::pow(2, i)) / 8, 1);
+        program->dispatchCompute(totalIsmPixelSize / int(std::pow(2, i)) / 8, totalIsmPixelSize / int(std::pow(2, i)) / 8, 1);
 
         if (i <= 2)
             PerfCounter::endGL("PS" + std::to_string(i));
@@ -165,7 +168,11 @@ void ImperfectShadowmap::pull() const
 void ImperfectShadowmap::process(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, bool usePushPull, float zFar) const
 {
     render(drawablesMap, vplProcessor, vplStartIndex, vplEndIndex, scaleISMs, pointsOnlyIntoScaledISMs, tessLevelFactor, usePushPull, zFar);
-    pull();
+    int vplCount = vplEndIndex - vplStartIndex;
+    int ismCount = (scaleISMs) ? vplCount : maxIsmCount;
+    int ismIndices1d = int(pow(2, ceil(log2(ismCount) / 2))); // next even power of two
+    int ismPixelSize = totalIsmPixelSize / ismIndices1d;
+    pullpush(ismPixelSize, zFar);
 }
 
 void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLProcessor& vplProcessor, int vplStartIndex, int vplEndIndex, bool scaleISMs, bool pointsOnlyIntoScaledISMs, float tessLevelFactor, bool usePushPull, float zFar) const
@@ -173,7 +180,7 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
 
-    glViewport(0, 0, size, size);
+    glViewport(0, 0, totalIsmPixelSize, totalIsmPixelSize);
 
     m_fbo->bind();
 
@@ -190,7 +197,7 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     softrenderBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
     pointBuffer->bindImageTexture(1, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 
-    m_shadowmapProgram->setUniform("viewport", glm::ivec2(size, size));
+    m_shadowmapProgram->setUniform("viewport", glm::ivec2(totalIsmPixelSize, totalIsmPixelSize));
     m_shadowmapProgram->setUniform("zFar", zFar);
     m_shadowmapProgram->setUniform("vplStartIndex", vplStartIndex);
     m_shadowmapProgram->setUniform("vplEndIndex", vplEndIndex);
@@ -219,7 +226,7 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
         gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         gl::glMemoryBarrier(gl::GL_SHADER_STORAGE_BARRIER_BIT);
 
-        m_pointSoftRenderProgram->setUniform("viewport", glm::ivec2(size, size));
+        m_pointSoftRenderProgram->setUniform("viewport", glm::ivec2(totalIsmPixelSize, totalIsmPixelSize));
         m_pointSoftRenderProgram->setUniform("zFar", zFar);
         m_pointSoftRenderProgram->setUniform("vplStartIndex", vplStartIndex);
         m_pointSoftRenderProgram->setUniform("vplEndIndex", vplEndIndex);

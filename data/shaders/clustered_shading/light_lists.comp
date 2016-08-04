@@ -23,18 +23,18 @@ layout (std140, binding = 0) buffer atomicBuffer_
 uniform ivec2 viewport;
 uniform mat4 viewInverseMatrix;
 uniform mat4 projectionInverseMatrix;
+uniform float zFar;
 
 uniform int vplStartIndex = 0;
 uniform int vplEndIndex = totalVplCount;
 
-const uint pixelsPerCluster = 64;
+const uint pixelsPerCluster = 128;
 const uint maxNumLights = 1024;
 
 const float nearPlane = 0.05;
-const float farPlane = 50;
 const int numDepthSlices = 16;
 const int numSlicesIntoFirstSlice = 3;
-const float scaleFactor = (numDepthSlices + numSlicesIntoFirstSlice) / log2(farPlane);
+float scaleFactor = (numDepthSlices + numSlicesIntoFirstSlice) / log2(zFar);
 
 float sliceToZ(uint slice)
 {

@@ -9,7 +9,7 @@ struct VPL {
     vec4 color;
 };
 
-layout (local_size_x = 8, local_size_y = 8, local_size_x = 1) in;
+layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout (r11f_g11f_b10f, binding = 0) restrict writeonly uniform image2D img_output;
 layout (r8ui, binding = 1) restrict readonly uniform uimage2D clusterIDs;
 layout (r16ui, binding = 2) restrict readonly uniform uimage3D normalToCompactIDs;
@@ -44,7 +44,7 @@ int vplCount = vplEndIndex - vplStartIndex;
 uniform bool scaleISMs = false;
 float ismIndexOffset = scaleISMs ? vplStartIndex : 0;
 int ismCount = (scaleISMs) ? vplCount : totalVplCount;
-int ismIndices1d = int(ceil(sqrt(ismCount)));
+int ismIndices1d = int(pow(2, ceil(log2(ismCount) / 2))); // next even power of two
 uniform bool enableShadowing = true;
 
 uniform bool showVPLPositions = false;
@@ -54,7 +54,7 @@ uint interleavedSize = useInterleaving ? 4 : 1;
 uint interleavedPixels = interleavedSize*interleavedSize;
 uint vplsPerInvocation = totalVplCount / interleavedPixels;
 
-const uint clusterPixelSize = 64;
+const uint clusterPixelSize = 128;
 
 
 void main()
@@ -76,6 +76,7 @@ void main()
 
     vec3 fragNormal = texelFetch(faceNormalSampler, fragCoord, 0).xyz * 2.0 - 1.0;
 
+    // TODO reconstruct this and then throw the buffer away?
     uint clusterZ = imageLoad(clusterIDs, fragCoord).r;
     uvec2 clusterCoord = uvec2(fragCoord.xy) / clusterPixelSize;
     //TODO read numVPL from same texture as clusterID
