@@ -41,7 +41,7 @@ public:
 
     globjects::ref_ptr<globjects::Buffer> vplBuffer;
     globjects::ref_ptr<globjects::Texture> compactUsedClusterIDs;
-    globjects::ref_ptr<globjects::Texture> normalToCompactIDs;
+    globjects::ref_ptr<globjects::Texture> lightListIdsAndSizes;
     globjects::ref_ptr<globjects::Buffer> lightListsBuffer;
     globjects::ref_ptr<globjects::Texture> lightLists;
     globjects::ref_ptr<globjects::Texture> clusterCorners;

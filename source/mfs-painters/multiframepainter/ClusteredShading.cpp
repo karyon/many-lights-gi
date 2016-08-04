@@ -41,8 +41,8 @@ ClusteredShading::ClusteredShading()
 
     compactUsedClusterIDs = globjects::Texture::createDefault(GL_TEXTURE_1D);
     compactUsedClusterIDs->setName("compact clusters2");
-    normalToCompactIDs = globjects::Texture::createDefault(GL_TEXTURE_3D);
-    normalToCompactIDs->setName("normalToCompactIDs2");
+    lightListIdsAndSizes = globjects::Texture::createDefault(GL_TEXTURE_3D);
+    lightListIdsAndSizes->setName("lightListIdsAndSizes");
 
     m_atomicCounter = new globjects::Buffer();
     m_atomicCounter->setName("atomic counter");
@@ -84,10 +84,8 @@ void ClusteredShading::process(
         m_atomicCounter->clearData(GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
 
         depthBuffer->bindActive(0);
-        compactUsedClusterIDs->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(0));
-        normalToCompactIDs->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(0));
         compactUsedClusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
-        normalToCompactIDs->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
+        lightListIdsAndSizes->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG16UI);
         m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
         m_clusterIDProgram->setUniform("depthSampler", 0);
         m_clusterIDProgram->setUniform("projectionMatrix", projection);
@@ -98,10 +96,10 @@ void ClusteredShading::process(
         AutoGLPerfCounter c("Light Lists");
         gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
         compactUsedClusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32UI);
-        lightLists->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(0));
         lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
         vplProcessor.packedVplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
         clusterCorners->bindImageTexture(2, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+        lightListIdsAndSizes->bindImageTexture(3, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG16UI);
         m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
         //lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI); //uncomment this line to get the crash
         //lightListsBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 1);
@@ -124,7 +122,7 @@ void ClusteredShading::resizeTexture(int width, int height)
     m_numClusters = m_numClustersX * m_numClustersY * numDepthSlices;
 
     compactUsedClusterIDs->image1D(0, GL_R32UI, m_numClusters, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
-    normalToCompactIDs->image3D(0, GL_R16UI, m_numClustersX, m_numClustersY, numDepthSlices, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+    lightListIdsAndSizes->image3D(0, GL_RG16UI, m_numClustersX, m_numClustersY, numDepthSlices, 0, GL_RG_INTEGER, GL_UNSIGNED_INT, nullptr);
     // TODO memory usage. m_numClusters is theoretical worst case.
     lightLists->image2D(0, GL_R16UI, m_numClusters, maxVPLCount, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
     clusterCorners->image2D(0, GL_RGBA32F, m_numClusters, 8, 0, GL_RGBA, GL_FLOAT, nullptr);

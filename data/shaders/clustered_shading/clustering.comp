@@ -5,9 +5,7 @@
 
 layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
-// layout (r8ui, binding = 0) restrict writeonly uniform uimage2D clusterIDs;
 layout (r32ui, binding = 0) restrict writeonly uniform uimage1D compactUsedIDs;
-layout (rg16ui, binding = 1) restrict writeonly uniform uimage3D normalToCompactIDs;
 
 uniform sampler2D depthSampler;
 
@@ -63,9 +61,8 @@ void main()
     uint depthSlice = gl_LocalInvocationID.x;
 
     uint localCounter = 0;
-    if(usedDepthSlices[depthSlice]) {
+    if(usedDepthSlices[depthSlice])
         localCounter = atomicAdd(counter, 1);
-    }
 
     barrier();
     memoryBarrierShared();
@@ -79,6 +76,5 @@ void main()
     if(usedDepthSlices[depthSlice]) {
         uint clusterID = clusterCoord.x | clusterCoord.y << 8 | depthSlice << 16;
         imageStore(compactUsedIDs, int(startIndex+localCounter), uvec4(clusterID, 0, 0, 0));
-        imageStore(normalToCompactIDs, ivec3(clusterCoord, depthSlice), uvec4(startIndex + localCounter, 0, 0, 0));
     }
 }
