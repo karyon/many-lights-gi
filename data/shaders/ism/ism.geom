@@ -53,7 +53,7 @@ void main()
     // point represents ismCount other points. boost its area by ismCount, i.e. boost its radius by sqrt(ismCount).
     float pointWorldRadius = maxdist * sqrt(ismCount);
     pointWorldRadius = min(pointWorldRadius, 15.0);
-    uint g_normalRadius2 = Pack4PNToUint(vec4(te_normal[0] * 0.5 + 0.5, pointWorldRadius / 15));
+    uint g_normalRadius2 = pack4UNToUint(vec4(te_normal[0] * 0.5 + 0.5, pointWorldRadius / 15));
 
     int base = int((random(position.xyz)) * sampledVplCount);
 
@@ -75,7 +75,7 @@ void main()
 
         vec4 foo = vplPositionNormalBuffer[vplID2];
         vec3 vplPosition = foo.xyz;
-        vec3 vplNormal2 = Unpack3PNFromFP32(foo.w) * 2.0 - 1.0;
+        vec3 vplNormal2 = unpack3SNFromFloat(foo.w);
 
         vec3 positionRelativeToCamera2 = position.xyz - vplPosition;
 
@@ -116,7 +116,7 @@ void main()
             float radius = pointSize / 2;
             radius *= 1.3; // boost radius a bit to make circle area match the point rendering square area
             radius = min(radius, 15);
-            uint g_normalRadius = Pack4PNToUint(vec4(te_normal[0] * 0.5 + 0.5, radius / 15.0));
+            uint g_normalRadius = pack4UNToUint(vec4(te_normal[0] * 0.5 + 0.5, radius / 15.0));
             // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.
             // largely solved in compute shader version
             imageStore(softrenderBuffer, ivec3(v.xy, 1), uvec4(g_normalRadius, 0, 0, 0));

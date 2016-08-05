@@ -40,10 +40,10 @@ void main()
             float depthSample = read.r;
             float maxDepth = read.g;
             uint normalRadius = floatBitsToUint(read.b);
-            vec2 displacementVector = Unpack2FromFP32(read.a);
+            vec2 displacementVector = unpack2FloatsFromFloat(read.a);
         # endif
 
-        vec4 normalRadiusUnpacked = Unpack4PNFromUint(normalRadius);
+        vec4 normalRadiusUnpacked = unpack4UNFromUint(normalRadius);
         vec3 normal = normalRadiusUnpacked.xyz * 2.0 - 1.0;
         float radius = normalRadiusUnpacked.w * 15;
 
@@ -111,8 +111,8 @@ void main()
     if (numValid > 0) {
         result.r = depthAcc / numValid;
         result.g = maxValidMaxDepth;
-        result.b = Pack4PNToFP32(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / numValid / 15.0));
-        result.a = Pack2ForFP32(displacementAcc / numValid);
+        result.b = pack4UNToFloat(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / numValid / 15.0));
+        result.a = pack2FloatsToFloat(displacementAcc / numValid);
     } else {
         result = vec4(1.0, 0.0, 0.0, 0.0);
     }

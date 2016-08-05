@@ -59,7 +59,12 @@ void main()
     vec3 lightColor = diffuse * lightIntensity;
 
     resultIndex = shuffledIndicesBuffer[resultIndex];
-    float packedNormal = Pack3PNForFP32(vec3(normal * 0.5 + 0.5));
-    vplBuffer[resultIndex] = VPL(vec4(worldcoords.xyz, packedNormal), vec4(normal, 0.0), vec4(lightColor, 0.0));
+
+    float packedNormal = pack3SNToFloat(vec3(normal));
+    // make sure everyone's accessing the same values
+    // gi.comp could also read the packedNormal directly and unpack it, but that's quite slow for some reason
+    vec3 unpackedNormal = unpack3SNFromFloat(packedNormal);
+    
+    vplBuffer[resultIndex] = VPL(vec4(worldcoords.xyz, packedNormal), vec4(unpackedNormal, 0.0), vec4(lightColor, 0.0));
     packedVplBuffer[resultIndex] = vec4(worldcoords.xyz, packedNormal);
 }

@@ -61,10 +61,10 @@ void main()
         vec4 coarserSample = imageLoad(coarserLevel, texCoords[i]);
         depths[i] = coarserSample.r;
         maxDepths[i] = coarserSample.g;
-        normalsRadiuses[i] = Unpack4PNFromFP32(coarserSample.b);
+        normalsRadiuses[i] = unpack4UNFromFloat(coarserSample.b);
         normalsRadiuses[i].xyz = normalsRadiuses[i].xyz * 2.0 - 1.0;
         normalsRadiuses[i].w *= 15.0;
-        displacementVectors[i] = Unpack2FromFP32(coarserSample.a);
+        displacementVectors[i] = unpack2FloatsFromFloat(coarserSample.a);
         bool invalid = coarserSample.r == 1.0;
         if (invalid)
             weights[i] = 0;
@@ -119,8 +119,8 @@ void main()
     vec4 result = vec4(0.0);
     result.r = depthAcc / weightAcc;
     result.g = maxDepthAcc / weightAcc;
-    result.b = Pack4PNToFP32(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / weightAcc / 15.0));
-    result.a = Pack2ForFP32(displacementAcc / weightAcc);
+    result.b = pack4UNToFloat(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / weightAcc / 15.0));
+    result.a = pack2FloatsToFloat(displacementAcc / weightAcc);
 
 
     vec4 origSample = read(pixelCoordinate);

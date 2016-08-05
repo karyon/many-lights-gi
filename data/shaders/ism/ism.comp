@@ -82,7 +82,7 @@ void main()
 
         vec3 position = read.xyz;
         float g_normalRadius = read.w;
-        vec4 normalRadiusUnpacked = Unpack4PNFromFP32(g_normalRadius);
+        vec4 normalRadiusUnpacked = unpack4UNFromFloat(g_normalRadius);
 
         vec3 pointNormal = normalRadiusUnpacked.xyz * 2.0 - 1.0;
 
@@ -91,7 +91,7 @@ void main()
         for(int i = 0; i < maxVplTestCount; i++) {
             vec4 vpl = vpls[i];
             vec3 vplPosition = vpl.xyz;
-            vec3 vplNormal2 = Unpack3PNFromFP32(vpl.w) * 2.0 - 1.0;
+            vec3 vplNormal2 = unpack3SNFromFloat(vpl.w);
 
             vec3 positionRelativeToCamera = position.xyz - vplPosition;
 
@@ -113,7 +113,7 @@ void main()
             // reconstruct vpl. saving the reconstructed stuff in arrays in the gather step was slower.
             vec4 vpl = vpls[localVplID];
             vec3 vplPosition = vpl.xyz;
-            vec3 vplNormal2 = Unpack3PNFromFP32(vpl.w) * 2.0 - 1.0;
+            vec3 vplNormal2 = unpack3SNFromFloat(vpl.w);
 
             vec3 positionRelativeToCamera = position.xyz - vplPosition;
             // paraboloid projection
@@ -142,7 +142,7 @@ void main()
             {
                 float pointRadius = normalRadiusUnpacked.w;
                 pointRadius /= maxVplCollectCount;
-                uint g_normalRadius = Pack4PNToUint(vec4(normalize(pointNormal) * 0.5 + 0.5, pointRadius));
+                uint g_normalRadius = pack4UNToUint(vec4(normalize(pointNormal) * 0.5 + 0.5, pointRadius));
                 // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.
                 // not solved 100%, see above
                 imageStore(softrenderBuffer, ivec3(v.xy, 1), uvec4(g_normalRadius, 0, 0, 0));
