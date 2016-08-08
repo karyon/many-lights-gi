@@ -54,18 +54,20 @@ namespace
     }
 }
 
-ModelLoadingStage::ModelLoadingStage(Preset preset)
-: preset(preset)
+ModelLoadingStage::ModelLoadingStage()
+: m_currentPreset(Preset::None)
 {
-	m_presetInformation = make_unique<PresetInformation>(getPresetInformation(preset));
 }
 
 ModelLoadingStage::~ModelLoadingStage()
 {
 }
 
-void ModelLoadingStage::process()
+void ModelLoadingStage::loadScene(Preset preset)
 {
+    m_currentPreset = preset;
+    m_currentPresetInformation = make_unique<PresetInformation>(getPresetInformation(preset));
+
     m_drawablesMap = make_unique<IdDrawablesMap>();
     m_materialMap = make_unique<IdMaterialMap>();
     m_textures = StringTextureMap{};
@@ -104,7 +106,7 @@ void ModelLoadingStage::process()
     auto scene = new gloperate::Scene;
     for (size_t i = 0; i < assimpScene->mNumMeshes; ++i)
     {
-        scene->meshes().push_back(convertGeometry(assimpScene->mMeshes[i], m_presetInformation->vertexScale));
+        scene->meshes().push_back(convertGeometry(assimpScene->mMeshes[i], m_currentPresetInformation->vertexScale));
     }
 
     for (auto mesh : scene->meshes())
@@ -178,7 +180,8 @@ PresetInformation ModelLoadingStage::getPresetInformation(Preset preset)
     static const std::map<Preset, PresetInformation> conversion {
         //                          camera eye              camera center          near;far         light position          light radius   ground color   ground height  alpha   bump mapping type  reflections  zThickness  focalDist  focalRadius vertex scale
         { Preset::Imrod,          { { -10.0, 31.2, 10.65 }, { 30, 5.5, -30.0 },    { 0.3, 50000.0 }, { 0, 52, 0 },           1.0f,          { 1, 1, 1 },   0.0f,         1.0f,   BumpType::Normal,  true,        3.0f,       30.0f,     0.003f,     1.0f } },
-        { Preset::CrytekSponza,   { { -13, 2.5, -0.23 },    { 0.009, -0.019, -0.021 },   { 0.05, 50.0 }, { 4.5, 2.7, -0.3 },0.15f,         { 1, 1, 1 },  -0.10f,        1.0f,   BumpType::Height,  true,        0.30f,      9.0f,      0.003f,     0.01f } },
+        { Preset::SanMiguel,      { { -0.83, 1.9, 21.6 },   { -9.7, -0.85, 4.75 }, { 0.05, 50.0 },   {-6.5, 27.4, 32.86 },   0.15f,         { 1, 1, 1 },  -0.10f,        1.0f,   BumpType::Height,  true,        0.30f,      9.0f,      0.003f,     1.0f } },
+        { Preset::CrytekSponza,   { { -13, 2.5, -0.23 },    { 0.009, -0.019, -0.021 },{ 0.05, 50.0 },{ 4.5, 2.7, -0.3 },     0.15f,         { 1, 1, 1 },  -0.10f,        1.0f,   BumpType::Height,  true,        0.30f,      9.0f,      0.003f,     0.01f } },
         { Preset::DabrovicSponza, { { -10.0, 12.6, 0.9 },   { 3.2, 0.28, -1.82 },  { 0.3, 500.0 },   { 0, 18, 0 },           1.0f,          { 1, 1, 1 },   0.0f,         1.0f,   BumpType::Height,  false,       0.0f,       15.0f,     0.003f,     1.0f } },
         { Preset::Jakobi,         { { 0.39, 0.49, -0.63 },  { 0.05, -0.04, -0.1 }, { 0.01, 80.0 },   { -0.4, 1.2, -0.7 },    0.05f,         { 1, 1, 1 },  -0.115f,       1.0f,   BumpType::None,    true,        0.05f,      0.5f,      0.003f,     1.0f } },
         { Preset::Megacity,       { { 0.26, 0.23, -0.35 },  { 0.14, 0.0, -0.14 },  { 0.01, 80.0 },   { -0.4, 1.2, -1.5 },    0.01f,         { 1, 1, 1 },  -0.048f,       1.0f,   BumpType::None,    true,        0.05f,      0.5f,      0.003f,     1.0f } },
@@ -193,6 +196,7 @@ std::string ModelLoadingStage::getFilename(Preset preset)
 {
     static const std::map<Preset, std::string> conversion {
         { Preset::Imrod, "data/Imrod/Imrod.obj" },
+        { Preset::SanMiguel, "data/sanmiguel/sanMiguel.obj" },
         { Preset::CrytekSponza, "data/crytek-sponza/sponza.obj" },
         { Preset::DabrovicSponza, "data/dabrovic-sponza/sponza.obj" },
         { Preset::Jakobi, "data/jakobi/jakobikirchplatz4.obj" },
@@ -209,6 +213,7 @@ gloperate::PolygonalGeometry * ModelLoadingStage::convertGeometry(const aiMesh *
     gloperate::PolygonalGeometry * geometry = new gloperate::PolygonalGeometry;
 
     std::vector<unsigned int> indices;
+    indices.reserve(mesh->mNumFaces * 3);
     for (size_t i = 0; i < mesh->mNumFaces; ++i)
     {
         const auto & face = mesh->mFaces[i];
@@ -217,32 +222,32 @@ gloperate::PolygonalGeometry * ModelLoadingStage::convertGeometry(const aiMesh *
     }
     geometry->setIndices(std::move(indices));
 
-    std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> vertices(mesh->mNumVertices);
     for (size_t i = 0; i < mesh->mNumVertices; ++i)
     {
         const auto & vertex = mesh->mVertices[i];
-        vertices.push_back({ vertex.x * vertexScale, vertex.y * vertexScale, vertex.z * vertexScale });
+        vertices[i] = { vertex.x * vertexScale, vertex.y * vertexScale, vertex.z * vertexScale };
     }
     geometry->setVertices(std::move(vertices));
 
     if (mesh->HasNormals())
     {
-        std::vector<glm::vec3> normals;
+        std::vector<glm::vec3> normals(mesh->mNumVertices);
         for (size_t i = 0; i < mesh->mNumVertices; ++i)
         {
             const auto & normal = mesh->mNormals[i];
-            normals.push_back({ normal.x, normal.y, normal.z });
+            normals[i] = { normal.x, normal.y, normal.z };
         }
         geometry->setNormals(std::move(normals));
     }
 
     if (mesh->HasTextureCoords(0))
     {
-        std::vector<glm::vec3> textureCoordinates;
+        std::vector<glm::vec3> textureCoordinates(mesh->mNumVertices);
         for (size_t i = 0; i < mesh->mNumVertices; ++i)
         {
             const auto & textureCoordinate = mesh->mTextureCoords[0][i];
-            textureCoordinates.push_back({ textureCoordinate.x, textureCoordinate.y, textureCoordinate.z });
+            textureCoordinates[i] = { textureCoordinate.x, textureCoordinate.y, textureCoordinate.z };
         }
         geometry->setTextureCoordinates(std::move(textureCoordinates));
     }
@@ -251,10 +256,13 @@ gloperate::PolygonalGeometry * ModelLoadingStage::convertGeometry(const aiMesh *
 
     return geometry;
 }
-
-const PresetInformation& ModelLoadingStage::getCurrentPreset() const
+const Preset& ModelLoadingStage::getCurrentPreset() const
 {
-    return *m_presetInformation.get();
+    return m_currentPreset;
+}
+const PresetInformation& ModelLoadingStage::getCurrentPresetInformation() const
+{
+    return *m_currentPresetInformation.get();
 }
 const IdDrawablesMap& ModelLoadingStage::getDrawablesMap() const
 {

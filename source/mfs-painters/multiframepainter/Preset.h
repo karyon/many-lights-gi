@@ -6,12 +6,14 @@
 enum class Preset : unsigned int
 {
     CrytekSponza,
+    SanMiguel,
     DabrovicSponza,
     Imrod,
     Jakobi,
     Megacity,
     Mitusba,
-    Transparency
+    Transparency,
+    None
 };
 
 namespace reflectionzeug
@@ -24,6 +26,7 @@ namespace reflectionzeug
         {
             return{
                 { Preset::CrytekSponza, "CrytekSponza" },
+                { Preset::SanMiguel, "SanMiguel" },
                 { Preset::DabrovicSponza, "DabrovicSponza" },
                 { Preset::Imrod, "Imrod" },
                 { Preset::Jakobi, "Jakobi" },

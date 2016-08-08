@@ -22,11 +22,12 @@ namespace gloperate
 }
 
 class KernelGenerationStage;
+class ModelLoadingStage;
 
 class SSAOStage
 {
 public:
-    SSAOStage(KernelGenerationStage& kernelGenerationStage, const PresetInformation& presetInformation);
+    SSAOStage(KernelGenerationStage& kernelGenerationStage, const ModelLoadingStage& modelLoadingStage);
 
     void initialize();
     void process();
@@ -57,5 +58,5 @@ protected:
     globjects::ref_ptr<globjects::Texture> m_ssaoKernelTexture;
     globjects::ref_ptr<globjects::Texture> m_ssaoNoiseTexture;
     KernelGenerationStage& m_kernelGenerationStage;
-    const PresetInformation& m_presetInformation;
+    const ModelLoadingStage& m_modelLoadingStage;
 };

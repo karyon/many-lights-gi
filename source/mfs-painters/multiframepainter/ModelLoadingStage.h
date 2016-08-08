@@ -27,15 +27,15 @@ class aiMaterial;
 class ModelLoadingStage
 {
 public:
-    ModelLoadingStage(Preset preset);
+    ModelLoadingStage();
     ~ModelLoadingStage();
 
     gloperate::ResourceManager* resourceManager;
-    Preset preset;
 
-    void process();
+    void loadScene(Preset preset);
 
-    const PresetInformation& getCurrentPreset() const;
+    const Preset& getCurrentPreset() const;
+    const PresetInformation& getCurrentPresetInformation() const;
     const IdDrawablesMap& getDrawablesMap() const;
     const IdMaterialMap& getMaterialMap() const;
 
@@ -55,7 +55,8 @@ protected:
     static std::string getFilename(Preset preset);
 
 
-    std::unique_ptr<PresetInformation> m_presetInformation;
+    Preset m_currentPreset;
+    std::unique_ptr<PresetInformation> m_currentPresetInformation;
     std::unique_ptr<IdDrawablesMap> m_drawablesMap;
     std::unique_ptr<IdMaterialMap> m_materialMap;
 };

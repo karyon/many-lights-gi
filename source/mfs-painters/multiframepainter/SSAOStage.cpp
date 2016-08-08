@@ -14,6 +14,7 @@
 #include <gloperate/painter/AbstractCameraCapability.h>
 
 #include "KernelGenerationStage.h"
+#include "ModelLoadingStage.h"
 #include "PerfCounter.h"
 
 using namespace gl;
@@ -24,9 +25,9 @@ namespace
     const unsigned int s_ssaoNoiseSize = 128;
 }
 
-SSAOStage::SSAOStage(KernelGenerationStage& kernelGenerationStage, const PresetInformation& presetInformation)
+SSAOStage::SSAOStage(KernelGenerationStage& kernelGenerationStage, const ModelLoadingStage& modelLoadingStage)
 : m_kernelGenerationStage(kernelGenerationStage)
-, m_presetInformation(presetInformation)
+, m_modelLoadingStage(modelLoadingStage)
 {
 }
 
@@ -75,7 +76,7 @@ void SSAOStage::process()
     m_screenAlignedQuad->program()->setUniform("ssaoKernelSampler", 2);
     m_screenAlignedQuad->program()->setUniform("ssaoNoiseSampler", 3);
 
-    m_screenAlignedQuad->program()->setUniform("ssaoRadius", m_presetInformation.lightMaxShift * 0.5f);
+    m_screenAlignedQuad->program()->setUniform("ssaoRadius", m_modelLoadingStage.getCurrentPresetInformation().lightMaxShift * 0.5f);
     m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
     m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
     m_screenAlignedQuad->program()->setUniform("normalMatrix", camera->normal());

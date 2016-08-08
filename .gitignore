@@ -4,6 +4,7 @@ data/jakobi
 data/megacity
 data/mitsuba
 data/imrod
+data/sanmiguel
 
 # Compiled Object files
 *.slo
@@ -42,4 +43,5 @@ _*.bat
 
 # Qt project files
 CMakeLists.txt.user
+
 

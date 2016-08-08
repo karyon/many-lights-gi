@@ -282,9 +282,10 @@ void GIStage::render()
     auto ismShadowMap = usePushPull ? ism->pushPullResultBuffer : ism->depthBuffer;
     ismShadowMap->bindActive(2);
 
+    auto viewProjectionInvertedMatrix = camera->viewInverted() * projection->projectionInverted();
+
 
     vplProcessor->vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
-
 
     m_screenAlignedQuad->program()->setUniform("faceNormalSampler", 0);
     m_screenAlignedQuad->program()->setUniform("depthSampler", 1);
@@ -377,7 +378,7 @@ void GIStage::process()
 
     {
         AutoGLPerfCounter c("Shadowmap");
-        shadowmap->render(lightPosition, viewProjection, modelLoadingStage.getDrawablesMap(), nearFar);
+        shadowmap->render(lightPosition, viewProjection, modelLoadingStage.getDrawablesMap(), modelLoadingStage.getMaterialMap(), nearFar);
     }
 
     {

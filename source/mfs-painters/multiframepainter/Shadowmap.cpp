@@ -74,7 +74,7 @@ void Shadowmap::setupFbo(globjects::Framebuffer& fbo, globjects::Texture& VSMBuf
     fbo.unbind();
 }
 
-void Shadowmap::render(const glm::vec3 &eye, const glm::mat4 &viewProjection, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const
+void Shadowmap::render(const glm::vec3 &eye, const glm::mat4 &viewProjection, const IdDrawablesMap& drawablesMap, const IdMaterialMap& materialMap, const glm::vec2& nearFar) const
 {
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
@@ -94,7 +94,15 @@ void Shadowmap::render(const glm::vec3 &eye, const glm::mat4 &viewProjection, co
     m_shadowmapProgram->use();
     for (const auto& pair : drawablesMap)
     {
+        auto materialId = pair.first;
         auto& drawables = pair.second;
+        auto& material = materialMap.at(materialId);
+
+        if (material.hasTexture(TextureType::Opacity))
+            glDisable(GL_CULL_FACE);
+        else
+            glEnable(GL_CULL_FACE);
+
         for (auto& drawable : drawables)
         {
             drawable->draw();

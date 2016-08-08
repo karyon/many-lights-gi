@@ -25,7 +25,7 @@ public:
     Shadowmap();
     ~Shadowmap();
 
-    void render(const glm::vec3 &eye, const glm::mat4 &viewProjection, const IdDrawablesMap& drawablesMap, const glm::vec2& nearFar) const;
+    void render(const glm::vec3 &eye, const glm::mat4 &viewProjection, const IdDrawablesMap& drawablesMap, const IdMaterialMap& materialMap, const glm::vec2& nearFar) const;
 
     globjects::Program * program() const;
 

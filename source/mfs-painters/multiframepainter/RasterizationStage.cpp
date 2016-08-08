@@ -102,8 +102,6 @@ void RasterizationStage::initialize()
         globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/model.vert"),
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/empty.frag")
     );
-
-    m_modelLoadingStage.process();
 }
 
 
@@ -189,7 +187,11 @@ void RasterizationStage::render()
     }
 
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    zPrepass();
+
+    // zPrepass speeds up crytek sponza due to it's low geometric complexity,
+    // but only if the viewport is large enough. the RSM does not benefit from it.
+    if (m_modelLoadingStage.getCurrentPreset() == Preset::CrytekSponza && viewport->width() > 700)
+        zPrepass();
 
     m_program->use();
 
@@ -229,6 +231,9 @@ void RasterizationStage::render()
         {
             auto tex = material.textureMap().at(TextureType::Opacity);
             tex->bindActive(OpacitySampler);
+            glDisable(GL_CULL_FACE);
+        } else {
+            glEnable(GL_CULL_FACE);
         }
 
         auto bumpType = BumpType::None;

@@ -55,11 +55,11 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
     m_cameraCapability = addCapability(new gloperate::CameraCapability());
 
 
-    modelLoadingStage = std::make_unique<ModelLoadingStage>(preset);
+    modelLoadingStage = std::make_unique<ModelLoadingStage>();
     kernelGenerationStage = std::make_unique<KernelGenerationStage>();
     rasterizationStage = std::make_unique<RasterizationStage>("GBuffer", *modelLoadingStage, *kernelGenerationStage);
     giStage = std::make_unique<GIStage>(*modelLoadingStage, *kernelGenerationStage);
-    ssaoStage = std::make_unique<SSAOStage>(*kernelGenerationStage, modelLoadingStage->getCurrentPreset());
+    ssaoStage = std::make_unique<SSAOStage>(*kernelGenerationStage, *modelLoadingStage);
     deferredShadingStage = std::make_unique<DeferredShadingStage>();
     frameAccumulationStage = std::make_unique<FrameAccumulationStage>();
     blitStage = std::make_unique<BlitStage>();
@@ -105,13 +105,15 @@ void MultiFramePainter::onInitialize()
 
     kernelGenerationStage->initialize();
 
+    modelLoadingStage->loadScene(preset);
+
     rasterizationStage->projection = m_projectionCapability;
     rasterizationStage->camera = m_cameraCapability;
     rasterizationStage->viewport = m_virtualViewportCapability;
     rasterizationStage->useDOF = useDOF;
     rasterizationStage->initialize();
     rasterizationStage->initProperties(*this);
-    rasterizationStage->loadPreset(modelLoadingStage->getCurrentPreset());
+    rasterizationStage->loadPreset(modelLoadingStage->getCurrentPresetInformation());
 
     giStage->viewport = m_virtualViewportCapability;
     giStage->camera = m_cameraCapability;
