@@ -28,7 +28,7 @@ class MultiFramePainter;
 class RasterizationStage
 {
 public:
-    RasterizationStage(std::string name, ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage);
+    RasterizationStage(std::string name, ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage, bool renderReflectiveShadowMap);
     ~RasterizationStage();
 
     void initProperties(MultiFramePainter& painter);
@@ -46,8 +46,9 @@ public:
     int currentFrame;
     globjects::ref_ptr<globjects::Texture> diffuseBuffer;
     globjects::ref_ptr<globjects::Texture> specularBuffer;
-    globjects::ref_ptr<globjects::Texture> normalBuffer;
     globjects::ref_ptr<globjects::Texture> faceNormalBuffer;
+    globjects::ref_ptr<globjects::Texture> normalBuffer;
+    globjects::ref_ptr<globjects::Texture> vsmBuffer;
     globjects::ref_ptr<globjects::Texture> depthBuffer;
 
 
@@ -68,6 +69,7 @@ protected:
 
     ModelLoadingStage& m_modelLoadingStage;
     KernelGenerationStage& m_kernelGenerationStage;
+    bool m_renderRSM;
 
     std::string m_name;
 };

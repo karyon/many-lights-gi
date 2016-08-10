@@ -53,7 +53,6 @@ set(headers
 
     ${include_path}/multiframepainter/TypeDefinitions.h
     ${include_path}/multiframepainter/Preset.h
-    ${include_path}/multiframepainter/Shadowmap.h
     ${include_path}/multiframepainter/ImperfectShadowmap.h
     ${include_path}/multiframepainter/VPLProcessor.h
     ${include_path}/multiframepainter/Material.h
@@ -74,7 +73,6 @@ set(sources
     ${source_path}/multiframepainter/FrameAccumulationStage.cpp
     ${source_path}/multiframepainter/BlitStage.cpp
 
-    ${source_path}/multiframepainter/Shadowmap.cpp
     ${source_path}/multiframepainter/ImperfectShadowmap.cpp
     ${source_path}/multiframepainter/VPLProcessor.cpp
     ${source_path}/multiframepainter/Material.cpp

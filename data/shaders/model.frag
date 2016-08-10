@@ -5,6 +5,8 @@
 #include </data/shaders/common/fragment_discard.glsl>
 #include </data/shaders/common/random.glsl>
 
+#define RENDER_RSM
+
 in vec3 v_normal;
 in vec3 v_worldCoord;
 in vec3 v_uv;
@@ -13,7 +15,11 @@ in vec4 v_s;
 layout(location = 0) out vec3 outDiffuse;
 layout(location = 1) out vec3 outSpecular;
 layout(location = 2) out vec3 outFaceNormal;
+#ifndef RENDER_RSM
 layout(location = 3) out vec3 outNormal;
+#else
+layout(location = 4) out vec2 outVSM;
+# endif
 
 uniform sampler2D shadowmap;
 uniform sampler2D masksTexture;
@@ -31,7 +37,6 @@ uniform int bumpType;
 
 uniform float shininess;
 uniform float masksOffset;
-uniform vec3 worldLightPos;
 uniform vec3 cameraEye;
 
 #define BUMP_NONE 0
@@ -72,28 +77,29 @@ void main()
     vec3 N = normalize(v_normal);
     outFaceNormal = N * 0.5 + 0.5;
 
-    if (bumpType != BUMP_NONE)
-    {
-        mat3 tbn = cotangent_frame(N, v_worldCoord, uv);
-        if (bumpType == BUMP_HEIGHT)
+    #ifndef RENDER_RSM
+        if (bumpType != BUMP_NONE)
         {
-            float A = textureOffset(bumpTexture, uv, ivec2( 1, 0)).x;
-            float B = textureOffset(bumpTexture, uv, ivec2(-1, 0)).x;
-            float C = textureOffset(bumpTexture, uv, ivec2( 0, 1)).x;
-            float D = textureOffset(bumpTexture, uv, ivec2( 0,-1)).x;
+            mat3 tbn = cotangent_frame(N, v_worldCoord, uv);
+            if (bumpType == BUMP_HEIGHT)
+            {
+                float A = textureOffset(bumpTexture, uv, ivec2( 1, 0)).x;
+                float B = textureOffset(bumpTexture, uv, ivec2(-1, 0)).x;
+                float C = textureOffset(bumpTexture, uv, ivec2( 0, 1)).x;
+                float D = textureOffset(bumpTexture, uv, ivec2( 0,-1)).x;
 
-            vec3 normalBump = vec3(B-A, D-C, 0.1);
-            normalBump = tbn * normalBump;
-            N = normalize(normalBump);
+                vec3 normalBump = vec3(B-A, D-C, 0.1);
+                normalBump = tbn * normalBump;
+                N = normalize(normalBump);
+            }
+            else if (bumpType == BUMP_NORMAL)
+            {
+                vec3 normalSample = texture(bumpTexture, uv).rgb * 2.0 - 1.0;
+                N = normalize(tbn * normalSample);
+            }
         }
-        else if (bumpType == BUMP_NORMAL)
-        {
-            vec3 normalSample = texture(bumpTexture, uv).rgb * 2.0 - 1.0;
-            N = normalize(tbn * normalSample);
-        }
-    }
-
     outNormal = N * 0.5 + 0.5;
+    #endif
 
     if (useDiffuseTexture)
     {
@@ -104,4 +110,12 @@ void main()
     {
         outSpecular = texture(specularTexture, uv).rgb;
     }
+
+    #ifdef RENDER_RSM
+        float dist = length(v_worldCoord - cameraEye);
+        float dx = dFdx(dist);
+        float dy = dFdy(dist);
+
+        outVSM = vec2(dist, dist * dist + 0.25 * (dx*dx + dy*dy));
+    #endif
 }

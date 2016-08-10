@@ -30,7 +30,6 @@
 #include "FrameAccumulationStage.h"
 #include "BlitStage.h"
 #include "PerfCounter.h"
-#include "Shadowmap.h"
 #include "ImperfectShadowmap.h"
 #include "ClusteredShading.h"
 #include "VPLProcessor.h"
@@ -57,7 +56,7 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
 
     modelLoadingStage = std::make_unique<ModelLoadingStage>();
     kernelGenerationStage = std::make_unique<KernelGenerationStage>();
-    rasterizationStage = std::make_unique<RasterizationStage>("GBuffer", *modelLoadingStage, *kernelGenerationStage);
+    rasterizationStage = std::make_unique<RasterizationStage>("GBuffer", *modelLoadingStage, *kernelGenerationStage, false);
     giStage = std::make_unique<GIStage>(*modelLoadingStage, *kernelGenerationStage);
     ssaoStage = std::make_unique<SSAOStage>(*kernelGenerationStage, *modelLoadingStage);
     deferredShadingStage = std::make_unique<DeferredShadingStage>();
@@ -141,7 +140,7 @@ void MultiFramePainter::onInitialize()
     deferredShadingStage->faceNormalBuffer = rasterizationStage->faceNormalBuffer;
     deferredShadingStage->normalBuffer = rasterizationStage->normalBuffer;
     deferredShadingStage->depthBuffer = rasterizationStage->depthBuffer;
-    deferredShadingStage->shadowmap = giStage->shadowmap->vsmBuffer;
+    deferredShadingStage->shadowmap = giStage->rsmRenderer->vsmBuffer;
     deferredShadingStage->biasedShadowTransform = &giStage->vplProcessor->biasedShadowTransform;
     deferredShadingStage->lightDirection = &giStage->lightDirection;
     deferredShadingStage->lightPosition = &giStage->lightPosition;
@@ -166,12 +165,11 @@ void MultiFramePainter::onInitialize()
         rasterizationStage->normalBuffer,
         rasterizationStage->faceNormalBuffer,
         rasterizationStage->depthBuffer,
-        giStage->shadowmap->vsmBuffer,
-        giStage->shadowmap->depthBuffer,
         giStage->rsmRenderer->diffuseBuffer,
         giStage->rsmRenderer->specularBuffer,
         giStage->rsmRenderer->normalBuffer,
         giStage->rsmRenderer->faceNormalBuffer,
+        giStage->rsmRenderer->vsmBuffer,
         giStage->rsmRenderer->depthBuffer,
         giStage->ism->depthBuffer,
         giStage->ism->softrenderBuffer,

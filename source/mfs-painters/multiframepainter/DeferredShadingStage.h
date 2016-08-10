@@ -24,7 +24,6 @@ namespace gloperate
     class ScreenAlignedQuad;
 }
 
-class Shadowmap;
 class ModelLoadingStage;
 class MultiFramePainter;
 

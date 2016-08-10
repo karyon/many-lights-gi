@@ -18,7 +18,6 @@
 
 #include <reflectionzeug/property/extensions/GlmProperties.h>
 
-#include "Shadowmap.h"
 #include "Material.h"
 #include "ModelLoadingStage.h"
 #include "KernelGenerationStage.h"
@@ -42,10 +41,11 @@ namespace
     };
 }
 
-RasterizationStage::RasterizationStage(std::string name, ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage)
+RasterizationStage::RasterizationStage(std::string name, ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage, bool renderRSM)
 : m_name(name)
 , m_modelLoadingStage(modelLoadingStage)
 , m_kernelGenerationStage(kernelGenerationStage)
+, m_renderRSM(renderRSM)
 {
     currentFrame = 1;
 }
@@ -65,12 +65,14 @@ void RasterizationStage::initialize()
     specularBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
     faceNormalBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
     normalBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
+    vsmBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
     depthBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
 
     diffuseBuffer->setName(m_name + " Diffuse");
     specularBuffer->setName(m_name + " Specular");
     faceNormalBuffer->setName(m_name + " Face Normal");
     normalBuffer->setName(m_name + " Normal");
+    vsmBuffer->setName(m_name + " VSM");
     depthBuffer->setName(m_name + " Depth");
 
     m_fbo = new globjects::Framebuffer();
@@ -78,6 +80,7 @@ void RasterizationStage::initialize()
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT1, specularBuffer);
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT2, faceNormalBuffer);
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT3, normalBuffer);
+    m_fbo->attachTexture(GL_COLOR_ATTACHMENT4, vsmBuffer);
     m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depthBuffer);
 
     diffuseBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
@@ -91,11 +94,20 @@ void RasterizationStage::initialize()
     depthBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
     depthBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
 
+    vsmBuffer->bind();
+    vsmBuffer->setParameter(GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    vsmBuffer->setParameter(GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glm::vec4 color(0.0);
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (float*)&color);
+
+    if (!m_renderRSM)
+        globjects::Shader::globalReplace("#define RENDER_RSM", "#undef RENDER_RSM");
     m_program = new globjects::Program();
     m_program->attach(
         globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/model.vert"),
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/model.frag")
     );
+    globjects::Shader::clearGlobalReplacements();
 
     m_zOnlyProgram = new globjects::Program();
     m_zOnlyProgram->attach(
@@ -130,6 +142,7 @@ void RasterizationStage::resizeTextures(int width, int height)
     specularBuffer->image2D(0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
     faceNormalBuffer->image2D(0, GL_RGB10_A2, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
     normalBuffer->image2D(0, GL_RGB10_A2, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
+    vsmBuffer->image2D(0, GL_RG32F, width, height, 0, GL_RG, GL_FLOAT, nullptr);
     depthBuffer->image2D(0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
     m_fbo->printStatus(true);
@@ -147,7 +160,8 @@ void RasterizationStage::render()
         GL_COLOR_ATTACHMENT0,
         GL_COLOR_ATTACHMENT1,
         GL_COLOR_ATTACHMENT2,
-        GL_COLOR_ATTACHMENT3
+        GL_COLOR_ATTACHMENT3,
+        GL_COLOR_ATTACHMENT4
     });
 
     auto maxFloat = std::numeric_limits<float>::max();
@@ -156,7 +170,7 @@ void RasterizationStage::render()
     m_fbo->clearBuffer(GL_COLOR, 1, glm::vec4(0.0f));
     m_fbo->clearBuffer(GL_COLOR, 2, glm::vec4(0.0f));
     m_fbo->clearBuffer(GL_COLOR, 3, glm::vec4(0.0f));
-    m_fbo->clearBuffer(GL_COLOR, 4, glm::vec4(maxFloat));
+    m_fbo->clearBuffer(GL_COLOR, 4, glm::vec4(0.0));
     m_fbo->clearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
 
     auto subpixelSample = m_kernelGenerationStage.antiAliasingKernel[currentFrame - 1];
@@ -188,9 +202,8 @@ void RasterizationStage::render()
 
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
-    // zPrepass speeds up crytek sponza due to it's low geometric complexity,
-    // but only if the viewport is large enough. the RSM does not benefit from it.
-    if (m_modelLoadingStage.getCurrentPreset() == Preset::CrytekSponza && viewport->width() > 700)
+    // zPrepass speeds up crytek sponza due to it's low geometric complexity
+    if (m_modelLoadingStage.getCurrentPreset() == Preset::CrytekSponza)
         zPrepass();
 
     m_program->use();

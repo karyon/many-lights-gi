@@ -23,7 +23,6 @@
 #include "ModelLoadingStage.h"
 #include "MultiFramePainter.h"
 #include "PerfCounter.h"
-#include "Shadowmap.h"
 #include "ImperfectShadowmap.h"
 #include "ClusteredShading.h"
 #include "VPLProcessor.h"
@@ -33,7 +32,7 @@ using namespace gl;
 GIStage::GIStage(ModelLoadingStage& modelLoadingStage, KernelGenerationStage& kernelGenerationStage)
 : modelLoadingStage(modelLoadingStage)
 {
-    rsmRenderer = std::make_unique<RasterizationStage>("RSM", modelLoadingStage, kernelGenerationStage);
+    rsmRenderer = std::make_unique<RasterizationStage>("RSM", modelLoadingStage, kernelGenerationStage, true);
     m_lightCamera = std::make_unique<gloperate::CameraCapability>();
     m_lightViewport = std::make_unique<gloperate::ViewportCapability>();
     m_lightProjection = std::make_unique<gloperate::OrthographicProjectionCapability>(m_lightViewport.get());
@@ -251,7 +250,7 @@ void GIStage::initialize()
 
     rsmRenderer->camera = m_lightCamera.get();
 
-    m_lightViewport->setViewport(0, 0, 512, 128);
+    m_lightViewport->setViewport(0, 0, 1024, 256);
     rsmRenderer->viewport = m_lightViewport.get();
     m_lightProjection->setHeight(5);
 
@@ -262,7 +261,6 @@ void GIStage::initialize()
 
     rsmRenderer->initialize();
 
-    shadowmap = std::make_unique<Shadowmap>();
     ism = std::make_unique<ImperfectShadowmap>();
     vplProcessor = std::make_unique<VPLProcessor>();
     clusteredShading = std::make_unique<ClusteredShading>();
@@ -375,11 +373,6 @@ void GIStage::process()
     auto view = rsmRenderer->camera->view();
     auto viewProjection = rsmRenderer->projection->projection() * view;
     auto nearFar = glm::vec2(projection->zNear(), projection->zFar());
-
-    {
-        AutoGLPerfCounter c("Shadowmap");
-        shadowmap->render(lightPosition, viewProjection, modelLoadingStage.getDrawablesMap(), modelLoadingStage.getMaterialMap(), nearFar);
-    }
 
     {
         AutoGLPerfCounter c("RSM");

@@ -23,7 +23,6 @@ namespace gloperate
     class AbstractCameraCapability;
 }
 
-class Shadowmap;
 class ImperfectShadowmap;
 class ModelLoadingStage;
 class VPLProcessor;
@@ -46,7 +45,6 @@ public:
     globjects::ref_ptr<globjects::Texture> giBuffer;
     globjects::ref_ptr<globjects::Texture> giBlurTempBuffer;
     globjects::ref_ptr<globjects::Texture> giBlurFinalBuffer;
-    std::unique_ptr<Shadowmap> shadowmap;
     std::unique_ptr<ImperfectShadowmap> ism;
     std::unique_ptr<VPLProcessor> vplProcessor;
     std::unique_ptr<ClusteredShading> clusteredShading;
