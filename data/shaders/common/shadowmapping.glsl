@@ -21,24 +21,16 @@ float omnishadowmapComparisonVSM(samplerCube shadowmap, vec3 worldPos, vec3 worl
 {
     vec3 lightDirection = worldPos - worldLightPos;
     float dist = length(lightDirection);
-    vec3 texel = texture(shadowmap, lightDirection).rgb;
-    vec2 moments = texel.rg;
-    float alpha = texel.b;
-    float transparency = 1.0 - alpha;
-    float vsm = VSM(moments, dist);
-    return transparency + (vsm - transparency) * vsm; // transform from [0.0;1.0] to [transparency:1.0]
+    vec2 moments = texture(shadowmap, lightDirection).rg;
+    return VSM(moments, dist);
 }
 
 float shadowmapComparisonVSM(sampler2D shadowmap, vec2 scoord, vec3 worldPos, vec3 worldLightPos)
 {
     vec3 lightDirection = worldPos - worldLightPos;
     float dist = length(lightDirection);
-    vec3 texel = texture(shadowmap, scoord).rgb;
-    vec2 moments = texel.rg;
-    float alpha = texel.b;
-    float transparency = 1.0 - alpha;
-    float vsm = VSM(moments, dist);
-    return transparency + (vsm - transparency) * vsm; // transform from [0.0;1.0] to [transparency:1.0]
+    vec2 moments = texture(shadowmap, scoord).rg;
+    return VSM(moments, dist);
 }
 
 float omnishadowmapComparison(samplerCube shadowmap, vec3 worldPos, vec3 worldLightPos)

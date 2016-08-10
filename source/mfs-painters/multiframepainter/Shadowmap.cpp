@@ -54,7 +54,7 @@ void Shadowmap::setupSimpleFbo(globjects::Framebuffer& fbo, globjects::Texture& 
     glm::vec4 color(0.0, 0.0, 1.0, 0.0); // third channel is alpha
     glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, (float*)&color);
 
-    VSMBuffer.storage2D(1, GL_RGBA32F, size, size);
+    VSMBuffer.storage2D(1, GL_RG32F, size, size);
     VSMBuffer.unbind();
     fbo.attachTexture(GL_COLOR_ATTACHMENT0, &VSMBuffer);
 }
