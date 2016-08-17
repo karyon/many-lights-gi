@@ -202,7 +202,7 @@ void RasterizationStage::render()
 
     glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
-    // zPrepass speeds up crytek sponza due to it's low geometric complexity
+    // zPrepass speeds up crytek sponza due to its low geometric complexity
     if (m_modelLoadingStage.getCurrentPreset() == Preset::CrytekSponza)
         zPrepass();
 

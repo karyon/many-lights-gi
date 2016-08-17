@@ -371,10 +371,6 @@ void GIStage::process()
         sunCyclePosition = glm::mod(sunCyclePosition, degreeSpan * 2);
     }
 
-    auto view = rsmRenderer->camera->view();
-    auto viewProjection = rsmRenderer->projection->projection() * view;
-    auto nearFar = glm::vec2(projection->zNear(), projection->zFar());
-
     {
         AutoGLPerfCounter c("RSM");
         rsmRenderer->process();
@@ -399,10 +395,6 @@ void GIStage::process()
             m_lightProjection->zFar());
     }
 
-    gl::glViewport(viewport->x(),
-        viewport->y(),
-        viewport->width(),
-        viewport->height());
 
     {
         clusteredShading->process(
@@ -424,6 +416,10 @@ void GIStage::process()
 
     {
         AutoGLPerfCounter c("GI blur");
+        gl::glViewport(viewport->x(),
+            viewport->y(),
+            viewport->width(),
+            viewport->height());
         blur();
     }
 }
