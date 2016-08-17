@@ -178,15 +178,15 @@ Material ModelLoadingStage::loadMaterial(aiMaterial* aiMat, const std::string& d
 PresetInformation ModelLoadingStage::getPresetInformation(Preset preset)
 {
     static const std::map<Preset, PresetInformation> conversion {
-        //                          camera eye              camera center          near;far         light position          light radius   ground color   ground height  alpha   bump mapping type  reflections  zThickness  focalDist  focalRadius vertex scale
-        { Preset::Imrod,          { { -10.0, 31.2, 10.65 }, { 30, 5.5, -30.0 },    { 0.3, 50000.0 }, { 0, 52, 0 },           1.0f,          { 1, 1, 1 },   0.0f,         1.0f,   BumpType::Normal,  true,        3.0f,       30.0f,     0.003f,     1.0f } },
-        { Preset::SanMiguel,      { { -0.83, 1.9, 21.6 },   { -9.7, -0.85, 4.75 }, { 0.05, 50.0 },   {-6.5, 27.4, 32.86 },   0.15f,         { 1, 1, 1 },  -0.10f,        1.0f,   BumpType::Height,  true,        0.30f,      9.0f,      0.003f,     1.0f } },
-        { Preset::CrytekSponza,   { { -13, 2.5, -0.23 },    { 0.009, -0.019, -0.021 },{ 0.05, 50.0 },{ 4.5, 2.7, -0.3 },     0.15f,         { 1, 1, 1 },  -0.10f,        1.0f,   BumpType::Height,  true,        0.30f,      9.0f,      0.003f,     0.01f } },
-        { Preset::DabrovicSponza, { { -10.0, 12.6, 0.9 },   { 3.2, 0.28, -1.82 },  { 0.3, 500.0 },   { 0, 18, 0 },           1.0f,          { 1, 1, 1 },   0.0f,         1.0f,   BumpType::Height,  false,       0.0f,       15.0f,     0.003f,     1.0f } },
-        { Preset::Jakobi,         { { 0.39, 0.49, -0.63 },  { 0.05, -0.04, -0.1 }, { 0.01, 80.0 },   { -0.4, 1.2, -0.7 },    0.05f,         { 1, 1, 1 },  -0.115f,       1.0f,   BumpType::None,    true,        0.05f,      0.5f,      0.003f,     1.0f } },
-        { Preset::Megacity,       { { 0.26, 0.23, -0.35 },  { 0.14, 0.0, -0.14 },  { 0.01, 80.0 },   { -0.4, 1.2, -1.5 },    0.01f,         { 1, 1, 1 },  -0.048f,       1.0f,   BumpType::None,    true,        0.05f,      0.5f,      0.003f,     1.0f } },
-        { Preset::Mitusba,        { { 0.2, 3.7, 4.3 },      { 0.16, 0.07, -1.25 }, { 0.3, 600.0 },   { 10, 20, 0 },          0.7f,          { 1, 1, 1 },   0.1f,         0.5f,   BumpType::None,    false,       0.0f,       7.0f,      0.003f,     1.0f } },
-        { Preset::Transparency,   { { -1.9, 4.2, 4.6 },     { -0.06, 0.02, 0.56 }, { 0.3, 600.0 },   { 0, 5, 0 },            0.1f,          { 1, 1, 1 },  -1.4f,         0.5f,   BumpType::None,    false,       0.0f,       4.0f,      0.003f,     1.0f } }
+        //                          camera eye             camera center          near;far         light position       light center     light radius   ground color   ground height  alpha   bump mapping type  reflections  zThickness  focalDist  focalRadius vertex scale
+        { Preset::Imrod,          { { -10.0, 31.2, 10.65 },{ 30, 5.5, -30.0 },    { 0.3, 50000.0 }, { 0, 52, 0 },       { 0, 0, 0 },     1.0f,          { 1, 1, 1 },   0.0f,         1.0f,   BumpType::Normal,  true,        3.0f,       30.0f,     0.003f,     1.0f } },
+        { Preset::SanMiguel,      { { -0.83, 1.9, 21.6 },  { -9.7, -0.85, 4.75 }, { 0.05, 50.0 },   {-1.5, 27.4, 15 },  { -7, 11, 15 },  0.15f,         { 1, 1, 1 },  -0.10f,        1.0f,   BumpType::Height,  true,        0.30f,      9.0f,      0.003f,     1.0f } },
+        { Preset::CrytekSponza,   { { -13, 2.5, -0.23 },   { 0.009, -0.019, -0.021 },{ 0.05, 50.0 },{ 4.5, 2.7, -0.3 }, { -0.5, 14, 0 }, 0.15f,         { 1, 1, 1 },  -0.10f,        1.0f,   BumpType::Height,  true,        0.30f,      9.0f,      0.003f,     0.01f } },
+        { Preset::DabrovicSponza, { { -10.0, 12.6, 0.9 },  { 3.2, 0.28, -1.82 },  { 0.3, 500.0 },   { 0, 18, 0 },       { 0, 0, 0 },     1.0f,          { 1, 1, 1 },   0.0f,         1.0f,   BumpType::Height,  false,       0.0f,       15.0f,     0.003f,     1.0f } },
+        { Preset::Jakobi,         { { 0.39, 0.49, -0.63 }, { 0.05, -0.04, -0.1 }, { 0.01, 80.0 },   { -0.4, 1.2, -0.7 },{ 0, 0, 0 },     0.05f,         { 1, 1, 1 },  -0.115f,       1.0f,   BumpType::None,    true,        0.05f,      0.5f,      0.003f,     1.0f } },
+        { Preset::Megacity,       { { 0.26, 0.23, -0.35 }, { 0.14, 0.0, -0.14 },  { 0.01, 80.0 },   { -0.4, 1.2, -1.5 },{ 0, 0, 0 },     0.01f,         { 1, 1, 1 },  -0.048f,       1.0f,   BumpType::None,    true,        0.05f,      0.5f,      0.003f,     1.0f } },
+        { Preset::Mitusba,        { { 0.2, 3.7, 4.3 },     { 0.16, 0.07, -1.25 }, { 0.3, 600.0 },   { 10, 20, 0 },      { 0, 0, 0 },     0.7f,          { 1, 1, 1 },   0.1f,         0.5f,   BumpType::None,    false,       0.0f,       7.0f,      0.003f,     1.0f } },
+        { Preset::Transparency,   { { -1.9, 4.2, 4.6 },    { -0.06, 0.02, 0.56 }, { 0.3, 600.0 },   { 0, 5, 0 },        { 0, 0, 0 },     0.1f,          { 1, 1, 1 },  -1.4f,         0.5f,   BumpType::None,    false,       0.0f,       4.0f,      0.003f,     1.0f } }
     };
 
     return conversion.at(preset);

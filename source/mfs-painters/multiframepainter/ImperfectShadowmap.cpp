@@ -93,7 +93,7 @@ ImperfectShadowmap::ImperfectShadowmap()
     pushBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
 
     auto b = new globjects::Buffer();
-    b->setData(sizeof(glm::vec4) * (1 << 22) , nullptr, GL_STATIC_DRAW);
+    b->setData(sizeof(glm::vec4) * (1 << 23) , nullptr, GL_STATIC_DRAW);
     pointBuffer = new globjects::Texture(GL_TEXTURE_BUFFER);
     pointBuffer->setName("Point Buffer");
     pointBuffer->texBuffer(GL_RGBA32F, b);

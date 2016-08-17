@@ -74,6 +74,14 @@ void main()
             discard;
     }
 
+    if (useDiffuseTexture)
+    {
+        vec4 diffuseRead = texture(diffuseTexture, uv).rgba;
+        outDiffuse = diffuseRead.rgb;
+        if (diffuseRead.a < 0.5)
+            discard;
+    }
+
     vec3 N = normalize(v_normal);
     outFaceNormal = N * 0.5 + 0.5;
 
@@ -101,10 +109,6 @@ void main()
     outNormal = N * 0.5 + 0.5;
     #endif
 
-    if (useDiffuseTexture)
-    {
-        outDiffuse = texture(diffuseTexture, uv).rgb;
-    }
 
     if (useSpecularTexture)
     {

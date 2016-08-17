@@ -45,11 +45,11 @@ GIStage::~GIStage()
 
 void GIStage::initProperties(MultiFramePainter& painter)
 {
-    //painter.addProperty<glm::vec3>("RSMLightPosition",
-    //    [this]() { return m_lightCamera->eye(); },
-    //    [this](const glm::vec3 & pos) {
-    //        m_lightCamera->setEye(pos);
-    //    });
+    painter.addProperty<glm::vec3>("RSMLightPosition",
+        [this]() { return m_lightCamera->eye(); },
+        [this](const glm::vec3 & pos) {
+            m_lightCamera->setEye(pos);
+        });
     //painter.addProperty<glm::vec3>("RSMLightDirection",
     //    [this]() { return m_lightCamera->center() - m_lightCamera->eye(); },
     //    [this](const glm::vec3 & dir) {
@@ -229,7 +229,8 @@ void GIStage::initialize()
     m_blurXScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurXProgram);
     m_blurYScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurYProgram);
 
-    m_lightCamera->setCenter(glm::vec3(-0.5, 14.0, 0.0));
+    m_lightCamera->setEye(modelLoadingStage.getCurrentPresetInformation().lightPosition);
+    m_lightCamera->setCenter(modelLoadingStage.getCurrentPresetInformation().lightCenter);
     lightIntensity = 5.0f;
 
     giIntensityFactor = 3000.0f;
@@ -254,8 +255,8 @@ void GIStage::initialize()
     rsmRenderer->viewport = m_lightViewport.get();
     m_lightProjection->setHeight(5);
 
-    m_lightProjection->setZFar(50);
-    m_lightProjection->setZNear(1.0f);
+    m_lightProjection->setZFar(projection->zFar());
+    m_lightProjection->setZNear(projection->zNear());
 
     rsmRenderer->projection = m_lightProjection.get();
 
@@ -364,7 +365,7 @@ void GIStage::process()
     float degree = glm::abs(glm::mod(sunCyclePosition, degreeSpan*2) - degreeSpan) + (180.0f-degreeSpan)/2;
     float radians = glm::radians(degree);
     glm::vec3 direction = { 0.0, -glm::sin(radians), glm::cos(radians) };
-    m_lightCamera->setEye(m_lightCamera->center() - (direction * 2.0f));
+    m_lightCamera->setEye(m_lightCamera->center() - (direction * 4.0f));
     if (moveLight) {
         sunCyclePosition += sunCycleSpeed;
         sunCyclePosition = glm::mod(sunCyclePosition, degreeSpan * 2);

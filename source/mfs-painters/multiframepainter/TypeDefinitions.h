@@ -30,6 +30,7 @@ struct PresetInformation
     glm::vec3 camCenter;
     glm::vec2 nearFar;
     glm::vec3 lightPosition;
+    glm::vec3 lightCenter;
     float lightMaxShift;
     glm::vec3 groundColor;
     float groundHeight;
