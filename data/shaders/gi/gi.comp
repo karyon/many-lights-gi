@@ -52,19 +52,20 @@ uniform bool showVPLPositions = false;
 uniform bool useInterleaving = true;
 uint interleavedSize = useInterleaving ? 4 : 1;
 uint interleavedPixels = interleavedSize*interleavedSize;
-uint vplsPerInvocation = totalVplCount / interleavedPixels;
+// number of bits that will be taken from gl_WorkGroupID to determine the interleavedPixel
+uint interleaveBits = uint(log2(interleavedSize));
+// set interleaveBits rightmost bits to 1
+uint interleavedPixelBitmask = (1u << interleaveBits) - 1u;
 
 const uint clusterPixelSize = 128;
 
 
 void main()
 {
-    uvec2 largeInterleaveBlockPosition = gl_WorkGroupID.xy * gl_WorkGroupSize.xy;
-    uvec2 offsetInLargeInterleaveBlock = gl_LocalInvocationID.xy;
-    uvec2 smallInterleavedBlockPosition = (largeInterleaveBlockPosition + offsetInLargeInterleaveBlock) * interleavedSize;
-    uint offsetInSmallInterleaveBlock1d = (gl_WorkGroupID.z) % interleavedPixels;
-    uvec2 offsetInSmallInterleaveBlock = uvec2(offsetInSmallInterleaveBlock1d % interleavedSize, offsetInSmallInterleaveBlock1d / interleavedSize);
-    ivec2 fragCoord = ivec2(smallInterleavedBlockPosition + offsetInSmallInterleaveBlock);
+    uvec2 largeInterleaveBlockPosition = (gl_WorkGroupID.xy >> interleaveBits) * gl_WorkGroupSize.xy * interleavedSize;
+    uvec2 offsetInLargeInterleaveBlock = gl_LocalInvocationID.xy * interleavedSize;
+    uvec2 interleavedPixel = gl_WorkGroupID.xy & interleavedPixelBitmask;
+    ivec2 fragCoord = ivec2(largeInterleaveBlockPosition + offsetInLargeInterleaveBlock + interleavedPixel);
 
     vec2 v_uv = vec2(fragCoord) / viewport;
 
@@ -93,8 +94,9 @@ void main()
     if (numVPLs < min(imageLoad(lightLists, ivec2(lightListId, 0)).r, 0u))
         numVPLs = 0;
 
-    int startIndex = int(float(numVPLs) / interleavedPixels * offsetInSmallInterleaveBlock1d);
-    int endIndex = int(float(numVPLs) / interleavedPixels * (offsetInSmallInterleaveBlock1d + 1));
+    uint interleavedPixel1d = interleavedPixel.x + interleavedPixel.y * interleavedSize;
+    int startIndex = int(float(numVPLs) / interleavedPixels * interleavedPixel1d);
+    int endIndex = int(float(numVPLs) / interleavedPixels * (interleavedPixel1d + 1));
 
     vec3 acc = vec3(0.0);
 

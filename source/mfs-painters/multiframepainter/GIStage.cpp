@@ -189,12 +189,10 @@ void GIStage::initialize()
     m_fbo = new globjects::Framebuffer();
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, giBuffer);
 
-    auto program = new globjects::Program();
-    program->attach(
+    m_giProgram = new globjects::Program();
+    m_giProgram->attach(
         globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/gi/gi.comp")
     );
-
-    m_screenAlignedQuad = new gloperate::ScreenAlignedQuad(program);
 
 
     giBlurTempBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
@@ -267,6 +265,12 @@ void GIStage::initialize()
     clusteredShading = std::make_unique<ClusteredShading>();
 }
 
+// integer division that ceils instead of floors
+int divCeil(int dividend, int divisor)
+{
+    return (dividend + divisor - 1) / divisor;
+}
+
 void GIStage::render()
 {
     lightPosition = m_lightCamera->eye();
@@ -286,33 +290,34 @@ void GIStage::render()
 
     vplProcessor->vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
 
-    m_screenAlignedQuad->program()->setUniform("faceNormalSampler", 0);
-    m_screenAlignedQuad->program()->setUniform("depthSampler", 1);
-    m_screenAlignedQuad->program()->setUniform("ismDepthSampler", 2);
+    m_giProgram->setUniform("faceNormalSampler", 0);
+    m_giProgram->setUniform("depthSampler", 1);
+    m_giProgram->setUniform("ismDepthSampler", 2);
 
-    m_screenAlignedQuad->program()->setUniform("projectionMatrix", projection->projection());
-    m_screenAlignedQuad->program()->setUniform("projectionInverseMatrix", projection->projectionInverted());
-    m_screenAlignedQuad->program()->setUniform("viewport", glm::ivec2(viewport->width(), viewport->height()));
-    m_screenAlignedQuad->program()->setUniform("viewMatrix", camera->view());
-    m_screenAlignedQuad->program()->setUniform("viewInvertedMatrix", camera->viewInverted());
-    m_screenAlignedQuad->program()->setUniform("viewProjectionInvertedMatrix", camera->viewInverted() * projection->projectionInverted());
-    m_screenAlignedQuad->program()->setUniform("zFar", projection->zFar());
-    m_screenAlignedQuad->program()->setUniform("zNear", projection->zNear());
-    m_screenAlignedQuad->program()->setUniform("giIntensityFactor", giIntensityFactor);
-    m_screenAlignedQuad->program()->setUniform("vplClampingValue", vplClampingValue);
-    m_screenAlignedQuad->program()->setUniform("vplStartIndex", vplStartIndex);
-    m_screenAlignedQuad->program()->setUniform("vplEndIndex", vplEndIndex);
-    m_screenAlignedQuad->program()->setUniform("scaleISMs", scaleISMs);
-    m_screenAlignedQuad->program()->setUniform("enableShadowing", enableShadowing);
-    m_screenAlignedQuad->program()->setUniform("showVPLPositions", showVPLPositions);
-    m_screenAlignedQuad->program()->setUniform("useInterleaving", useInterleaving);
+    m_giProgram->setUniform("projectionMatrix", projection->projection());
+    m_giProgram->setUniform("projectionInverseMatrix", projection->projectionInverted());
+    m_giProgram->setUniform("viewport", glm::ivec2(viewport->width(), viewport->height()));
+    m_giProgram->setUniform("viewMatrix", camera->view());
+    m_giProgram->setUniform("viewInvertedMatrix", camera->viewInverted());
+    m_giProgram->setUniform("viewProjectionInvertedMatrix", camera->viewInverted() * projection->projectionInverted());
+    m_giProgram->setUniform("zFar", projection->zFar());
+    m_giProgram->setUniform("zNear", projection->zNear());
+    m_giProgram->setUniform("giIntensityFactor", giIntensityFactor);
+    m_giProgram->setUniform("vplClampingValue", vplClampingValue);
+    m_giProgram->setUniform("vplStartIndex", vplStartIndex);
+    m_giProgram->setUniform("vplEndIndex", vplEndIndex);
+    m_giProgram->setUniform("scaleISMs", scaleISMs);
+    m_giProgram->setUniform("enableShadowing", enableShadowing);
+    m_giProgram->setUniform("showVPLPositions", showVPLPositions);
+    m_giProgram->setUniform("useInterleaving", useInterleaving);
 
-    //m_screenAlignedQuad->draw();
+    int workgroupSize = 8;
+    int interleavedSize = 4;
+    // the interleavedSize is used to round up to make sure everything is covered at the image borders
+    int numGroupsX = divCeil(viewport->width(),  workgroupSize * interleavedSize) * interleavedSize;
+    int numGroupsY = divCeil(viewport->height(), workgroupSize * interleavedSize) * interleavedSize;
 
-    if (useInterleaving)
-        m_screenAlignedQuad->program()->dispatchCompute(viewport->width() / 4 / 8 + 1, viewport->height() / 4 / 8 + 1, 16);
-    else
-        m_screenAlignedQuad->program()->dispatchCompute(viewport->width() / 8 + 1, viewport->height() / 8 + 1, 1);
+    m_giProgram->dispatchCompute(numGroupsX, numGroupsY, 1);
 
     giBuffer->unbindImageTexture(0);
 }

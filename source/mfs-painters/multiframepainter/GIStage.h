@@ -71,7 +71,7 @@ protected:
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<globjects::Framebuffer> m_blurTempFbo;
     globjects::ref_ptr<globjects::Framebuffer> m_blurFinalFbo;
-    globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_screenAlignedQuad;
+    globjects::ref_ptr<globjects::Program> m_giProgram;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_blurXScreenAlignedQuad;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_blurYScreenAlignedQuad;
 
