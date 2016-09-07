@@ -4,6 +4,7 @@ layout (triangles, equal_spacing) in;
 
 in vec3[] tc_normal;
 out vec3 te_normal;
+out vec3 te_tessCoord;
 
 vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2)
 {
@@ -19,4 +20,5 @@ void main()
     );
     gl_Position.w = 1.0;
     te_normal = tc_normal[0];
+    te_tessCoord = gl_TessCoord;
 }

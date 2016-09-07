@@ -10,6 +10,7 @@ layout(triangles) in;
 layout(points, max_vertices = 1) out;
 
 in vec3[] te_normal;
+in vec3[] te_tessCoord;
 
 out float g_normalRadius;
 
@@ -47,6 +48,7 @@ int vplIdOffset = pointsOnlyIntoScaledISMs ? vplStartIndex : 0;
 void main()
 {
     vec3 position = (gl_in[0].gl_Position.xyz + gl_in[1].gl_Position.xyz + gl_in[2].gl_Position.xyz) / 3;
+    vec3 barycentricCoord = (te_tessCoord[0] + te_tessCoord[1] + te_tessCoord[2]) / 3;
 
     float maxdist = max(max(length(position - gl_in[0].gl_Position.xyz), length(position - gl_in[1].gl_Position.xyz)), length(position - gl_in[2].gl_Position.xyz));
 
@@ -55,7 +57,9 @@ void main()
     pointWorldRadius = min(pointWorldRadius, 15.0);
     uint g_normalRadius2 = pack4UNToUint(vec4(te_normal[0] * 0.5 + 0.5, pointWorldRadius / 15));
 
-    int base = int((random(position.xyz)) * sampledVplCount);
+    vec3 seed = barycentricCoord.xyz + (gl_PrimitiveIDIn % 4096) / 4096.0;
+    // seed = position.xyz;
+    int base = int(random(seed) * sampledVplCount);
 
     if(usePushPull) {
         uint counter = atomicAdd(atomicCounter[base], 1);
