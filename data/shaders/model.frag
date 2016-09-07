@@ -77,9 +77,17 @@ void main()
     if (useDiffuseTexture)
     {
         vec4 diffuseRead = texture(diffuseTexture, uv).rgba;
-        outDiffuse = diffuseRead.rgb;
         if (diffuseRead.a < 0.5)
             discard;
+
+        // take the average color for more temporal stability
+        // the "normal" read above is for the alpha test
+        // passing the average color as uniform would be better
+        // but does not speed this up, not bottlenecked by tex lookups
+        #ifdef RENDER_RSM
+        diffuseRead = textureLod(diffuseTexture, uv, 32).rgba;
+        #endif
+        outDiffuse = diffuseRead.rgb;
     }
 
     vec3 N = normalize(v_normal);
