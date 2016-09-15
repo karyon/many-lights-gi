@@ -294,7 +294,7 @@ void GIStage::render()
     m_giProgram->setUniform("vplStartIndex", vplStartIndex);
     m_giProgram->setUniform("vplEndIndex", vplEndIndex);
 
-    int workgroupSize = 8;
+    int workgroupSize = 16;
     int interleavedSize = 4;
     // the interleavedSize is used to round up to make sure everything is covered at the image borders
     int numGroupsX = divCeil(viewport->width(),  workgroupSize * interleavedSize) * interleavedSize;

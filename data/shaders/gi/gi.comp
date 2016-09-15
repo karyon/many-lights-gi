@@ -10,7 +10,7 @@ struct VPL {
     vec3 color;
 };
 
-layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 layout (r11f_g11f_b10f, binding = 0) restrict writeonly uniform image2D img_output;
 layout (r16ui, binding = 1) restrict readonly uniform uimage3D lightListIds;
 layout (r16ui, binding = 2) restrict readonly uniform uimage2D lightLists;
@@ -60,6 +60,14 @@ const uint interleavedPixelBitmask = (1u << interleaveBits) - 1u;
 const uint clusterPixelSize = 128;
 
 
+shared int minDepth;
+shared int maxDepth;
+
+const int totalSharedVPLS = 64;
+shared VPL vpls[totalSharedVPLS]; // interleavedPixels is not constant
+shared uint vplIndices[totalSharedVPLS]; // interleavedPixels is not constant
+shared int sharedVplCounter;
+
 void main()
 {
     uvec2 largeInterleaveBlockPosition = (gl_WorkGroupID.xy >> interleaveBits) * gl_WorkGroupSize.xy * interleavedSize;
@@ -75,7 +83,6 @@ void main()
     vec4 fragWorldCoordWithW = viewProjectionInvertedMatrix * ndc;
     vec3 fragWorldCoord = fragWorldCoordWithW.xyz / fragWorldCoordWithW.w;
 
-
     vec3 fragNormal = texelFetch(faceNormalSampler, fragCoord, 0).xyz * 2.0 - 1.0;
 
     const int numDepthSlices = 16;
@@ -85,19 +92,94 @@ void main()
     int clusterZ = int(max(log2(-depth) * scaleFactor - numSlicesIntoFirstSlice, 0));
 
 
-    uvec2 clusterCoord = uvec2(fragCoord.xy) / clusterPixelSize;
-    uint lightListId = imageLoad(lightListIds, ivec3(clusterCoord, clusterZ)).r;
+    // uvec2 clusterCoord = uvec2(fragCoord.xy) / clusterPixelSize;
+    // uint lightListId = imageLoad(lightListIds, ivec3(clusterCoord, clusterZ)).r;
+    // uint numVPLs = totalVplCount;
 
+    // numVPLs = totalVplCount;
     uint interleavedPixel1d = interleavedPixel.x + interleavedPixel.y * interleavedSize;
 
     uint startIndex = totalVplCount / interleavedPixels * interleavedPixel1d;
-    uint numLights = imageLoad(lightLists, ivec2(lightListId, startIndex)).r;
+    // uint numLights = imageLoad(lightLists, ivec2(lightListId, startIndex)).r;
+
+    uint invocationID = gl_LocalInvocationID.x + gl_LocalInvocationID.y * gl_WorkGroupSize.x;
+    uint vplIndex = invocationID + startIndex;
+
+
+    // tiled shading begins here
+    {
+        if (invocationID == 0) {
+            sharedVplCounter = 0;
+            minDepth = (10000000);
+            maxDepth = (-10000000);
+        }
+
+        barrier();
+        memoryBarrierShared();
+
+        atomicMin(minDepth, int(ndc.z * 10000));
+        atomicMax(maxDepth, int(ndc.z * 10000));
+
+        barrier();
+        memoryBarrierShared();
+
+        if (invocationID < 64) {
+
+            // determine pixel coordinates of bottom left and top right pixels in this tile
+            ivec2 bottomLeftFragCoord = ivec2(largeInterleaveBlockPosition + interleavedPixel);
+            vec2 bottomLeftNDC = vec2(bottomLeftFragCoord) / viewport * 2.0 - 1.0;
+
+            uvec2 offsetInLargeInterleaveBlock = (gl_WorkGroupSize.xy-1) * interleavedSize;
+            uvec2 interleavedPixel = (gl_WorkGroupID.xy-1) & interleavedPixelBitmask;
+            ivec2 topRightFragCoord = ivec2(largeInterleaveBlockPosition + offsetInLargeInterleaveBlock + interleavedPixel);
+            vec2 topRightNDC = vec2(topRightFragCoord) / viewport * 2.0 - 1.0;
+
+
+            vec3 minNDCf = vec3(bottomLeftNDC, minDepth / 10000.0f);
+            vec3 maxNDCf = vec3(topRightNDC, maxDepth / 10000.0f);
+
+            vec3 corners[8];
+
+            corners[0] = vec3(minNDCf.x, minNDCf.y, minNDCf.z);
+            corners[1] = vec3(minNDCf.x, minNDCf.y, maxNDCf.z);
+            corners[2] = vec3(maxNDCf.x, minNDCf.y, minNDCf.z);
+            corners[3] = vec3(maxNDCf.x, minNDCf.y, maxNDCf.z);
+            corners[4] = vec3(minNDCf.x, maxNDCf.y, minNDCf.z);
+            corners[5] = vec3(minNDCf.x, maxNDCf.y, maxNDCf.z);
+            corners[6] = vec3(maxNDCf.x, maxNDCf.y, minNDCf.z);
+            corners[7] = vec3(maxNDCf.x, maxNDCf.y, maxNDCf.z);
+
+            for (int i = 0; i < 8; i++) {
+                // vec4 corner =
+                vec4 corner = (viewProjectionInvertedMatrix * vec4(corners[i], 1.0));
+                corners[i] = corner.xyz / corner.w;
+            }
+
+            VPL vpl = vplBuffer[vplIndex];
+            bool found = false;
+            for (int j = 0; j < 8; j++) {
+                vec3 corner = corners[j];
+                vec3 vplToCorner = corner - vpl.position.xyz;
+                vec3 vplNormal = (vpl.normal.xyz);
+                found = found || (dot(vplToCorner, vplNormal) >= 0);
+            }
+            // found = true;
+            if (found) {
+
+                int index = atomicAdd(sharedVplCounter, 1);
+                vpls[index] = vpl;
+                vplIndices[index] = vplIndex;
+            }
+        }
+    }
+
+    barrier();
+    memoryBarrierShared();
+
 
     vec3 acc = vec3(0.0);
-    for (uint lightIndex = 1; lightIndex < numLights; lightIndex++) {
-        uint vplIndex = imageLoad(lightLists, ivec2(lightListId, startIndex + lightIndex)).r;
-
-        VPL vpl = vplBuffer[vplIndex];
+    for (int lightIndex = 0; lightIndex < sharedVplCounter; lightIndex++) {
+        VPL vpl = vpls[lightIndex];
 
         vec3 diff = fragWorldCoord - vpl.position ;
         float dist = length(diff);
@@ -117,7 +199,7 @@ void main()
         geometryTerm = min(geometryTerm, vplClampingValue);
 
         if (ENABLE_SHADOWING) {
-            float ismIndex = vplIndex - ismIndexOffset;
+        float ismIndex = vplIndices[lightIndex] - ismIndexOffset;
             vec3 v = paraboloid_project(diff, dist, vpl.normal, zFar, ismIndex, ismIndices1d, false);
             float occluderDepth = textureLod(ismDepthSampler, v.xy, 0).x;
             float shadowValue = v.z - occluderDepth;
@@ -131,5 +213,8 @@ void main()
 
     vec3 resultColor = vec3(acc * giIntensityFactor / vplCount) * interleavedPixels;
 
+    // resultColor.rgb = vec3(float((sharedVplCounter) / 64.0f));
+    // resultColor.rgb = vec3(ndc.z * 0.5 + 0.5);
+    // resultColor.rgb = vec3(vec3(maxNDC[0], maxNDC[1], maxNDC[2]) + 10000000);
     imageStore(img_output, fragCoord, vec4(resultColor, 0.0));
 }
