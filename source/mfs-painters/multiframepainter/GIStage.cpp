@@ -294,7 +294,7 @@ void GIStage::compute_final_gathering()
     m_fgProgram->setUniform("vplStartIndex", vplStartIndex);
     m_fgProgram->setUniform("vplEndIndex", vplEndIndex);
 
-    int workgroupSize = 8;
+    int workgroupSize = 16;
     int interleavedSize = 4;
     // the interleavedSize is used to round up to make sure everything is covered at the image borders
     int numGroupsX = divCeil(viewport->width(),  workgroupSize * interleavedSize) * interleavedSize;
