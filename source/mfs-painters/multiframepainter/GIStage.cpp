@@ -321,10 +321,19 @@ void GIStage::render()
     int workgroupSize = 8;
     int interleavedSize = 4;
     // the interleavedSize is used to round up to make sure everything is covered at the image borders
-    int numGroupsX = divCeil(viewport->width(),  workgroupSize * interleavedSize) * interleavedSize;
-    int numGroupsY = divCeil(viewport->height(), workgroupSize * interleavedSize) * interleavedSize;
+    unsigned int numGroupsX = divCeil(viewport->width(),  workgroupSize * interleavedSize) * interleavedSize;
+    unsigned int numGroupsY = divCeil(viewport->height(), workgroupSize * interleavedSize) * interleavedSize;
 
-    m_giProgram->dispatchCompute(numGroupsX, numGroupsY, 1);
+    //m_giProgram->dispatchCompute(numGroupsX, numGroupsY, 1);
+
+    for (unsigned int x = 0; x < 4; x++) {
+        for (unsigned int y = 0; y < 4; y++) {
+            m_giProgram->setUniform("interleavedPixelX", x);
+            m_giProgram->setUniform("interleavedPixelY", y);
+
+            m_giProgram->dispatchCompute(numGroupsX / 4, numGroupsY / 4, 1);
+        }
+    }
 
     giBuffer->unbindImageTexture(0);
 }

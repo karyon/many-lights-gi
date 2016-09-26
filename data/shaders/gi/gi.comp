@@ -53,18 +53,23 @@ uniform bool useInterleaving = true;
 uint interleavedSize = useInterleaving ? 4 : 1;
 uint interleavedPixels = interleavedSize*interleavedSize;
 // number of bits that will be taken from gl_WorkGroupID to determine the interleavedPixel
-uint interleaveBits = uint(log2(interleavedSize));
+uint interleaveBits = 0; //uint(log2(interleavedSize));
 // set interleaveBits rightmost bits to 1
 uint interleavedPixelBitmask = (1u << interleaveBits) - 1u;
 
 const uint clusterPixelSize = 128;
+
+uniform uint interleavedPixelX;
+uniform uint interleavedPixelY;
 
 
 void main()
 {
     uvec2 largeInterleaveBlockPosition = (gl_WorkGroupID.xy >> interleaveBits) * gl_WorkGroupSize.xy * interleavedSize;
     uvec2 offsetInLargeInterleaveBlock = gl_LocalInvocationID.xy * interleavedSize;
-    uvec2 interleavedPixel = gl_WorkGroupID.xy & interleavedPixelBitmask;
+    // uvec2 interleavedPixel = gl_WorkGroupID.xy & interleavedPixelBitmask;
+    uvec2 interleavedPixel = uvec2(interleavedPixelX, interleavedPixelY);
+    uint interleavedPixel1d = interleavedPixel.x + interleavedPixel.y * interleavedSize;
     ivec2 fragCoord = ivec2(largeInterleaveBlockPosition + offsetInLargeInterleaveBlock + interleavedPixel);
 
     vec2 v_uv = vec2(fragCoord) / viewport;
@@ -94,7 +99,6 @@ void main()
     if (numVPLs < min(imageLoad(lightLists, ivec2(lightListId, 0)).r, 0u))
         numVPLs = 0;
 
-    uint interleavedPixel1d = interleavedPixel.x + interleavedPixel.y * interleavedSize;
     int startIndex = int(float(numVPLs) / interleavedPixels * interleavedPixel1d);
     int endIndex = int(float(numVPLs) / interleavedPixels * (interleavedPixel1d + 1));
 
