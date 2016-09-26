@@ -19,7 +19,7 @@ public:
     VPLProcessor();
     ~VPLProcessor();
 
-    void process(const RasterizationStage& rsmRenderer, float lightIntensity);
+    void process(const RasterizationStage& rsmRenderer, float lightIntensity, bool shuffleLights);
 
     globjects::ref_ptr<globjects::Buffer> vplBuffer;
     globjects::ref_ptr<globjects::Buffer> packedVplBuffer;

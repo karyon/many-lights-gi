@@ -179,6 +179,12 @@ void GIStage::initProperties(MultiFramePainter& painter)
         [this](const bool & value) {
         useInterleaving = value;
     });
+
+    painter.addProperty<bool>("ShuffleLights",
+        [this]() { return shuffleLights; },
+        [this](const bool & value) {
+        shuffleLights = value;
+    });
 }
 
 void GIStage::initialize()
@@ -246,6 +252,7 @@ void GIStage::initialize()
     sunCycleSpeed = 0.1f;
 
     useInterleaving = true;
+    shuffleLights = false;
 
     rsmRenderer->camera = m_lightCamera.get();
 
@@ -384,7 +391,7 @@ void GIStage::process()
 
     {
         AutoGLPerfCounter c("VPLP");
-        vplProcessor->process(*rsmRenderer.get(), lightIntensity);
+        vplProcessor->process(*rsmRenderer.get(), lightIntensity, shuffleLights);
     }
 
     {

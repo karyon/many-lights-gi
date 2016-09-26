@@ -95,4 +95,5 @@ protected:
     bool moveLight;
     bool showVPLPositions;
     bool useInterleaving;
+    bool shuffleLights;
 };

@@ -68,7 +68,7 @@ VPLProcessor::~VPLProcessor()
 
 }
 
-void VPLProcessor::process(const RasterizationStage& rsmRenderer, float lightIntensity)
+void VPLProcessor::process(const RasterizationStage& rsmRenderer, float lightIntensity, bool shuffleLights)
 {
 
     auto shadowBias = glm::mat4(
@@ -88,6 +88,7 @@ void VPLProcessor::process(const RasterizationStage& rsmRenderer, float lightInt
     m_program->setUniform("rsmDepthSampler", 2);
     m_program->setUniform("biasedLightViewProjectionInverseMatrix", glm::inverse(biasedShadowTransform));
     m_program->setUniform("lightIntensity", lightIntensity);
+    m_program->setUniform("shuffleLights", shuffleLights);
 
     vplBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
     packedVplBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 1);

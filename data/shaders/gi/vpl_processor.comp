@@ -9,6 +9,7 @@ uniform sampler2D rsmDepthSampler;
 
 uniform mat4 biasedLightViewProjectionInverseMatrix;
 uniform float lightIntensity;
+uniform bool shuffleLights;
 
 const int totalVplCount = 1024;
 layout (local_size_x = 64) in;
@@ -58,13 +59,14 @@ void main()
 
     vec3 lightColor = diffuse * lightIntensity;
 
-    resultIndex = shuffledIndicesBuffer[resultIndex];
+    if (shuffleLights)
+        resultIndex = shuffledIndicesBuffer[resultIndex];
 
     float packedNormal = pack3SNToFloat(vec3(normal));
     // make sure everyone's accessing the same values
     // gi.comp could also read the packedNormal directly and unpack it, but that's quite slow for some reason
     vec3 unpackedNormal = unpack3SNFromFloat(packedNormal);
-    
+
     vplBuffer[resultIndex] = VPL(vec4(worldcoords.xyz, packedNormal), vec4(unpackedNormal, 0.0), vec4(lightColor, 0.0));
     packedVplBuffer[resultIndex] = vec4(worldcoords.xyz, packedNormal);
 }
