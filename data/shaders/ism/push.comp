@@ -26,125 +26,140 @@ vec4 read(ivec2 pixelCoordinate)
     # endif
 }
 
+
 void main()
 {
-    ivec2 pixelCoordinate = ivec2(gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy);
+    ivec2 coarserLowerLeftPixel = ivec2(gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy) - 1;
 
-    ivec2 pixelInCoarserPixel = pixelCoordinate % 2;
-    ivec2 offset = pixelInCoarserPixel * 2 - 1; // -1 or 1
+    ivec2[4] offsets = { {0,0}, {0,1}, {1,1}, {1,0} };
 
-    ivec2 origTexCoord = pixelCoordinate / 2;
-    ivec2 coarserLevelSize = imageSize(coarserLevel);
-    ivec2 coarserSizePerISM = coarserLevelSize / 32;
-
-    ivec2[4] offsets = { {0,0}, {0,1}, {1,0}, {1,1} };
-    int[4] weights = { 9, 3, 3, 1};
+    // read four pixels from coarser level
     float[4] depths;
     float[4] maxDepths;
     vec4[4] normalsRadiuses;
-    vec2[4] displacementVectors;
-    ivec2[4] texCoords;
-    texCoords[0] = pixelCoordinate / 2;
-    for (int i = 1 ; i < 4; i++) {
-        texCoords[i] = pixelCoordinate / 2 + offset * offsets[i];
-        // don't go over ISM borders
-        // ISMs are 64px wide, so we ignore 6 bits of texture coordinates when reading from lowest level
-        // we do read from level+1
-        if (origTexCoord >> (6-(level+1)) != texCoords[i] >> (6-(level+1))) {
-            weights[i] = 0;
-            texCoords[i] = texCoords[0];
-        }
-    }
-
-
+    vec2[4] displacementVectorsCoarse;
     for (int i = 0 ; i < 4; i++) {
-        vec4 coarserSample = imageLoad(coarserLevel, texCoords[i]);
+        ivec2 texCoords = coarserLowerLeftPixel + offsets[i];
+        vec4 coarserSample = imageLoad(coarserLevel, texCoords);
         depths[i] = coarserSample.r;
         maxDepths[i] = coarserSample.g;
         normalsRadiuses[i] = unpack4UNFromFloat(coarserSample.b);
         normalsRadiuses[i].xyz = normalsRadiuses[i].xyz * 2.0 - 1.0;
         normalsRadiuses[i].w *= 15.0;
-        displacementVectors[i] = unpack2FloatsFromFloat(coarserSample.a);
-        bool invalid = coarserSample.r == 1.0;
-        if (invalid)
-            weights[i] = 0;
+        displacementVectorsCoarse[i] = unpack2FloatsFromFloat(coarserSample.a);
     }
 
-    for (int i = 0; i < 4; i++) {
-        ivec2 texCoord = pixelCoordinate / 2 + offset * offsets[i];
+    // each invocation processes those four output pixels that have the same input pixels
+    for (int outputPixel = 0; outputPixel < 4; outputPixel++)
+    {
+        ivec2 pixelCoordinate = ivec2(gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy) * 2 - 1 + offsets[outputPixel];
+
+        // compute weights
+        int[4] weightsX = { 9, 3, 1, 3};
+        int[4] weights;
+        for(int i = 0; i < 4; i++) {
+            weights[i] = weightsX[(i - outputPixel + 4) % 4];
+        }
+
+
+        // don't go over ISM borders
+        ivec2 origTexCoord = pixelCoordinate / 2;
+        for (int i = 0 ; i < 4; i++) {
+            ivec2 inputPixelCoords = coarserLowerLeftPixel + offsets[i];
+            // ISMs are 64px wide, so we ignore 6 bits of texture coordinates when reading from lowest level
+            // we do read from level+1
+            if (origTexCoord >> (6-(level+1)) != inputPixelCoords >> (6-(level+1))) {
+                weights[i] = 0;
+            }
+        }
+
+        // ignore pixels with invalid depth
+        for (int i = 0 ; i < 4; i++) {
+            bool invalid = depths[i] == 1.0;
+            if (invalid)
+                weights[i] = 0;
+        }
 
         // radius check
-        float radius = normalsRadiuses[i].w;
-        displacementVectors[i] = (vec2(-offset * 0.5) + offset * offsets[i] * 2 + displacementVectors[i]*2);
-        float dist = length(displacementVectors[i]);
+        vec2[4] displacementVectors;
+        for (int i = 0; i < 4; i++) {
+            vec2 coarserTexCoord = (coarserLowerLeftPixel + offsets[i] + 0.5) * 2;
+            vec2 thisTexCoord = pixelCoordinate + 0.5;
 
-        radius *= pow(2, -level); // scale with miplevel
+            displacementVectors[i] = coarserTexCoord - thisTexCoord + displacementVectorsCoarse[i]*2;
 
-        if (dist > radius)
-            weights[i] = 0;
+            float dist = length(displacementVectors[i]);
+
+            float radius = normalsRadiuses[i].w;
+            radius *= pow(2, -level); // scale with miplevel
+
+            if (dist > radius)
+                weights[i] = 0;
+        }
+
+        // depth range check
+        float minimum = 9001;
+        float maxDepth;
+        for (int i = 0; i < 4; i++) {
+            if (weights[i] == 0)
+                continue;
+            minimum = min(depths[i], minimum);
+            if (minimum == depths[i])
+                maxDepth = maxDepths[i];
+        }
+
+        for(int i = 0; i < 4; i++) {
+            if (depths[i] > maxDepth)
+                weights[i] = 0;
+        }
+
+
+        float depthAcc = 0.0;
+        float radiusAcc = 0.0;
+        vec3 normalAcc = vec3(0.0);
+        vec2 displacementAcc = vec2(0.0);
+        int weightAcc = 0;
+        float maxDepthAcc = 0.0;
+
+        for (int i = 0; i < 4; i++) {
+            depthAcc += depths[i] * weights[i];
+            maxDepthAcc += maxDepths[i] * weights[i];
+            radiusAcc += normalsRadiuses[i].w * weights[i];
+            normalAcc += normalsRadiuses[i].xyz * weights[i];
+            displacementAcc += displacementVectors[i] * weights[i];
+            weightAcc += weights[i];
+        }
+
+        vec4 result = vec4(0.0);
+        result.r = depthAcc / weightAcc;
+        result.g = maxDepthAcc / weightAcc;
+        result.b = pack4UNToFloat(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / weightAcc / 15.0));
+        result.a = pack2FloatsToFloat(displacementAcc / weightAcc);
+
+
+        vec4 origSample = read(pixelCoordinate);
+        bool invalid = origSample.r == 1.0;
+
+        bool occluded = false;
+        for (int i = 0; i < 4; i++) {
+            occluded = occluded || (weights[i] > 0 && origSample.r > maxDepths[i]);
+        }
+
+        bool allSamplesInvalid = weightAcc <= 0;
+        if (allSamplesInvalid || !invalid && !occluded) {
+            result = origSample;
+        }
+
+        // bool checkerboardWhite = ((pixelCoordinate.x % 2) + (pixelCoordinate.y % 2)) % 2 == 0;
+        // result.r = float(checkerboardWhite);
+        #ifdef LEVEL_ZERO
+            // uncomment to fill last push stage
+            // imageStore(img_output, pixelCoordinate, result);
+
+            // result = origSample;
+            imageStore(imgOutputLastStage, pixelCoordinate, vec4(result.r, 0.0, 0.0, 0.0));
+        #else
+            imageStore(img_output, pixelCoordinate, result);
+        #endif
     }
-
-    float minimum = 9001;
-    float maxDepth;
-    for (int i = 0; i < 4; i++) {
-        if (weights[i] == 0)
-            continue;
-        minimum = min(depths[i], minimum);
-        if (minimum == depths[i])
-            maxDepth = maxDepths[i];
-    }
-
-    for(int i = 0; i < 4; i++) {
-        if (depths[i] > maxDepth)
-            weights[i] = 0;
-    }
-
-
-    float depthAcc = 0.0;
-    float radiusAcc = 0.0;
-    vec3 normalAcc = vec3(0.0);
-    vec2 displacementAcc = vec2(0.0);
-    int weightAcc = 0;
-    float maxDepthAcc = 0.0;
-
-    for (int i = 0; i < 4; i++) {
-        depthAcc += depths[i] * weights[i];
-        maxDepthAcc += maxDepths[i] * weights[i];
-        radiusAcc += normalsRadiuses[i].w * weights[i];
-        normalAcc += normalsRadiuses[i].xyz * weights[i];
-        displacementAcc += displacementVectors[i] * weights[i];
-        weightAcc += weights[i];
-    }
-
-    vec4 result = vec4(0.0);
-    result.r = depthAcc / weightAcc;
-    result.g = maxDepthAcc / weightAcc;
-    result.b = pack4UNToFloat(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / weightAcc / 15.0));
-    result.a = pack2FloatsToFloat(displacementAcc / weightAcc);
-
-
-    vec4 origSample = read(pixelCoordinate);
-    bool invalid = origSample.r == 1.0;
-
-    bool occluded = false;
-    for (int i = 0; i < 4; i++) {
-        occluded = occluded || (weights[i] > 0 && origSample.r > maxDepths[i]);
-    }
-
-    bool allSamplesInvalid = weightAcc <= 0;
-    if (allSamplesInvalid || !invalid && !occluded) {
-        result = origSample;
-    }
-
-    // bool checkerboardWhite = ((pixelCoordinate.x % 2) + (pixelCoordinate.y % 2)) % 2 == 0;
-    // result.r = float(checkerboardWhite);
-    #ifdef LEVEL_ZERO
-        // uncomment to fill last push stage
-        // imageStore(img_output, pixelCoordinate, result);
-
-        // result = origSample;
-        imageStore(imgOutputLastStage, pixelCoordinate, vec4(result.r, 0.0, 0.0, 0.0));
-    #else
-        imageStore(img_output, pixelCoordinate, result);
-    #endif
 }

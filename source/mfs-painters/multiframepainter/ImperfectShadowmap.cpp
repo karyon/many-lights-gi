@@ -133,11 +133,15 @@ void ImperfectShadowmap::pullpush(int ismPixelSize, float zFar) const
         gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         pullBuffer->bindImageTexture(0, i, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
         pullBuffer->bindImageTexture(1, i + 1, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+
         auto program = (i == 0) ? m_pullLevelZeroProgram : m_pullProgram;
         program->setUniform("level", i);
         program->setUniform("ismPixelSize", ismPixelSize);
         program->setUniform("zFar", zFar);
-        program->dispatchCompute(totalIsmPixelSize / int(std::pow(2, i + 1)) / 8, totalIsmPixelSize / int(std::pow(2, i + 1)) / 8, 1);
+
+        int workGroupSize = 8;
+        int numGroups = totalIsmPixelSize / int(std::pow(2, i + 1)) / workGroupSize;
+        program->dispatchCompute(numGroups, numGroups, 1);
 
         if (i <= 2)
             PerfCounter::endGL("PL" + std::to_string(i));
@@ -156,9 +160,16 @@ void ImperfectShadowmap::pullpush(int ismPixelSize, float zFar) const
         readTexture->bindImageTexture(1, i+1, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
         pushBuffer->bindImageTexture(2, i, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
         auto currResultBuffer = (i == 0) ? pushPullResultBuffer : pushBuffer;
+
         auto program = (i == 0) ? m_pushLevelZeroProgram : m_pushProgram;
         program->setUniform("level", i);
-        program->dispatchCompute(totalIsmPixelSize / int(std::pow(2, i)) / 8, totalIsmPixelSize / int(std::pow(2, i)) / 8, 1);
+
+        int workGroupSize = 8;
+        // divide by two since each invocation processes four output pixels.
+        // plus one since invocation (0,0) processes pixels ([-1,0],[-1,0]),
+        // therefore we would miss the last row/column of pixels to the right/top.
+        int numGroups = totalIsmPixelSize / int(std::pow(2, i)) / workGroupSize / 2 + 1;
+        program->dispatchCompute(numGroups, numGroups, 1);
 
         if (i <= 2)
             PerfCounter::endGL("PS" + std::to_string(i));

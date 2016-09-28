@@ -19,7 +19,7 @@ const float infinity = 1. / 0.;
 
 void main()
 {
-    ivec2 pixelCoordinate = ivec2(gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy);
+    ivec2 outputPixelCoord = ivec2(gl_WorkGroupID.xy * gl_WorkGroupSize.xy + gl_LocalInvocationID.xy);
 
     ivec2[4] offsets = { {0,0}, {0,1}, {1,0}, {1,1} };
 
@@ -31,12 +31,13 @@ void main()
     bool[4] valid;
 
     for (int i = 0; i < 4; i++) {
+        ivec2 inputPixelCoord = outputPixelCoord * 2 + offsets[i];
         # ifdef LEVEL_ZERO
-            float depthSample = float(texelFetch(softrenderBuffer, ivec3(pixelCoordinate * 2 + offsets[i], 0), 0).r) / 500000.0;
-            uint normalRadius = texelFetch(softrenderBuffer, ivec3(pixelCoordinate * 2 + offsets[i], 1), 0).r;
+            float depthSample = float(texelFetch(softrenderBuffer, ivec3(inputPixelCoord, 0), 0).r) / 500000.0;
+            uint normalRadius = texelFetch(softrenderBuffer, ivec3(inputPixelCoord, 1), 0).r;
             vec2 displacementVector = vec2(0.0);
         # else
-            vec4 read = imageLoad(ismDepthImage, pixelCoordinate * 2 + offsets[i]);
+            vec4 read = imageLoad(ismDepthImage, inputPixelCoord);
             float depthSample = read.r;
             float maxDepth = read.g;
             uint normalRadius = floatBitsToUint(read.b);
@@ -58,7 +59,7 @@ void main()
 
 
         // radius check
-        vec2 newDisplacementVector = (offsets[i] - 0.5 + displacementVector) / 2;
+        vec2 newDisplacementVector = (inputPixelCoord + 0.5 + displacementVector) / 2 - (outputPixelCoord + 0.5);
         float dist = length(newDisplacementVector);
 
         float scaledRadius = radius * pow(2, -(level+1));
@@ -117,5 +118,5 @@ void main()
         result = vec4(1.0, 0.0, 0.0, 0.0);
     }
 
-    imageStore(img_output, pixelCoordinate, result);
+    imageStore(img_output, outputPixelCoord, result);
 }
