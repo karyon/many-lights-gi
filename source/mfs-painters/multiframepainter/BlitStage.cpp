@@ -19,7 +19,7 @@ using namespace gl;
 
 
 BlitStage::BlitStage()
-: m_currentBuffer("Accumulation Buffer")
+: m_currentBuffer("Shaded Frame")
 {
 }
 

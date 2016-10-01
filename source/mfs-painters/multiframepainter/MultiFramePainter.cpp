@@ -27,7 +27,6 @@
 #include "GIStage.h"
 #include "DeferredShadingStage.h"
 #include "SSAOStage.h"
-#include "FrameAccumulationStage.h"
 #include "BlitStage.h"
 #include "PerfCounter.h"
 #include "ImperfectShadowmap.h"
@@ -60,7 +59,6 @@ MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cp
     giStage = std::make_unique<GIStage>(*modelLoadingStage, *kernelGenerationStage);
     ssaoStage = std::make_unique<SSAOStage>(*kernelGenerationStage, *modelLoadingStage);
     deferredShadingStage = std::make_unique<DeferredShadingStage>();
-    frameAccumulationStage = std::make_unique<FrameAccumulationStage>();
     blitStage = std::make_unique<BlitStage>();
 
     modelLoadingStage->resourceManager = &resourceManager;
@@ -148,16 +146,9 @@ void MultiFramePainter::onInitialize()
     deferredShadingStage->initialize();
     deferredShadingStage->initProperties(*this);
 
-    frameAccumulationStage->viewport = m_virtualViewportCapability;
-    frameAccumulationStage->currentFrame = rasterizationStage->currentFrame;
-    frameAccumulationStage->frame = deferredShadingStage->shadedFrame;
-    frameAccumulationStage->depth = rasterizationStage->depthBuffer;
-    frameAccumulationStage->initialize();
-
     blitStage->viewport = m_viewportCapability;
     blitStage->virtualViewport = m_virtualViewportCapability;
-    blitStage->accumulation = frameAccumulationStage->accumulation;
-    blitStage->depth = frameAccumulationStage->depth;
+    blitStage->depth = rasterizationStage->depthBuffer;
 
     blitStage->m_buffers = {
         rasterizationStage->diffuseBuffer,
@@ -181,7 +172,6 @@ void MultiFramePainter::onInitialize()
         giStage->giBlurFinalBuffer,
         ssaoStage->occlusionBuffer,
         deferredShadingStage->shadedFrame,
-        frameAccumulationStage->accumulation
     };
 
     blitStage->initialize();
@@ -201,7 +191,6 @@ void MultiFramePainter::onPaint()
     giStage->process();
     ssaoStage->process();
     deferredShadingStage->process();
-    frameAccumulationStage->process();
     blitStage->process();
 
     m_virtualViewportCapability->setChanged(false);

@@ -34,7 +34,6 @@ public:
     gloperate::AbstractViewportCapability * viewport;
     gloperate::AbstractViewportCapability * virtualViewport;
 
-    globjects::ref_ptr<globjects::Texture> accumulation;
     globjects::ref_ptr<globjects::Texture> depth;
 
 	std::vector<globjects::ref_ptr<globjects::Texture>> m_buffers;

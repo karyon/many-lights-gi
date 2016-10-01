@@ -26,7 +26,6 @@ class RasterizationStage;
 class GIStage;
 class DeferredShadingStage;
 class SSAOStage;
-class FrameAccumulationStage;
 class BlitStage;
 
 
@@ -63,7 +62,6 @@ protected:
     std::unique_ptr<GIStage> giStage;
     std::unique_ptr<SSAOStage> ssaoStage;
     std::unique_ptr<DeferredShadingStage> deferredShadingStage;
-    std::unique_ptr<FrameAccumulationStage> frameAccumulationStage;
     std::unique_ptr<BlitStage> blitStage;
 
     bool m_useFullHD;

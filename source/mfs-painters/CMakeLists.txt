@@ -48,7 +48,6 @@ set(headers
     ${include_path}/multiframepainter/ClusteredShading.h
     ${include_path}/multiframepainter/DeferredShadingStage.h
     ${include_path}/multiframepainter/SSAOStage.h
-    ${include_path}/multiframepainter/FrameAccumulationStage.h
     ${include_path}/multiframepainter/BlitStage.h
 
     ${include_path}/multiframepainter/TypeDefinitions.h
@@ -70,7 +69,6 @@ set(sources
     ${source_path}/multiframepainter/ClusteredShading.cpp
     ${source_path}/multiframepainter/SSAOStage.cpp
     ${source_path}/multiframepainter/DeferredShadingStage.cpp
-    ${source_path}/multiframepainter/FrameAccumulationStage.cpp
     ${source_path}/multiframepainter/BlitStage.cpp
 
     ${source_path}/multiframepainter/ImperfectShadowmap.cpp
