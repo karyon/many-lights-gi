@@ -12,6 +12,7 @@ layout(points, max_vertices = 1) out;
 in vec3[] te_normal;
 in vec3[] te_tessCoord;
 
+flat out ivec2 g_centerCoord;
 out float g_normalRadius;
 
 const int totalVplCount = 1024;
@@ -127,6 +128,8 @@ void main()
         }
     }
     else {
+        g_centerCoord = ivec2(v.xy * viewport);
+
         // to tex and NDC coords
         v.xy = v.xy * 2.0 - 1.0;
         v.z = v.z * 2.0 - 1.0;
