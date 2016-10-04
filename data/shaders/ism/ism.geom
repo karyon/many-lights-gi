@@ -69,11 +69,15 @@ void main()
         return;
     }
 
-    int vplID;
-    vec3 vplNormal;
-    vec3 positionRelativeToCamera;
-    bool found = false;
-    for(int i = 0; i < 1; i++) {
+    const int maxVplCollectCount = 1;
+    const int maxVplTestCount = 1;
+
+    // VPL collection and culling
+    int vplID[maxVplCollectCount];
+    vec3 vplNormal[maxVplCollectCount];
+    vec3 positionRelativeToCamera[maxVplCollectCount];
+    int found = 0;
+    for(int i = 0; i < maxVplTestCount; i++) {
         int vplID2 = (base + i) % sampledVplCount;
         // vplID = int(counter) % 1024;
         if (pointsOnlyIntoScaledISMs)
@@ -86,24 +90,27 @@ void main()
         vec3 positionRelativeToCamera2 = position.xyz - vplPosition;
 
         bool cull = dot(vplNormal2, positionRelativeToCamera2) < 0 || dot(te_normal[0], -positionRelativeToCamera2) < 0;
-        found = found || !cull;
-        if (!cull) {
-            vplID = vplID2;
-            vplNormal = vplNormal2;
-            positionRelativeToCamera = positionRelativeToCamera2;
+        // found = found || !cull;
+        if (!cull && found < maxVplCollectCount) {
+            vplID[found] = vplID2;
+            vplNormal[found] = vplNormal2;
+            positionRelativeToCamera[found] = positionRelativeToCamera2;
+            found++;
         }
     }
-    if (!found)
-        return;
+    // if (!found)
+    //     return;
+
+    for (int i = 0; i < found; i++) {
 
     // paraboloid projection
-    float distToCamera = length(positionRelativeToCamera);
-    float ismIndex = scaleISMs ? float(vplID) - vplStartIndex : vplID;
-    vec3 v = paraboloid_project(positionRelativeToCamera, distToCamera, vplNormal, zFar, ismIndex, ismIndices1d, true);
+    float distToCamera = length(positionRelativeToCamera[i]);
+    float ismIndex = scaleISMs ? float(vplID[i]) - vplStartIndex : vplID[i];
+    vec3 v = paraboloid_project(positionRelativeToCamera[i], distToCamera, vplNormal[i], zFar, ismIndex, ismIndices1d, true);
 
-    vec3 normalPositionRelativeToCamera = positionRelativeToCamera + te_normal[0] * 0.1;
+    vec3 normalPositionRelativeToCamera = positionRelativeToCamera[i] + te_normal[0] * 0.1;
     float normalDist = length(normalPositionRelativeToCamera);
-    vec3 normalV = paraboloid_project(normalPositionRelativeToCamera, normalDist, vplNormal, zFar, ismIndex, ismIndices1d, true);
+    vec3 normalV = paraboloid_project(normalPositionRelativeToCamera, normalDist, vplNormal[i], zFar, ismIndex, ismIndices1d, true);
 
 
     float pointWorldRadius = maxdist;
@@ -144,5 +151,6 @@ void main()
         gl_PointSize = pointSize;
         // gl_PointSize = 1;
         EmitVertex();
+    }
     }
 }
