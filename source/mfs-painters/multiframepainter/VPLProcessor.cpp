@@ -55,8 +55,7 @@ VPLProcessor::VPLProcessor()
     std::vector<int> v(maxVPLCount);
     std::iota(v.begin(), v.end(), 0);
 
-    std::random_device rd;
-    std::mt19937 g(rd());
+    std::mt19937 g(1979982); // fixed seed to be reproducible
     std::shuffle(v.begin(), v.end(), g);
 
     m_shuffledIndicesBuffer = new globjects::Buffer();
