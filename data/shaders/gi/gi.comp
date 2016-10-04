@@ -124,7 +124,8 @@ void main()
         vec3 v = paraboloid_project(diff, dist, vpl.normal.xyz, zFar, ismIndex, ismIndices1d, false);
         float occluderDepth = textureLod(ismDepthSampler, v.xy, 0).x;
         float shadowValue = v.z - occluderDepth;
-        shadowValue = smoothstep(0.95, 1.0, 1 - shadowValue);
+        float shadowBias = 0.03;
+        shadowValue = smoothstep(1.0 - shadowBias, 1.0, 1 - shadowValue);
         shadowValue = mix(1.0, shadowValue, float(enableShadowing));
 
         acc += vpl.color.xyz * geometryTerm * shadowValue;

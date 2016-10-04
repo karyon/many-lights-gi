@@ -46,17 +46,22 @@ void main()
 
         vec4 normalRadiusUnpacked = unpack4UNFromUint(normalRadius);
         vec3 normal = normalRadiusUnpacked.xyz * 2.0 - 1.0;
-        float radius = normalRadiusUnpacked.w * 15;
+        float radius = normalRadiusUnpacked.w * 25.0;
 
         #ifdef LEVEL_ZERO
+            // magic factor to make it look better...
+            radius *= 0.7;
+            // the projection is performed here, not in ism.comp,
+            // as i need the world radius for the maxDepth calculation here.
             float maxDepth = depthSample + (radius * 2) / zFar;
             // radius is in world units so far, project & convert to pixels
             float distToCamera = depthSample * zFar;
             radius = radius / distToCamera / 3.14 * ismPixelSize; // approximation that breaks especially for near points.
-            radius *= 1.3; // boost radius a bit to make circle area match the point rendering square area
+            // boost radius a bit to make circle area match the point rendering square area
+            radius *= 1.3;
+            // clamp to avoid overly large points ruining everything
             radius = min(radius, 15);
         #endif
-
 
         // radius check
         vec2 newDisplacementVector = (inputPixelCoord + 0.5 + displacementVector) / 2 - (outputPixelCoord + 0.5);
@@ -112,7 +117,7 @@ void main()
     if (numValid > 0) {
         result.r = depthAcc / numValid;
         result.g = maxValidMaxDepth;
-        result.b = pack4UNToFloat(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / numValid / 15.0));
+        result.b = pack4UNToFloat(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / numValid / 25.0));
         result.a = pack2FloatsToFloat(displacementAcc / numValid);
     } else {
         result = vec4(1.0, 0.0, 0.0, 0.0);

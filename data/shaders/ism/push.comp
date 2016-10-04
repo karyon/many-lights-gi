@@ -45,7 +45,7 @@ void main()
         maxDepths[i] = coarserSample.g;
         normalsRadiuses[i] = unpack4UNFromFloat(coarserSample.b);
         normalsRadiuses[i].xyz = normalsRadiuses[i].xyz * 2.0 - 1.0;
-        normalsRadiuses[i].w *= 15.0;
+        normalsRadiuses[i].w *= 25.0;
         displacementVectorsCoarse[i] = unpack2FloatsFromFloat(coarserSample.a);
     }
 
@@ -133,7 +133,7 @@ void main()
         vec4 result = vec4(0.0);
         result.r = depthAcc / weightAcc;
         result.g = maxDepthAcc / weightAcc;
-        result.b = pack4UNToFloat(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / weightAcc / 15.0));
+        result.b = pack4UNToFloat(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / weightAcc / 25.0));
         result.a = pack2FloatsToFloat(displacementAcc / weightAcc);
 
 

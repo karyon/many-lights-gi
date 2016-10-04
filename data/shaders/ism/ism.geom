@@ -53,18 +53,19 @@ void main()
 
     float maxdist = max(max(length(position - gl_in[0].gl_Position.xyz), length(position - gl_in[1].gl_Position.xyz)), length(position - gl_in[2].gl_Position.xyz));
 
-    // point represents ismCount other points. boost its area by ismCount, i.e. boost its radius by sqrt(ismCount).
-    float pointWorldRadius = maxdist * sqrt(ismCount);
-    pointWorldRadius = min(pointWorldRadius, 15.0);
-    uint g_normalRadius2 = pack4UNToUint(vec4(te_normal[0] * 0.5 + 0.5, pointWorldRadius / 15));
-
     vec3 seed = barycentricCoord.xyz + (gl_PrimitiveIDIn % 4096) / 4096.0;
-    // seed = position.xyz;
     int base = int(random(seed) * sampledVplCount);
 
     if(usePushPull) {
+        float pointWorldRadius = maxdist;
+        // each point represents ismCount other points.
+        // therefore boost its area by ismCount, i.e. boost its radius by sqrt(ismCount).
+        pointWorldRadius *= sqrt(ismCount);
+        float normalRadius = pack4UNToFloat(vec4(te_normal[0] * 0.5 + 0.5, pointWorldRadius / 25.0));
+
         uint counter = atomicAdd(atomicCounter[base], 1);
-        imageStore(pointBuffer, base * (imageSize(pointBuffer).x / sampledVplCount) + int(counter), vec4(position.xyz, uintBitsToFloat(g_normalRadius2)));
+        int writeIndex = base * (imageSize(pointBuffer).x / sampledVplCount) + int(counter);
+        imageStore(pointBuffer, writeIndex, vec4(position.xyz, normalRadius));
         return;
     }
 
@@ -105,9 +106,16 @@ void main()
     vec3 normalV = paraboloid_project(normalPositionRelativeToCamera, normalDist, vplNormal, zFar, ismIndex, ismIndices1d, true);
 
 
-    float ismSize = 64;
-    float pointsPerMeter = 1.0 / (maxdist * 2.0);
-    float pointSize = 1.0 / pointsPerMeter / distToCamera / 3.14 * viewport.x; // approximation that breaks especially for near points.
+    float pointWorldRadius = maxdist;
+
+    // as above, boost area by sqrt(ismCount).
+    // commented out since this and the next line cancel each other out
+    // pointWorldRadius *= sqrt(ismCount);
+
+    // each ISM has only sqrt(ismCount) the area of the complete viewport
+    // pointWorldRadius /= sqrt(ismCount);
+
+    float pointSize = (pointWorldRadius * 2.0) / distToCamera / 3.14 * viewport.x; // approximation that breaks especially for near points.
     pointSize *= 1.0;
     float maximumPointSize = 15.0;
     pointSize = min(pointSize, maximumPointSize);
@@ -120,8 +128,7 @@ void main()
         if (original > uint(v.z)) {
             float radius = pointSize / 2;
             radius *= 1.3; // boost radius a bit to make circle area match the point rendering square area
-            radius = min(radius, 15);
-            uint g_normalRadius = pack4UNToUint(vec4(te_normal[0] * 0.5 + 0.5, radius / 15.0));
+            uint g_normalRadius = pack4UNToUint(vec4(te_normal[0] * 0.5 + 0.5, radius / 25.0));
             // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.
             // largely solved in compute shader version
             imageStore(softrenderBuffer, ivec3(v.xy, 1), uvec4(g_normalRadius, 0, 0, 0));

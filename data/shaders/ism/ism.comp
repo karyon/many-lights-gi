@@ -141,7 +141,7 @@ void main()
             if (originalDepthValue >= currentDepthValue && writeVerified)
             {
                 float pointRadius = normalRadiusUnpacked.w;
-                pointRadius /= maxVplCollectCount;
+                pointRadius /= sqrt(float(maxVplCollectCount));
                 uint g_normalRadius = pack4UNToUint(vec4(normalize(pointNormal) * 0.5 + 0.5, pointRadius));
                 // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.
                 // not solved 100%, see above
