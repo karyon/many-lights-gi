@@ -124,31 +124,34 @@ void ImperfectShadowmap::pullpush(int ismPixelSize, float zFar) const
 
     softrenderBuffer->bindActive(0);
 
-    // TODO investigate why 2nd level is only 2 times faster
-    // TODO maybe merge this and let one dispatch do multiple levels
-    for (int i = 0; i <= 5; i++) {
-        if (i <= 2)
+    // i indicates to which level is written
+    for (int i = 1; i <= 6; i++) {
+        if (i <= 3)
             PerfCounter::beginGL("PL" + std::to_string(i));
+        if (i == 4)
+            PerfCounter::beginGL("PLO"); // PLO = pull, other
 
         gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-        pullBuffer->bindImageTexture(0, i, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-        pullBuffer->bindImageTexture(1, i + 1, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+        pullBuffer->bindImageTexture(0, i - 1, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+        pullBuffer->bindImageTexture(1, i, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
-        auto program = (i == 0) ? m_pullLevelZeroProgram : m_pullProgram;
+        auto program = (i == 1) ? m_pullLevelZeroProgram : m_pullProgram;
         program->setUniform("level", i);
         program->setUniform("ismPixelSize", ismPixelSize);
         program->setUniform("zFar", zFar);
 
         int workGroupSize = 8;
-        int numGroups = totalIsmPixelSize / int(std::pow(2, i + 1)) / workGroupSize;
+        int numGroups = totalIsmPixelSize / int(std::pow(2, i)) / workGroupSize;
         program->dispatchCompute(numGroups, numGroups, 1);
 
-        if (i <= 2)
+        if (i <= 3)
             PerfCounter::endGL("PL" + std::to_string(i));
     }
+    PerfCounter::endGL("PLO");
 
     pushPullResultBuffer->bindImageTexture(3, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16);
 
+    PerfCounter::beginGL("PSO");
     for (int i = 5; i >= 0; i--) {
         if (i <= 2)
             PerfCounter::beginGL("PS" + std::to_string(i));
@@ -173,6 +176,8 @@ void ImperfectShadowmap::pullpush(int ismPixelSize, float zFar) const
 
         if (i <= 2)
             PerfCounter::endGL("PS" + std::to_string(i));
+        if (i == 3)
+            PerfCounter::endGL("PSO");
     }
 }
 
@@ -222,18 +227,22 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     glEnable(GL_PROGRAM_POINT_SIZE);
     glPatchParameteri(GL_PATCH_VERTICES, 3);
 
-    AutoGLPerfCounter c("ISM render");
-    for (const auto& pair : drawablesMap)
     {
-        auto& drawables = pair.second;
-        for (auto& drawable : drawables)
+        AutoGLPerfCounter c("ISM render");
+        for (const auto& pair : drawablesMap)
         {
-            drawable->draw(GL_PATCHES);
+            auto& drawables = pair.second;
+            for (auto& drawable : drawables)
+            {
+                drawable->draw(GL_PATCHES);
+            }
         }
     }
+
     m_shadowmapProgram->release();
 
     if (usePushPull) {
+        AutoGLPerfCounter c("ISM CS");
         gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
         gl::glMemoryBarrier(gl::GL_SHADER_STORAGE_BARRIER_BIT);
 
@@ -246,7 +255,6 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
         m_pointSoftRenderProgram->setUniform("usePushPull", usePushPull);
         m_pointSoftRenderProgram->setUniform("tessLevelFactor", tessLevelFactor);
         m_pointSoftRenderProgram->dispatchCompute(1024, 1, 1);
-
     }
 
 

@@ -252,7 +252,7 @@ void GIStage::initialize()
     sunCycleSpeed = 0.1f;
 
     useInterleaving = true;
-    shuffleLights = false;
+    shuffleLights = true;
 
     rsmRenderer->camera = m_lightCamera.get();
 

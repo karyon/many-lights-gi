@@ -49,11 +49,13 @@ void main()
         float radius = normalRadiusUnpacked.w * 25.0;
 
         #ifdef LEVEL_ZERO
-            // magic factor to make it look better...
-            radius *= 0.7;
             // the projection is performed here, not in ism.comp,
-            // as i need the world radius for the maxDepth calculation here.
-            float maxDepth = depthSample + (radius * 2) / zFar;
+            // as the *world* radius, not projected radius, is needed for the maxDepth calculation here.
+
+            float magicFactor = 0.6; // hand-tuned to make things look better
+            // radius * 2 since the next point on the same surface is 2r away.
+            float maxDepth = depthSample + (radius * 2) / zFar * magicFactor;
+
             // radius is in world units so far, project & convert to pixels
             float distToCamera = depthSample * zFar;
             radius = radius / distToCamera / 3.14 * ismPixelSize; // approximation that breaks especially for near points.
@@ -67,7 +69,7 @@ void main()
         vec2 newDisplacementVector = (inputPixelCoord + 0.5 + displacementVector) / 2 - (outputPixelCoord + 0.5);
         float dist = length(newDisplacementVector);
 
-        float scaledRadius = radius * pow(2, -(level+1));
+        float scaledRadius = radius * pow(2, -level);
 
         bool radiusCheckPassed = dist <= scaledRadius;
 

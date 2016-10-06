@@ -16,7 +16,7 @@ layout (r16, binding = 3) restrict writeonly uniform image2D imgOutputLastStage;
 uniform int level;
 
 
-vec4 read(ivec2 pixelCoordinate)
+vec4 readInput(ivec2 pixelCoordinate)
 {
     # ifdef LEVEL_ZERO
         float depthSample = float(texelFetch(pullSameLevelTexture, ivec3(pixelCoordinate, 0), 0).r) / 500000.0;
@@ -24,6 +24,20 @@ vec4 read(ivec2 pixelCoordinate)
     # else
         return imageLoad(pullSameLevelImage, pixelCoordinate);
     # endif
+}
+
+void writeOutput(ivec2 pixelCoordinate, vec4 result)
+{
+    // bool checkerboardWhite = ((pixelCoordinate.x % 2) + (pixelCoordinate.y % 2)) % 2 == 0;
+    // result.r = float(checkerboardWhite);
+    #ifdef LEVEL_ZERO
+        // uncomment to fill last push stage
+        // imageStore(img_output, pixelCoordinate, result);
+
+        imageStore(imgOutputLastStage, pixelCoordinate, vec4(result.r, 0.0, 0.0, 0.0));
+    #else
+        imageStore(img_output, pixelCoordinate, result);
+    #endif
 }
 
 
@@ -137,7 +151,7 @@ void main()
         result.a = pack2FloatsToFloat(displacementAcc / weightAcc);
 
 
-        vec4 origSample = read(pixelCoordinate);
+        vec4 origSample = readInput(pixelCoordinate);
         bool invalid = origSample.r == 1.0;
 
         bool occluded = false;
@@ -150,16 +164,6 @@ void main()
             result = origSample;
         }
 
-        // bool checkerboardWhite = ((pixelCoordinate.x % 2) + (pixelCoordinate.y % 2)) % 2 == 0;
-        // result.r = float(checkerboardWhite);
-        #ifdef LEVEL_ZERO
-            // uncomment to fill last push stage
-            // imageStore(img_output, pixelCoordinate, result);
-
-            // result = origSample;
-            imageStore(imgOutputLastStage, pixelCoordinate, vec4(result.r, 0.0, 0.0, 0.0));
-        #else
-            imageStore(img_output, pixelCoordinate, result);
-        #endif
+        writeOutput(pixelCoordinate, result);
     }
 }
