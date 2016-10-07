@@ -30,7 +30,7 @@ void main()
     v_worldCoord = a_vertex;
     v_normal = a_normal;
     v_uv = a_uv;
-    gl_Position = ndcVertex;
+    gl_Position = vec4(v_worldCoord, 1.0);
 
     vec4 v_s_tmp = biasedShadowTransform * vertex;
     v_s = v_s_tmp;

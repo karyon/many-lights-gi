@@ -105,6 +105,8 @@ void RasterizationStage::initialize()
     m_program = new globjects::Program();
     m_program->attach(
         globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/model.vert"),
+        globjects::Shader::fromFile(GL_TESS_CONTROL_SHADER, "data/shaders/ism/ism.tesc"),
+        globjects::Shader::fromFile(GL_TESS_EVALUATION_SHADER, "data/shaders/ism/test.tese"),
         globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/model.frag")
     );
     globjects::Shader::clearGlobalReplacements();
@@ -267,7 +269,7 @@ void RasterizationStage::render()
 
         for (auto& drawable : drawables)
         {
-            drawable->draw();
+            drawable->draw(GL_PATCHES);
         }
     }
 
