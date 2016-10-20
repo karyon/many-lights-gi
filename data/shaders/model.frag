@@ -2,7 +2,6 @@
 #extension GL_ARB_shading_language_include : require
 
 #include </data/shaders/common/shadowmapping.glsl>
-#include </data/shaders/common/fragment_discard.glsl>
 #include </data/shaders/common/random.glsl>
 
 #define RENDER_RSM
