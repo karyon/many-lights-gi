@@ -73,11 +73,11 @@ ImperfectShadowmap::ImperfectShadowmap()
     depthBuffer->storage2D(1, GL_DEPTH_COMPONENT16, totalIsmPixelSize, totalIsmPixelSize);
     m_fbo->attachTexture(GL_DEPTH_ATTACHMENT, depthBuffer);
 
-    softrenderBuffer = globjects::Texture::createDefault(GL_TEXTURE_3D);
+    softrenderBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
     softrenderBuffer->setParameter(gl::GL_TEXTURE_MIN_FILTER, gl::GL_NEAREST);
     softrenderBuffer->setParameter(gl::GL_TEXTURE_MAG_FILTER, gl::GL_NEAREST);
     softrenderBuffer->setName("ISM softrender");
-    softrenderBuffer->storage3D(1, GL_R32UI, totalIsmPixelSize, totalIsmPixelSize, 2);
+    softrenderBuffer->storage2D(1, GL_R32UI, totalIsmPixelSize, totalIsmPixelSize);
 
     m_fbo->printStatus(true);
 
@@ -209,7 +209,7 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
     m_atomicCounter->clearData(GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
     m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
 
-    softrenderBuffer->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(500000));
+    softrenderBuffer->clearImage(0, GL_RED_INTEGER, GL_UNSIGNED_INT, glm::uvec4(0xFFFFFFFF));
     softrenderBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
     pointBuffer->bindImageTexture(1, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 

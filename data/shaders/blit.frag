@@ -5,7 +5,7 @@ in vec2 v_uv;
 out vec3 outColor;
 
 uniform sampler2D someBuffer;
-uniform usampler3D softRenderBuffer;
+uniform usampler2D softRenderBuffer;
 uniform bool singleChannel;
 uniform bool softRenderBufferActive;
 uniform int mipLevel;
@@ -13,7 +13,7 @@ uniform int mipLevel;
 void main()
 {
     if (softRenderBufferActive) {
-        outColor = vec3(textureLod(softRenderBuffer, vec3(v_uv, 0), mipLevel).rgb) / 500000.0;
+        outColor = vec3(textureLod(softRenderBuffer, vec2(v_uv), mipLevel).r >> 8) / (1 << 24);
     } else {
         outColor = textureLod(someBuffer, v_uv, mipLevel).rgb;
     }

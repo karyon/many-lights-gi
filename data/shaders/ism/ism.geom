@@ -26,7 +26,7 @@ layout (shared, binding = 0) buffer atomicBuffer_
 	uint[1024] atomicCounter;
 };
 
-layout (r32ui, binding = 0) restrict uniform uimage3D softrenderBuffer;
+layout (r32ui, binding = 0) restrict uniform uimage2D softrenderBuffer;
 layout (rgba32f, binding = 1) restrict writeonly uniform imageBuffer pointBuffer;
 
 uniform ivec2 viewport;
@@ -122,17 +122,15 @@ void main()
 
     if (usePushPull) {
         v.xy *= imageSize(softrenderBuffer).xy;
-        v.z *= 500000;
-        uint original = imageAtomicMin(softrenderBuffer, ivec3(v.xy, 0), uint(v.z));
+        v.z *= 1 << 24;
+        // uint original = imageAtomicMin(softrenderBuffer, ivec2(v.xy), uint(v.z));
 
-        if (original > uint(v.z)) {
             float radius = pointSize / 2;
             radius *= 1.3; // boost radius a bit to make circle area match the point rendering square area
-            uint g_normalRadius = pack4UNToUint(vec4(te_normal[0] * 0.5 + 0.5, radius / 25.0));
-            // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.
-            // largely solved in compute shader version
-            imageStore(softrenderBuffer, ivec3(v.xy, 1), uvec4(g_normalRadius, 0, 0, 0));
-        }
+
+        uint currentDepthValue = uint(v.z) << 8;
+        currentDepthValue |= uint(radius * 10);
+        uint originalDepthValue = imageAtomicMin(softrenderBuffer, ivec2(v.xy), currentDepthValue);
     }
     else {
         g_centerCoord = ivec2(v.xy * viewport);

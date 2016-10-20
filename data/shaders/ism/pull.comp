@@ -7,7 +7,7 @@
 
 layout (local_size_x = 8, local_size_y = 8) in;
 
-layout (binding = 0) uniform usampler3D softrenderBuffer;
+layout (binding = 0) uniform usampler2D softrenderBuffer;
 layout (rgba32f, binding = 0) restrict readonly uniform image2D ismDepthImage;
 layout (rgba32f, binding = 1) restrict writeonly uniform image2D img_output;
 
@@ -26,27 +26,27 @@ void main()
     float[4] depthSamples;
     float[4] maxDepths;
     float[4] radiuses;
-    vec3[4] normals;
     vec2[4] displacementVectors;
     bool[4] valid;
 
     for (int i = 0; i < 4; i++) {
         ivec2 inputPixelCoord = outputPixelCoord * 2 + offsets[i];
         # ifdef LEVEL_ZERO
-            float depthSample = float(texelFetch(softrenderBuffer, ivec3(inputPixelCoord, 0), 0).r) / 500000.0;
-            uint normalRadius = texelFetch(softrenderBuffer, ivec3(inputPixelCoord, 1), 0).r;
+            // float depthSample = float(texelFetch(softrenderBuffer, ivec3(inputPixelCoord, 0), 0).r) / (1 << 24);
+            // uint normalRadius = texelFetch(softrenderBuffer, inputPixelCoord, 0).r;
+            uint depthRadiusSample = texelFetch(softrenderBuffer, ivec2(inputPixelCoord), 0).r;
+            float depthSample = float(depthRadiusSample >> 8) / (1 << 24);
+            float radius = float(depthRadiusSample & 0xFFu) / 10;
+
             vec2 displacementVector = vec2(0.0);
         # else
             vec4 read = imageLoad(ismDepthImage, inputPixelCoord);
             float depthSample = read.r;
             float maxDepth = read.g;
-            uint normalRadius = floatBitsToUint(read.b);
             vec2 displacementVector = unpack2FloatsFromFloat(read.a);
+            float radius = read.b;
         # endif
 
-        vec4 normalRadiusUnpacked = unpack4UNFromUint(normalRadius);
-        vec3 normal = normalRadiusUnpacked.xyz * 2.0 - 1.0;
-        float radius = normalRadiusUnpacked.w * 25.0;
 
         #ifdef LEVEL_ZERO
             // the projection is performed here, not in ism.comp,
@@ -76,7 +76,6 @@ void main()
         depthSamples[i] = depthSample;
         maxDepths[i] = maxDepth;
         radiuses[i] = radius;
-        normals[i] = normal;
         displacementVectors[i] = newDisplacementVector; // TODO blocky results, but are round when displacment vector set to 0
         valid[i] = depthSample != 1.0;
         valid[i] = valid[i] && radiusCheckPassed; // TODO unknown whether this helps
@@ -98,7 +97,6 @@ void main()
     }
 
     float depthAcc = 0.0;
-    vec3 normalAcc = vec3(0.0);
     float radiusAcc = 0.0;
     vec2 displacementAcc = vec2(0.0);
     uint numValid = 0;
@@ -110,7 +108,6 @@ void main()
         depthAcc += depthSamples[i];
         displacementAcc += displacementVectors[i];
         radiusAcc += radiuses[i];
-        normalAcc += normals[i];
         maxValidMaxDepth = max(maxValidMaxDepth, maxDepths[i]);
         numValid++;
     }
@@ -119,7 +116,7 @@ void main()
     if (numValid > 0) {
         result.r = depthAcc / numValid;
         result.g = maxValidMaxDepth;
-        result.b = pack4UNToFloat(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / numValid / 25.0));
+        result.b = radiusAcc / numValid;
         result.a = pack2FloatsToFloat(displacementAcc / numValid);
     } else {
         result = vec4(1.0, 0.0, 0.0, 0.0);

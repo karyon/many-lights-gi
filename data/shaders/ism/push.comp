@@ -7,7 +7,7 @@
 
 layout (local_size_x = 8, local_size_y = 8) in;
 
-layout (binding = 0) uniform usampler3D pullSameLevelTexture;
+layout (binding = 0) uniform usampler2D pullSameLevelTexture;
 layout (rgba32f, binding = 0) restrict readonly uniform image2D pullSameLevelImage;
 layout (rgba32f, binding = 1) restrict readonly uniform image2D coarserLevel;
 layout (rgba32f, binding = 2) restrict writeonly uniform image2D img_output;
@@ -19,7 +19,7 @@ uniform int level;
 vec4 readInput(ivec2 pixelCoordinate)
 {
     # ifdef LEVEL_ZERO
-        float depthSample = float(texelFetch(pullSameLevelTexture, ivec3(pixelCoordinate, 0), 0).r) / 500000.0;
+        float depthSample = float(texelFetch(pullSameLevelTexture, ivec2(pixelCoordinate), 0).r >> 8) / (1 << 24);
         return vec4(depthSample, 0.0, 0.0, 0.0);
     # else
         return imageLoad(pullSameLevelImage, pixelCoordinate);
@@ -50,16 +50,14 @@ void main()
     // read four pixels from coarser level
     float[4] depths;
     float[4] maxDepths;
-    vec4[4] normalsRadiuses;
+    float[4] radiuses;
     vec2[4] displacementVectorsCoarse;
     for (int i = 0 ; i < 4; i++) {
         ivec2 texCoords = coarserLowerLeftPixel + offsets[i];
         vec4 coarserSample = imageLoad(coarserLevel, texCoords);
         depths[i] = coarserSample.r;
         maxDepths[i] = coarserSample.g;
-        normalsRadiuses[i] = unpack4UNFromFloat(coarserSample.b);
-        normalsRadiuses[i].xyz = normalsRadiuses[i].xyz * 2.0 - 1.0;
-        normalsRadiuses[i].w *= 25.0;
+        radiuses[i] = coarserSample.b;
         displacementVectorsCoarse[i] = unpack2FloatsFromFloat(coarserSample.a);
     }
 
@@ -104,7 +102,7 @@ void main()
 
             float dist = length(displacementVectors[i]);
 
-            float radius = normalsRadiuses[i].w;
+            float radius = radiuses[i];
             radius *= pow(2, -level); // scale with miplevel
 
             if (dist > radius)
@@ -130,7 +128,6 @@ void main()
 
         float depthAcc = 0.0;
         float radiusAcc = 0.0;
-        vec3 normalAcc = vec3(0.0);
         vec2 displacementAcc = vec2(0.0);
         int weightAcc = 0;
         float maxDepthAcc = 0.0;
@@ -138,8 +135,7 @@ void main()
         for (int i = 0; i < 4; i++) {
             depthAcc += depths[i] * weights[i];
             maxDepthAcc += maxDepths[i] * weights[i];
-            radiusAcc += normalsRadiuses[i].w * weights[i];
-            normalAcc += normalsRadiuses[i].xyz * weights[i];
+            radiusAcc += radiuses[i] * weights[i];
             displacementAcc += displacementVectors[i] * weights[i];
             weightAcc += weights[i];
         }
@@ -147,7 +143,7 @@ void main()
         vec4 result = vec4(0.0);
         result.r = depthAcc / weightAcc;
         result.g = maxDepthAcc / weightAcc;
-        result.b = pack4UNToFloat(vec4(normalize(normalAcc) * 0.5 + 0.5, radiusAcc / weightAcc / 25.0));
+        result.b = radiusAcc / weightAcc;
         result.a = pack2FloatsToFloat(displacementAcc / weightAcc);
 
 

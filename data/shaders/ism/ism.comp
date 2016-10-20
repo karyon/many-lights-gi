@@ -20,7 +20,7 @@ layout (shared, binding = 0) buffer atomicBuffer_
 	uint[totalVplCount] atomicCounter;
 };
 
-layout (r32ui, binding = 0) coherent uniform uimage3D softrenderBuffer;
+layout (r32ui, binding = 0) coherent uniform uimage2D softrenderBuffer;
 layout (rgba32f, binding = 1) restrict readonly uniform imageBuffer pointBuffer;
 
 uniform ivec2 viewport;
@@ -83,8 +83,11 @@ void main()
         vec3 position = read.xyz;
         float g_normalRadius = read.w;
         vec4 normalRadiusUnpacked = unpack4UNFromFloat(g_normalRadius);
+        normalRadiusUnpacked.xyz = normalRadiusUnpacked.xyz * 2.0 - 1.0;
+        normalRadiusUnpacked.w = normalRadiusUnpacked.w * 25;
 
-        vec3 pointNormal = normalRadiusUnpacked.xyz * 2.0 - 1.0;
+        vec3 pointNormal = normalRadiusUnpacked.xyz;
+        float pointRadius = normalRadiusUnpacked.w;
 
         // gather up to maxVplCollectCount vpls that pass culling
         int found = 0;
@@ -126,27 +129,11 @@ void main()
             vec3 normalV = paraboloid_project(normalPositionRelativeToCamera, normalDist, vplNormal2, zFar, ismIndex, ismIndices1d, true);
 
             v.xy *= imageSize(softrenderBuffer).xy;
-            v.z *= 500000;
+            v.z *= 1 << 24;
 
-            uint currentDepthValue = uint(v.z);
-            uint originalDepthValue = imageAtomicMin(softrenderBuffer, ivec3(v.xy, 0), currentDepthValue);
-
-            // this solves the race condition at least for this work group.
-            // it still exists inter-workgroup, but that's negligible
-            // for some reason, the barriers even help when local_work_size == 32
-            barrier();
-            groupMemoryBarrier();
-            bool writeVerified = imageLoad(softrenderBuffer, ivec3(v.xy, 0)).r == currentDepthValue;
-
-            if (originalDepthValue >= currentDepthValue && writeVerified)
-            {
-                float pointRadius = normalRadiusUnpacked.w;
-                pointRadius /= sqrt(float(maxVplCollectCount));
-                uint g_normalRadius = pack4UNToUint(vec4(normalize(pointNormal) * 0.5 + 0.5, pointRadius));
-                // potential race condition here. two threads write into depth, and then both, in a different order, write into attributes.
-                // not solved 100%, see above
-                imageStore(softrenderBuffer, ivec3(v.xy, 1), uvec4(g_normalRadius, 0, 0, 0));
-            }
+            uint currentDepthValue = uint(v.z) << 8;
+            currentDepthValue |= uint(pointRadius * 10 / sqrt(float(maxVplCollectCount)));
+            uint originalDepthValue = imageAtomicMin(softrenderBuffer, ivec2(v.xy), currentDepthValue);
         }
     }
 }
