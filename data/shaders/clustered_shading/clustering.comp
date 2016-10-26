@@ -30,6 +30,7 @@ void main()
 {
     uvec2 clusterCoord = uvec2(gl_WorkGroupID.xy);
 
+    // initialization
     if (gl_LocalInvocationID.x == 0)
         counter = 0;
 
@@ -39,6 +40,7 @@ void main()
     barrier();
     memoryBarrierShared();
 
+    // mark used depth slices
     for(int i = 0; i < 128; i++) {
         ivec2 fragCoord = ivec2(clusterCoord * 128) + ivec2(gl_LocalInvocationID.x, i);
 
@@ -60,6 +62,7 @@ void main()
 
     uint depthSlice = gl_LocalInvocationID.x;
 
+    // count used depth slices
     uint localCounter = 0;
     if(usedDepthSlices[depthSlice])
         localCounter = atomicAdd(counter, 1);
@@ -67,12 +70,14 @@ void main()
     barrier();
     memoryBarrierShared();
 
+    // allocate space for used cluster IDs
     if (depthSlice == 0)
         startIndex = atomicAdd(atomicCounter, counter);
 
     barrier();
     memoryBarrierShared();
 
+    // store cluster ID
     if(usedDepthSlices[depthSlice]) {
         uint clusterID = clusterCoord.x | clusterCoord.y << 8 | depthSlice << 16;
         imageStore(compactUsedIDs, int(startIndex+localCounter), uvec4(clusterID, 0, 0, 0));
