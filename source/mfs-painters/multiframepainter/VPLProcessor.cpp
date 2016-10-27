@@ -32,9 +32,12 @@ struct packedVPL {
 };
 
 struct vpl {
-    glm::vec4 position;
-    glm::vec4 normal;
-    glm::vec4 color;
+    glm::vec3 position;
+    float padding1;
+    glm::vec3 normal;
+    float padding2;
+    glm::vec3 color;
+    float padding3;
 };
 
 VPLProcessor::VPLProcessor()

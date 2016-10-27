@@ -5,9 +5,9 @@
 #include </data/shaders/common/reprojection.glsl>
 
 struct VPL {
-    vec4 position;
-    vec4 normal;
-    vec4 color;
+    vec3 position;
+    vec3 normal;
+    vec3 color;
 };
 
 layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
@@ -16,7 +16,7 @@ layout (rg16ui, binding = 1) restrict readonly uniform uimage3D lightListIdsAndS
 layout (r16ui, binding = 2) restrict readonly uniform uimage2D lightLists;
 
 const int totalVplCount = 1024;
-layout (std140, binding = 0) uniform vplBuffer_
+layout (packed, binding = 0) uniform vplBuffer_
 {
     VPL vplBuffer[totalVplCount];
 };
@@ -104,31 +104,31 @@ void main()
         uint vplIndex = imageLoad(lightLists, ivec2(lightListId, lightIndex)).r;
         VPL vpl = vplBuffer[vplIndex];
 
-        vec3 diff = fragWorldCoord - vpl.position.xyz ;
+        vec3 diff = fragWorldCoord - vpl.position ;
         float dist = length(diff);
         vec3 normalizedDiff = diff / dist;
 
         // debug splotch
         float isNearLight = 1.0 - step(0.15, dist);
-        vec3 debugSplotch = isNearLight * vpl.color.xyz / dist / dist * 0.0001;
+        vec3 debugSplotch = isNearLight * vpl.color / dist / dist * 0.0001;
         acc += debugSplotch * float(showVPLPositions);
 
         // geometry term
-        float angleFactor = max(0.0, dot(vpl.normal.xyz, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff));
+        float angleFactor = max(0.0, dot(vpl.normal, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff));
         float attenuation = 1.0 / pow(dist, 4.0);
         float geometryTerm = angleFactor * attenuation;
         geometryTerm = min(geometryTerm, vplClampingValue);
 
         // ISM shadowing
         float ismIndex = vplIndex - ismIndexOffset;
-        vec3 v = paraboloid_project(diff, dist, vpl.normal.xyz, zFar, ismIndex, ismIndices1d, false);
+        vec3 v = paraboloid_project(diff, dist, vpl.normal, zFar, ismIndex, ismIndices1d, false);
         float occluderDepth = textureLod(ismDepthSampler, v.xy, 0).x;
         float shadowValue = v.z - occluderDepth;
         float shadowBias = 0.02;
         shadowValue = smoothstep(1.0 - shadowBias, 1.0, 1 - shadowValue);
         shadowValue = mix(1.0, shadowValue, float(enableShadowing));
 
-        acc += vpl.color.xyz * geometryTerm * shadowValue;
+        acc += vpl.color * geometryTerm * shadowValue;
     }
 
     vec3 resultColor = vec3(acc * giIntensityFactor / vplCount) * interleavedPixels;

@@ -15,12 +15,12 @@ const int totalVplCount = 1024;
 layout (local_size_x = 64) in;
 
 struct VPL {
-    vec4 position;
-    vec4 normal;
-    vec4 color;
+    vec3 position;
+    vec3 normal;
+    vec3 color;
 };
 
-layout (std140, binding = 0) buffer vplBuffer_
+layout (packed, binding = 0) buffer vplBuffer_
 {
 	VPL vplBuffer[];
 };
@@ -67,6 +67,6 @@ void main()
     // gi.comp could also read the packedNormal directly and unpack it, but that's quite slow for some reason
     vec3 unpackedNormal = unpack3SNFromFloat(packedNormal);
 
-    vplBuffer[resultIndex] = VPL(vec4(worldcoords.xyz, packedNormal), vec4(unpackedNormal, 0.0), vec4(lightColor, 0.0));
+    vplBuffer[resultIndex] = VPL(worldcoords.xyz, unpackedNormal, lightColor);
     packedVplBuffer[resultIndex] = vec4(worldcoords.xyz, packedNormal);
 }
