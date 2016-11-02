@@ -3,7 +3,9 @@
 #extension GL_ARB_shading_language_include : require
 #include </data/shaders/common/floatpacking.glsl>
 
-layout (local_size_x = 16, local_size_y = 1, local_size_x = 1) in;
+// gl_WorkGroupID.x determines cluster, gl_WorkGroupID.y the sub-list in that cluster.
+// gl_LocalInvocationID.x determines which light in that sub-list is processed.
+layout (local_size_x = 64, local_size_y = 1, local_size_x = 1) in;
 
 layout (r32ui, binding = 0) restrict readonly uniform uimage1D compactUsedClusterIDs;
 layout (r16ui, binding = 1) restrict writeonly uniform uimage2D lightLists;
@@ -43,6 +45,7 @@ float sliceToZ(uint slice)
     return -pow(2, (slice + numSlicesIntoFirstSlice) / scaleFactor);
 }
 
+shared uint sharedCounter;
 void main()
 {
     uint id = gl_WorkGroupID.x;
@@ -103,32 +106,31 @@ void main()
     // imageStore(clusterCorners, ivec2(id, 0), vec4(clusterCoord, 0.0));
     // imageStore(clusterCorners, ivec2(id, 1), vec4(viewSpaceZFront, viewSpaceZBack, 0.0, 0.0));
 
-    int counter = 1;
-    uint subListStartIndex = gl_LocalInvocationID.x * 64u;
-    uint subListEndIndex = subListStartIndex + 64u;
-    for(uint i = 0; i < 64; i++) {
-        uint vplID = subListStartIndex + i;
-        vec4 vplPositionNormal = vplPositionNormalBuffer[vplID];
-        bool found = false;
-        for (int j = 0; j < 8; j++) {
-            vec3 corner = corners[j];
-            vec3 vplToCorner = corner - vplPositionNormal.xyz;
-            vec3 vplNormal = unpack3SNFromFloat(vplPositionNormal.w);
-            found = found || (dot(vplToCorner, vplNormal) >= 0);
-        }
-        // found = true;
-        if (found) {
-            imageStore(lightLists, ivec2(id, subListStartIndex + counter), uvec4(vplID, 0, 0, 0));
-            counter++;
-        }
+    sharedCounter = 1;
 
-        // we're done with that sub-list.
-        // write number of lights to first element and reset counters.
-        // if (i % 64u == 63u) {
-        //     imageStore(lightLists, ivec2(id, subListStartIndex), uvec4(counter, 0, 0, 0));
-        //     counter = 1;
-        //     subListStartIndex = i + 1;
-        // }
+    barrier();
+    memoryBarrierShared();
+
+    uint subListStartIndex = gl_WorkGroupID.y * 64u;
+
+    uint vplID = subListStartIndex + gl_LocalInvocationID.x;
+    vec4 vplPositionNormal = vplPositionNormalBuffer[vplID];
+    bool found = false;
+    for (int j = 0; j < 8; j++) {
+        vec3 corner = corners[j];
+        vec3 vplToCorner = corner - vplPositionNormal.xyz;
+        vec3 vplNormal = unpack3SNFromFloat(vplPositionNormal.w);
+        found = found || (dot(vplToCorner, vplNormal) >= 0);
     }
-    imageStore(lightLists, ivec2(id, subListStartIndex), uvec4(counter, 0, 0, 0));
+    // found = true;
+    if (found) {
+        uint counter = atomicAdd(sharedCounter, 1);
+        imageStore(lightLists, ivec2(id, subListStartIndex + counter), uvec4(vplID, 0, 0, 0));
+    }
+
+    barrier();
+    memoryBarrierShared();
+
+    if(gl_LocalInvocationID.x == 0)
+        imageStore(lightLists, ivec2(id, subListStartIndex), uvec4(sharedCounter, 0, 0, 0));
 }

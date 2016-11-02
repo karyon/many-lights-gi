@@ -106,7 +106,7 @@ void ClusteredShading::process(
         m_lightListsProgram->setUniform("zFar", zFar);
         m_lightListsProgram->setUniform("vplStartIndex", vplStartIndex);
         m_lightListsProgram->setUniform("vplEndIndex", vplEndIndex);
-        m_lightListsProgram->dispatchCompute(m_numClusters, 1, 1);
+        m_lightListsProgram->dispatchCompute(m_numClusters, 16, 1);
         gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
     }
 }
