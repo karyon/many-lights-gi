@@ -41,8 +41,8 @@ ClusteredShading::ClusteredShading()
 
     compactUsedClusterIDs = globjects::Texture::createDefault(GL_TEXTURE_1D);
     compactUsedClusterIDs->setName("compact clusters2");
-    lightListIdsAndSizes = globjects::Texture::createDefault(GL_TEXTURE_3D);
-    lightListIdsAndSizes->setName("lightListIdsAndSizes");
+    lightListIds = globjects::Texture::createDefault(GL_TEXTURE_3D);
+    lightListIds->setName("lightListIds");
 
     m_atomicCounter = new globjects::Buffer();
     m_atomicCounter->setName("atomic counter");
@@ -85,7 +85,7 @@ void ClusteredShading::process(
 
         depthBuffer->bindActive(0);
         compactUsedClusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
-        lightListIdsAndSizes->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG16UI);
+        lightListIds->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
         m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
         m_clusterIDProgram->setUniform("depthSampler", 0);
         m_clusterIDProgram->setUniform("projectionMatrix", projection);
@@ -99,10 +99,7 @@ void ClusteredShading::process(
         lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
         vplProcessor.packedVplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
         clusterCorners->bindImageTexture(2, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-        lightListIdsAndSizes->bindImageTexture(3, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RG16UI);
         m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
-        //lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI); //uncomment this line to get the crash
-        //lightListsBuffer->bindBase(GL_SHADER_STORAGE_BUFFER, 1);
         m_lightListsProgram->setUniform("viewport", viewport);
         m_lightListsProgram->setUniform("projectionInverseMatrix", glm::inverse(projection));
         m_lightListsProgram->setUniform("viewInverseMatrix", glm::inverse(view));
@@ -122,7 +119,7 @@ void ClusteredShading::resizeTexture(int width, int height)
     m_numClusters = m_numClustersX * m_numClustersY * numDepthSlices;
 
     compactUsedClusterIDs->image1D(0, GL_R32UI, m_numClusters, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
-    lightListIdsAndSizes->image3D(0, GL_RG16UI, m_numClustersX, m_numClustersY, numDepthSlices, 0, GL_RG_INTEGER, GL_UNSIGNED_INT, nullptr);
+    lightListIds->image3D(0, GL_R16UI, m_numClustersX, m_numClustersY, numDepthSlices, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
     // TODO memory usage. m_numClusters is theoretical worst case.
     lightLists->image2D(0, GL_R16UI, m_numClusters, maxVPLCount, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
     clusterCorners->image2D(0, GL_RGBA32F, m_numClusters, 8, 0, GL_RGBA, GL_FLOAT, nullptr);

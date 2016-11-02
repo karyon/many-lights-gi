@@ -8,7 +8,6 @@ layout (local_size_x = 32, local_size_y = 1, local_size_x = 1) in;
 layout (r32ui, binding = 0) restrict readonly uniform uimage1D compactUsedClusterIDs;
 layout (r16ui, binding = 1) restrict writeonly uniform uimage2D lightLists;
 layout (rgba32f, binding = 2) restrict writeonly uniform image2D clusterCorners;
-layout (rg16ui, binding = 3) restrict uniform writeonly uimage3D lightListIdsAndSizes;
 
 const int totalVplCount = 1024;
 layout (std140, binding = 0) uniform packedVplBuffer_
@@ -104,7 +103,8 @@ void main()
     // imageStore(clusterCorners, ivec2(id, 0), vec4(clusterCoord, 0.0));
     // imageStore(clusterCorners, ivec2(id, 1), vec4(viewSpaceZFront, viewSpaceZBack, 0.0, 0.0));
 
-    int counter = 0;
+    int counter = 1;
+    int subListStartIndex = 0;
     for(int i = vplStartIndex; i < vplEndIndex; i++) {
         vec4 vplPositionNormal = vplPositionNormalBuffer[i];
         bool found = false;
@@ -116,9 +116,16 @@ void main()
         }
         // found = true;
         if (found) {
-            imageStore(lightLists, ivec2(id, counter), uvec4(i, 0, 0, 0));
+            imageStore(lightLists, ivec2(id, subListStartIndex + counter), uvec4(i, 0, 0, 0));
             counter++;
         }
+
+        // we're done with that sub-list.
+        // write number of lights to first element and reset counters.
+        if (i % 64 == 63) {
+            imageStore(lightLists, ivec2(id, subListStartIndex), uvec4(counter, 0, 0, 0));
+            counter = 1;
+            subListStartIndex = i + 1;
+        }
     }
-    imageStore(lightListIdsAndSizes, ivec3(clusterCoord), uvec4(id, counter, 0, 0));
 }
