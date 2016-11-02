@@ -10,7 +10,7 @@ struct VPL {
     vec3 color;
 };
 
-layout (local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 layout (r11f_g11f_b10f, binding = 0) restrict writeonly uniform image2D img_output;
 layout (r16ui, binding = 1) restrict readonly uniform uimage3D lightListIds;
 layout (r16ui, binding = 2) restrict readonly uniform uimage2D lightLists;
@@ -59,6 +59,10 @@ uint interleavedPixelBitmask = (1u << interleaveBits) - 1u;
 
 const uint clusterPixelSize = 128;
 
+const int totalSharedVPLS = 64;
+shared VPL vpls[totalSharedVPLS]; // interleavedPixels is not constant
+shared uint vplIndices[totalSharedVPLS]; // interleavedPixels is not constant
+
 
 void main()
 {
@@ -88,10 +92,20 @@ void main()
     uvec2 clusterCoord = uvec2(fragCoord.xy) / clusterPixelSize;
     uint lightListId = imageLoad(lightListIds, ivec3(clusterCoord, clusterZ)).r;
 
+
     uint interleavedPixel1d = interleavedPixel.x + interleavedPixel.y * interleavedSize;
 
     uint startIndex = totalVplCount / interleavedPixels * interleavedPixel1d;
     uint numLights = imageLoad(lightLists, ivec2(lightListId, startIndex)).r;
+
+    uint invocationID = gl_LocalInvocationID.x + gl_LocalInvocationID.y * gl_WorkGroupSize.x;
+    if (invocationID < totalSharedVPLS) {
+        uint lightIndex = invocationID;
+        vpls[invocationID] = vplBuffer[startIndex + invocationID];
+    }
+    barrier();
+    memoryBarrierShared();
+
 
     vec3 acc = vec3(0.0);
     for (uint lightIndex = 1; lightIndex < numLights; lightIndex++) {
@@ -101,7 +115,7 @@ void main()
         if (vplIndex == 0xFFFF)
             break;
 
-        VPL vpl = vplBuffer[vplIndex];
+        VPL vpl = vpls[vplIndex - startIndex];
 
         vec3 diff = fragWorldCoord - vpl.position ;
         float dist = length(diff);
