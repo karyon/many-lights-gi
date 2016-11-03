@@ -13,6 +13,16 @@ float linearDepth(float depthSample, mat4 projectionMatrix)
     return z_e;
 }
 
+float logDepth(float depthSample, mat4 projectionMatrix)
+{
+    float A = projectionMatrix[2][2];
+    float B = projectionMatrix[3][2];
+    float z_n = (1.0 / depthSample * -B) - A;
+
+    float z_b = (z_n + 1.0) / 2.0;
+    return z_b;
+}
+
 float linearDepth(sampler2D depthSampler, ivec2 uv, mat4 projectionMatrix)
 {
     float depthSample = texelFetch(depthSampler, uv, 0).x;

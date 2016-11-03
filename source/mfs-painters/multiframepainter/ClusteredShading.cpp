@@ -101,8 +101,8 @@ void ClusteredShading::process(
         clusterCorners->bindImageTexture(2, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
         m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
         m_lightListsProgram->setUniform("viewport", viewport);
-        m_lightListsProgram->setUniform("projectionInverseMatrix", glm::inverse(projection));
-        m_lightListsProgram->setUniform("viewInverseMatrix", glm::inverse(view));
+        m_lightListsProgram->setUniform("projectionMatrix", projection);
+        m_lightListsProgram->setUniform("viewProjectionInverseMatrix", glm::inverse(projection * view));
         m_lightListsProgram->setUniform("zFar", zFar);
         m_lightListsProgram->setUniform("vplStartIndex", vplStartIndex);
         m_lightListsProgram->setUniform("vplEndIndex", vplEndIndex);
