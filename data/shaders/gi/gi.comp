@@ -60,20 +60,30 @@ uint interleavedPixelBitmask = (1u << interleaveBits) - 1u;
 const uint clusterPixelSize = 128;
 
 
-shared int minDepth;
-shared int maxDepth;
+const int numDepthSlices = 16;
+shared bool[numDepthSlices] usedDepthSlices;
+shared int[numDepthSlices] minDepths;
+shared int[numDepthSlices] maxDepths;
+
+shared uint[numDepthSlices][64] indices;
+shared uint[numDepthSlices] counters;
+
+
 
 const int totalSharedVPLS = 64;
 shared VPL vpls[totalSharedVPLS]; // interleavedPixels is not constant
-shared uint vplIndices[totalSharedVPLS]; // interleavedPixels is not constant
 shared int sharedVplCounter;
 
 void main()
 {
+    uint invocationID = gl_LocalInvocationID.x + gl_LocalInvocationID.y * gl_WorkGroupSize.x;
+
     uvec2 largeInterleaveBlockPosition = (gl_WorkGroupID.xy >> interleaveBits) * gl_WorkGroupSize.xy * interleavedSize;
     uvec2 offsetInLargeInterleaveBlock = gl_LocalInvocationID.xy * interleavedSize;
     uvec2 interleavedPixel = gl_WorkGroupID.xy & interleavedPixelBitmask;
     ivec2 fragCoord = ivec2(largeInterleaveBlockPosition + offsetInLargeInterleaveBlock + interleavedPixel);
+
+
 
     vec2 v_uv = vec2(fragCoord) / viewport;
 
@@ -89,7 +99,10 @@ void main()
     const int numSlicesIntoFirstSlice = 3;
     float scaleFactor = (numDepthSlices + numSlicesIntoFirstSlice) / log2(50);
     float depth = linearDepth(depthSample, projectionMatrix);
-    int clusterZ = int(max(log2(-depth) * scaleFactor - numSlicesIntoFirstSlice, 0));
+    int depthSlice = int(max(log2(-depth) * scaleFactor - numSlicesIntoFirstSlice, 0));
+
+
+
 
 
     // uvec2 clusterCoord = uvec2(fragCoord.xy) / clusterPixelSize;
@@ -102,28 +115,40 @@ void main()
     uint startIndex = totalVplCount / interleavedPixels * interleavedPixel1d;
     // uint numLights = imageLoad(lightLists, ivec2(lightListId, startIndex)).r;
 
-    uint invocationID = gl_LocalInvocationID.x + gl_LocalInvocationID.y * gl_WorkGroupSize.x;
     uint vplIndex = invocationID + startIndex;
+    uint shortVplIndex = invocationID;
 
 
     // tiled shading begins here
-    {
-        if (invocationID == 0) {
-            sharedVplCounter = 0;
-            minDepth = (10000000);
-            maxDepth = (-10000000);
-        }
+    if (invocationID < 16) {
+        minDepths[invocationID] = (10000000);
+        maxDepths[invocationID] = (-10000000);
+        counters[invocationID] = 0;
+    }
 
-        barrier();
-        memoryBarrierShared();
+    barrier();
+    memoryBarrierShared();
 
-        atomicMin(minDepth, int(ndc.z * 10000));
-        atomicMax(maxDepth, int(ndc.z * 10000));
+    bool inImageBounds = all(lessThan(fragCoord, textureSize(depthSampler, 0).xy));
+    if (inImageBounds) {
+        usedDepthSlices[depthSlice] = true;
 
-        barrier();
-        memoryBarrierShared();
+        atomicMin(minDepths[depthSlice], int(ndc.z * 10000));
+        atomicMax(maxDepths[depthSlice], int(ndc.z * 10000));
+    }
 
-        if (invocationID < 64) {
+    if (invocationID < 64)
+        vpls[invocationID] = vplBuffer[vplIndex];
+
+    barrier();
+    memoryBarrierShared();
+
+
+    if (invocationID < 64) {
+
+        for(int i = 0; i < numDepthSlices; i++) {
+            if (!usedDepthSlices[i])
+                continue;
 
             // determine pixel coordinates of bottom left and top right pixels in this tile
             ivec2 bottomLeftFragCoord = ivec2(largeInterleaveBlockPosition + interleavedPixel);
@@ -135,8 +160,8 @@ void main()
             vec2 topRightNDC = vec2(topRightFragCoord) / viewport * 2.0 - 1.0;
 
 
-            vec3 minNDCf = vec3(bottomLeftNDC, minDepth / 10000.0f);
-            vec3 maxNDCf = vec3(topRightNDC, maxDepth / 10000.0f);
+            vec3 minNDCf = vec3(bottomLeftNDC, minDepths[i] / 10000.0f);
+            vec3 maxNDCf = vec3(topRightNDC, maxDepths[i] / 10000.0f);
 
             vec3 corners[8];
 
@@ -156,7 +181,7 @@ void main()
             }
 
 
-            VPL vpl = vplBuffer[vplIndex];
+            VPL vpl = vpls[shortVplIndex];
             bool found = false;
             for (int j = 0; j < 8; j++) {
                 vec3 corner = corners[j];
@@ -164,23 +189,39 @@ void main()
                 vec3 vplNormal = (vpl.normal.xyz);
                 found = found || (dot(vplToCorner, vplNormal) >= 0);
             }
-            // found = true;
+            // // found = true;
+            // indices[i][shortVplIndex] = int(found);
             if (found) {
 
-                int index = atomicAdd(sharedVplCounter, 1);
-                vpls[index] = vpl;
-                vplIndices[index] = vplIndex;
+                uint index = atomicAdd(counters[i], 1);
+                indices[i][index] = shortVplIndex;
             }
         }
     }
+    // barrier();
+    // memoryBarrierShared();
+    //
+    // if (invocationID < 16) {
+    //     uint counter = 0;
+    //     for(int i = 0; i < 64; i++) {
+    //         if (!bool(indices[invocationID][i]))
+    //             continue;
+    //         indices[invocationID][counter] = i;
+    //         counter++;
+    //     }
+    //     counters[invocationID] = counter;
+    // }
 
     barrier();
     memoryBarrierShared();
 
 
     vec3 acc = vec3(0.0);
-    for (int lightIndex = 0; lightIndex < sharedVplCounter; lightIndex++) {
-        VPL vpl = vpls[lightIndex];
+    for (int lightIndex = 0; lightIndex < counters[depthSlice]; lightIndex++) {
+        // if (!bool(indices[depthSlice][lightIndex]))
+        //     continue;
+        uint vplIndex = indices[depthSlice][lightIndex];
+        VPL vpl = vpls[vplIndex];
 
         vec3 diff = fragWorldCoord - vpl.position ;
         float dist = length(diff);
@@ -198,7 +239,7 @@ void main()
         geometryTerm = min(geometryTerm, vplClampingValue);
 
         // ISM shadowing
-        float ismIndex = vplIndices[lightIndex] - ismIndexOffset;
+        float ismIndex = vplIndex + startIndex - ismIndexOffset;
         vec3 v = paraboloid_project(diff, dist, vpl.normal, zFar, ismIndex, ismIndices1d, false);
         float occluderDepth = textureLod(ismDepthSampler, v.xy, 0).x;
         float shadowValue = v.z - occluderDepth;
