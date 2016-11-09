@@ -42,7 +42,7 @@ using namespace gloperate;
 MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cpplocate::ModuleInfo & moduleInfo)
 : Painter("MultiFramePainter", resourceManager, moduleInfo)
 , resourceManager(resourceManager)
-, preset(Preset::CrytekSponza)
+, preset(Preset::SanMiguel)
 , m_useFullHD(false)
 {
     // Setup painter

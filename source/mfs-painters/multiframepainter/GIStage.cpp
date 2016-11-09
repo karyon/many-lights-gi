@@ -233,9 +233,9 @@ void GIStage::initialize()
 
     rsmRenderer->camera = m_lightCamera.get();
 
-    m_lightViewport->setViewport(0, 0, 1024, 256);
+    m_lightViewport->setViewport(0, 0, 512, 512);
     rsmRenderer->viewport = m_lightViewport.get();
-    m_lightProjection->setHeight(5);
+    m_lightProjection->setHeight(15);
 
     m_lightProjection->setZFar(projection->zFar());
     m_lightProjection->setZNear(projection->zNear());
