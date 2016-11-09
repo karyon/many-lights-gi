@@ -285,7 +285,7 @@ void GIStage::render()
 
     giBuffer->bindImageTexture(0, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R11F_G11F_B10F);
     clusteredShading->lightListIds->bindImageTexture(1, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R16UI);
-    clusteredShading->lightLists->bindImageTexture(2, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R16UI);
+    clusteredShading->lightLists->bindImageTexture(2, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R8UI);
 
     faceNormalBuffer->bindActive(0);
     depthBuffer->bindActive(1);

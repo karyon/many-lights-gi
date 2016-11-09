@@ -96,7 +96,7 @@ void ClusteredShading::process(
         AutoGLPerfCounter c("Light Lists");
         gl::glMemoryBarrier(gl::GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_SHADER_STORAGE_BARRIER_BIT);
         compactUsedClusterIDs->bindImageTexture(0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32UI);
-        lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R16UI);
+        lightLists->bindImageTexture(1, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R8UI);
         vplProcessor.packedVplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
         clusterCorners->bindImageTexture(2, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
         m_atomicCounter->bindBase(GL_SHADER_STORAGE_BUFFER, 0);
@@ -121,7 +121,7 @@ void ClusteredShading::resizeTexture(int width, int height)
     compactUsedClusterIDs->image1D(0, GL_R32UI, m_numClusters, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
     lightListIds->image3D(0, GL_R16UI, m_numClustersX, m_numClustersY, numDepthSlices, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
     // TODO memory usage. m_numClusters is theoretical worst case.
-    lightLists->image2D(0, GL_R16UI, m_numClusters, maxVPLCount, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+    lightLists->image2D(0, GL_R8UI, m_numClusters, maxVPLCount, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
     clusterCorners->image2D(0, GL_RGBA32F, m_numClusters, 8, 0, GL_RGBA, GL_FLOAT, nullptr);
     //lightListsBuffer->setData(m_numClusters * maxVPLCount * sizeof(short), nullptr, GL_STATIC_DRAW);
 }
