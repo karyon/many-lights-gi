@@ -37,25 +37,25 @@ uniform ivec2 viewport;
 uniform float giIntensityFactor;
 uniform float vplClampingValue;
 
-// don't forget that these uniforms eat performance
 uniform int vplStartIndex = 0;
 uniform int vplEndIndex = totalVplCount;
 int vplCount = vplEndIndex - vplStartIndex;
-uniform bool scaleISMs = false;
-float ismIndexOffset = scaleISMs ? vplStartIndex : 0;
-int ismCount = (scaleISMs) ? vplCount : totalVplCount;
+#define SCALE_ISMS false
+float ismIndexOffset = SCALE_ISMS ? vplStartIndex : 0;
+int ismCount = (SCALE_ISMS) ? vplCount : totalVplCount;
 int ismIndices1d = int(pow(2, ceil(log2(ismCount) / 2))); // next even power of two
-uniform bool enableShadowing = true;
 
-uniform bool showVPLPositions = false;
+// global replacements
+#define SHOW_VPL_POSITIONS false
+#define ENABLE_SHADOWING true
 
-uniform bool useInterleaving = true;
-uint interleavedSize = useInterleaving ? 4 : 1;
-uint interleavedPixels = interleavedSize*interleavedSize;
+#define USE_INTERLEAVING true
+const uint interleavedSize = USE_INTERLEAVING ? 4 : 1;
+const uint interleavedPixels = interleavedSize*interleavedSize;
 // number of bits that will be taken from gl_WorkGroupID to determine the interleavedPixel
-uint interleaveBits = uint(log2(interleavedSize));
+const uint interleaveBits = uint(log2(interleavedSize));
 // set interleaveBits rightmost bits to 1
-uint interleavedPixelBitmask = (1u << interleaveBits) - 1u;
+const uint interleavedPixelBitmask = (1u << interleaveBits) - 1u;
 
 const uint clusterPixelSize = 128;
 
@@ -97,37 +97,36 @@ void main()
     for (uint lightIndex = 1; lightIndex < numLights; lightIndex++) {
         uint vplIndex = imageLoad(lightLists, ivec2(lightListId, startIndex + lightIndex)).r;
 
-        // is never true, but speeds things up ¯\_(ツ)_/¯
-        if (vplIndex == 0xFFFF)
-            break;
-
         VPL vpl = vplBuffer[vplIndex];
 
         vec3 diff = fragWorldCoord - vpl.position ;
         float dist = length(diff);
         vec3 normalizedDiff = diff / dist;
 
-        // debug splotch
-        float isNearLight = 1.0 - step(0.15, dist);
-        vec3 debugSplotch = isNearLight * vpl.color / dist / dist * 0.0001;
-        acc += debugSplotch * float(showVPLPositions);
+        if(SHOW_VPL_POSITIONS) {
+            float isNearLight = 1.0 - step(0.15, dist);
+            acc += isNearLight * vpl.color / dist / dist * 0.0001;
+        }
 
         // geometry term
         float angleFactor = max(0.0, dot(vpl.normal, normalizedDiff)) * max(0.0, dot(fragNormal, -normalizedDiff));
+        if (angleFactor <= 0.0)
+            continue;
         float attenuation = 1.0 / pow(dist, 4.0);
         float geometryTerm = angleFactor * attenuation;
         geometryTerm = min(geometryTerm, vplClampingValue);
 
-        // ISM shadowing
-        float ismIndex = vplIndex - ismIndexOffset;
-        vec3 v = paraboloid_project(diff, dist, vpl.normal, zFar, ismIndex, ismIndices1d, false);
-        float occluderDepth = textureLod(ismDepthSampler, v.xy, 0).x;
-        float shadowValue = v.z - occluderDepth;
-        float shadowBias = 0.02;
-        shadowValue = smoothstep(1.0 - shadowBias, 1.0, 1 - shadowValue);
-        shadowValue = mix(1.0, shadowValue, float(enableShadowing));
+        if (ENABLE_SHADOWING) {
+            float ismIndex = vplIndex - ismIndexOffset;
+            vec3 v = paraboloid_project(diff, dist, vpl.normal, zFar, ismIndex, ismIndices1d, false);
+            float occluderDepth = textureLod(ismDepthSampler, v.xy, 0).x;
+            float shadowValue = v.z - occluderDepth;
+            float shadowBias = 0.02;
+            shadowValue = smoothstep(1.0 - shadowBias, 1.0, 1 - shadowValue);
+            geometryTerm *= shadowValue;
+        }
 
-        acc += vpl.color * geometryTerm * shadowValue;
+        acc += vpl.color * geometryTerm;
     }
 
     vec3 resultColor = vec3(acc * giIntensityFactor / vplCount) * interleavedPixels;

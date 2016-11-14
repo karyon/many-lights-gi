@@ -63,9 +63,11 @@ public:
 
 
 protected:
-    void resizeTexture(int width, int height);
     void render();
     void blur();
+    void rebuildGIShader();
+    void rebuildBlurShaders();
+    void resizeTexture(int width, int height);
 
 
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
@@ -96,4 +98,7 @@ protected:
     bool showVPLPositions;
     bool useInterleaving;
     bool shuffleLights;
+
+    bool giShaderRebuildRequired;
+    bool blurShaderRebuildRequired;
 };

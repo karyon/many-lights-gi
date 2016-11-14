@@ -166,18 +166,21 @@ void GIStage::initProperties(MultiFramePainter& painter)
         [this]() { return enableShadowing; },
         [this](const bool & value) {
             enableShadowing = value;
+            giShaderRebuildRequired = true;
     });
 
     painter.addProperty<bool>("ShowVPLPositions",
         [this]() { return showVPLPositions; },
         [this](const bool & value) {
             showVPLPositions = value;
+            giShaderRebuildRequired = true;
     });
 
     painter.addProperty<bool>("UseInterleaving",
         [this]() { return useInterleaving; },
         [this](const bool & value) {
-        useInterleaving = value;
+            useInterleaving = value;
+            giShaderRebuildRequired = true;
     });
 
     painter.addProperty<bool>("ShuffleLights",
@@ -195,12 +198,6 @@ void GIStage::initialize()
     m_fbo = new globjects::Framebuffer();
     m_fbo->attachTexture(GL_COLOR_ATTACHMENT0, giBuffer);
 
-    m_giProgram = new globjects::Program();
-    m_giProgram->attach(
-        globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/gi/gi.comp")
-    );
-
-
     giBlurTempBuffer = globjects::Texture::createDefault(GL_TEXTURE_2D);
     giBlurTempBuffer->setName("GI Temp Buffer");
 
@@ -212,26 +209,6 @@ void GIStage::initialize()
 
     m_blurFinalFbo = new globjects::Framebuffer();
     m_blurFinalFbo->attachTexture(GL_COLOR_ATTACHMENT0, giBlurFinalBuffer);
-
-    globjects::Shader::globalReplace("#define DIRECTION ivec2(0,0)", "#define DIRECTION ivec2(1,0)");
-    auto blurFragShaderX = globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi/gi_blur.frag");
-
-    globjects::Shader::clearGlobalReplacements();
-    globjects::Shader::globalReplace("#define DIRECTION ivec2(0,0)", "#define DIRECTION ivec2(0,1)");
-    auto blurFragShaderY = globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi/gi_blur.frag");
-
-    auto blurXProgram = new globjects::Program();
-    blurXProgram->attach(
-        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/deferredshading.vert"),
-        blurFragShaderX);
-
-    auto blurYProgram = new globjects::Program();
-    blurYProgram->attach(
-        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/deferredshading.vert"),
-        blurFragShaderY);
-
-    m_blurXScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurXProgram);
-    m_blurYScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurYProgram);
 
     m_lightCamera->setEye(modelLoadingStage.getCurrentPresetInformation().lightPosition);
     m_lightCamera->setCenter(modelLoadingStage.getCurrentPresetInformation().lightCenter);
@@ -270,6 +247,9 @@ void GIStage::initialize()
     ism = std::make_unique<ImperfectShadowmap>();
     vplProcessor = std::make_unique<VPLProcessor>();
     clusteredShading = std::make_unique<ClusteredShading>();
+
+    rebuildGIShader();
+    rebuildBlurShaders();
 }
 
 // integer division that ceils instead of floors
@@ -313,10 +293,6 @@ void GIStage::render()
     m_giProgram->setUniform("vplClampingValue", vplClampingValue);
     m_giProgram->setUniform("vplStartIndex", vplStartIndex);
     m_giProgram->setUniform("vplEndIndex", vplEndIndex);
-    m_giProgram->setUniform("scaleISMs", scaleISMs);
-    m_giProgram->setUniform("enableShadowing", enableShadowing);
-    m_giProgram->setUniform("showVPLPositions", showVPLPositions);
-    m_giProgram->setUniform("useInterleaving", useInterleaving);
 
     int workgroupSize = 8;
     int interleavedSize = 4;
@@ -369,9 +345,14 @@ void GIStage::blur()
 
 void GIStage::process()
 {
-    if (viewport->hasChanged()) {
+    if (viewport->hasChanged())
         resizeTexture(viewport->width(), viewport->height());
-    }
+
+    if (giShaderRebuildRequired)
+        rebuildGIShader();
+
+    if (blurShaderRebuildRequired)
+        rebuildBlurShaders();
 
     const float degreeSpan = 80.0f;
     float degree = glm::abs(glm::mod(sunCyclePosition, degreeSpan*2) - degreeSpan) + (180.0f-degreeSpan)/2;
@@ -434,6 +415,54 @@ void GIStage::process()
             viewport->height());
         blur();
     }
+}
+
+const char * const boolToString(bool b)
+{
+    return b ? "true" : "false";
+}
+
+void GIStage::rebuildGIShader()
+{
+    globjects::Shader::globalReplace("#define SHOW_VPL_POSITIONS false", std::string("#define SHOW_VPL_POSITIONS ") + boolToString(showVPLPositions));
+    globjects::Shader::globalReplace("#define ENABLE_SHADOWING true", std::string("#define ENABLE_SHADOWING ") + boolToString(enableShadowing));
+    globjects::Shader::globalReplace("#define USE_INTERLEAVING true", std::string("#define USE_INTERLEAVING ") + boolToString(useInterleaving));
+    globjects::Shader::globalReplace("#define SCALE_ISMS false", std::string("#define SCALE_ISMS ") + boolToString(scaleISMs));
+
+
+    auto shader = globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/gi/gi.comp");
+    globjects::Shader::clearGlobalReplacements();
+    m_giProgram = new globjects::Program();
+    m_giProgram->attach(shader);
+
+    giShaderRebuildRequired = false;
+}
+
+
+void GIStage::rebuildBlurShaders()
+{
+    globjects::Shader::globalReplace("#define DIRECTION ivec2(0,0)", "#define DIRECTION ivec2(1,0)");
+    auto blurFragShaderX = globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi/gi_blur.frag");
+    globjects::Shader::clearGlobalReplacements();
+
+    globjects::Shader::globalReplace("#define DIRECTION ivec2(0,0)", "#define DIRECTION ivec2(0,1)");
+    auto blurFragShaderY = globjects::Shader::fromFile(GL_FRAGMENT_SHADER, "data/shaders/gi/gi_blur.frag");
+    globjects::Shader::clearGlobalReplacements();
+
+    auto blurXProgram = new globjects::Program();
+    blurXProgram->attach(
+        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/deferredshading.vert"),
+        blurFragShaderX);
+
+    auto blurYProgram = new globjects::Program();
+    blurYProgram->attach(
+        globjects::Shader::fromFile(GL_VERTEX_SHADER, "data/shaders/deferredshading.vert"),
+        blurFragShaderY);
+
+    m_blurXScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurXProgram);
+    m_blurYScreenAlignedQuad = new gloperate::ScreenAlignedQuad(blurYProgram);
+
+    blurShaderRebuildRequired = false;
 }
 
 void GIStage::resizeTexture(int width, int height)
