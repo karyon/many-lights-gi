@@ -106,13 +106,9 @@ void ModelLoadingStage::loadScene(Preset preset)
     auto scene = new gloperate::Scene;
     for (size_t i = 0; i < assimpScene->mNumMeshes; ++i)
     {
-        scene->meshes().push_back(convertGeometry(assimpScene->mMeshes[i], m_currentPresetInformation->vertexScale));
-    }
-
-    for (auto mesh : scene->meshes())
-    {
+        auto mesh = convertGeometry(assimpScene->mMeshes[i], m_currentPresetInformation->vertexScale);
         auto& drawables = m_drawablesMap->at(mesh->materialIndex());
-        drawables.push_back(make_unique<gloperate::PolygonalDrawable>(*mesh));
+        drawables.push_back(make_unique<gloperate::PolygonalDrawable>(*mesh.get()));
     }
 
     aiReleaseImport(assimpScene);
@@ -208,9 +204,9 @@ std::string ModelLoadingStage::getFilename(Preset preset)
     return conversion.at(preset);
 }
 
-gloperate::PolygonalGeometry * ModelLoadingStage::convertGeometry(const aiMesh * mesh, float vertexScale) const
+std::unique_ptr<gloperate::PolygonalGeometry> ModelLoadingStage::convertGeometry(const aiMesh * mesh, float vertexScale) const
 {
-    gloperate::PolygonalGeometry * geometry = new gloperate::PolygonalGeometry;
+    auto geometry = make_unique<gloperate::PolygonalGeometry>();
 
     std::vector<unsigned int> indices;
     indices.reserve(mesh->mNumFaces * 3);
