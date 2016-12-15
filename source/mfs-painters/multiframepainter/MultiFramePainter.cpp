@@ -36,10 +36,9 @@
 
 using namespace reflectionzeug;
 using namespace globjects;
-using namespace gloperate;
 
 
-MultiFramePainter::MultiFramePainter(ResourceManager & resourceManager, const cpplocate::ModuleInfo & moduleInfo)
+MultiFramePainter::MultiFramePainter(gloperate::ResourceManager & resourceManager, const cpplocate::ModuleInfo & moduleInfo)
 : Painter("MultiFramePainter", resourceManager, moduleInfo)
 , resourceManager(resourceManager)
 , preset(Preset::CrytekSponza)

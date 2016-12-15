@@ -1,5 +1,7 @@
 #include "RasterizationStage.h"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <glbinding/gl/enum.h>
 #include <glbinding/gl/functions.h>
 #include <glbinding/gl/boolean.h>
@@ -13,6 +15,7 @@
 #include <gloperate/painter/AbstractPerspectiveProjectionCapability.h>
 #include <gloperate/painter/AbstractViewportCapability.h>
 #include <gloperate/painter/AbstractCameraCapability.h>
+#include <gloperate/primitives/Icosahedron.h>
 
 #include <gloperate/primitives/PolygonalDrawable.h>
 
@@ -190,8 +193,7 @@ void RasterizationStage::render()
         program->setUniform("bumpTexture", BumpSampler);
 
         program->setUniform("cameraEye", camera->eye());
-        program->setUniform("modelView", camera->view());
-        program->setUniform("projection", projection->projection());
+        program->setUniform("viewProjection", projection->projection() * camera->view());
 
         // offset needs to be doubled, because ndc range is [-1;1] and not [0;1]
         program->setUniform("ndcOffset", 2.0f * subpixelSample / viewportSize);
@@ -264,12 +266,22 @@ void RasterizationStage::render()
         m_program->setUniform("useSpecularTexture", hasSpecularTex);
         m_program->setUniform("useEmissiveTexture", hasEmissiveTex);
         m_program->setUniform("useOpacityTexture", hasOpacityTex);
+        m_program->setUniform("model", glm::mat4());
 
         for (auto& drawable : drawables)
         {
             drawable->draw();
         }
     }
+
+
+    auto icoMat = glm::mat4();
+    icoMat = glm::translate(icoMat, { 0.0f, 1.0f, -0.3f });
+    m_program->setUniform("model", icoMat);
+
+    auto ico = globjects::make_ref<gloperate::Icosahedron>(2);
+    ico->draw();
+
 
     m_program->release();
 

@@ -10,8 +10,8 @@ out vec3 v_worldCoord;
 out vec3 v_uv;
 out vec4 v_s;
 
-uniform mat4 modelView;
-uniform mat4 projection;
+uniform mat4 model;
+uniform mat4 viewProjection;
 uniform vec2 ndcOffset;
 uniform vec2 cocPoint;
 uniform float focalDist;
@@ -26,7 +26,7 @@ void main()
     v_worldCoord = a_vertex;
     v_normal = a_normal;
     v_uv = a_uv;
-    gl_Position = projection * modelView * vertex;
+    gl_Position = viewProjection * model * vertex;
 
     vec4 v_s_tmp = biasedShadowTransform * vertex;
     v_s = v_s_tmp;

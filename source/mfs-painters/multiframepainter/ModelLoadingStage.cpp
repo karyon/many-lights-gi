@@ -3,13 +3,13 @@
 #include <iostream>
 #include <algorithm>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <glbinding/gl/functions.h>
 #include <glbinding/gl/enum.h>
 
 #include <globjects/Texture.h>
 
-
-#include <gloperate/primitives/PolygonalDrawable.h>
 #include <gloperate/primitives/PolygonalGeometry.h>
 #include <gloperate/primitives/Scene.h>
 #include <gloperate/resources/ResourceManager.h>
@@ -66,10 +66,10 @@ ModelLoadingStage::~ModelLoadingStage()
 void ModelLoadingStage::loadScene(Preset preset)
 {
     m_currentPreset = preset;
-    m_currentPresetInformation = make_unique<PresetInformation>(getPresetInformation(preset));
+    m_currentPresetInformation = std::make_unique<PresetInformation>(getPresetInformation(preset));
 
-    m_drawablesMap = make_unique<IdDrawablesMap>();
-    m_materialMap = make_unique<IdMaterialMap>();
+    m_drawablesMap = std::make_unique<IdDrawablesMap>();
+    m_materialMap = std::make_unique<IdMaterialMap>();
     m_textures = StringTextureMap{};
 
     glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &m_maxAnisotropy);
@@ -103,12 +103,25 @@ void ModelLoadingStage::loadScene(Preset preset)
         (*m_drawablesMap)[m] = PolygonalDrawables{};
     }
 
-    auto scene = new gloperate::Scene;
     for (size_t i = 0; i < assimpScene->mNumMeshes; ++i)
     {
         auto mesh = convertGeometry(assimpScene->mMeshes[i], m_currentPresetInformation->vertexScale);
         auto& drawables = m_drawablesMap->at(mesh->materialIndex());
-        drawables.push_back(make_unique<gloperate::PolygonalDrawable>(*mesh.get()));
+        drawables.push_back(std::make_unique<PolygonalDrawable>(*mesh.get()));
+    }
+
+    if (preset == Preset::CrytekSponza) {
+        auto newMatIndex = assimpScene->mNumMaterials;
+        Material mat;
+        (*m_materialMap)[newMatIndex] = mat;
+
+        std::unique_ptr<Icosahedron> drawable = std::move(std::make_unique<Icosahedron>());
+        drawable->modelMatrix = glm::translate(drawable->modelMatrix, { 0.0f, 1.0f, -0.3f });
+
+        auto drawables = PolygonalDrawables{};
+        drawables.push_back(std::move(drawable));
+        (*m_drawablesMap)[newMatIndex] = std::move(drawables);
+
     }
 
     aiReleaseImport(assimpScene);

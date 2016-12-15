@@ -3,6 +3,8 @@
 #include <vector>
 #include <memory>
 
+#include <glm/glm.hpp>
+
 #include "TypeDefinitions.h"
 #include "Preset.h"
 #include "Material.h"
@@ -23,6 +25,7 @@ namespace gloperate
 class aiMesh;
 class aiScene;
 class aiMaterial;
+
 
 class ModelLoadingStage
 {

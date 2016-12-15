@@ -15,7 +15,6 @@
 
 #include "Viewer.h"
 
-using namespace gloperate;
 using namespace gloperate_qt;
 
 
@@ -23,10 +22,10 @@ int main(int argc, char * argv[])
 {
     QApplication app(argc, argv);
 
-    ResourceManager resourceManager;
+    gloperate::ResourceManager resourceManager;
     resourceManager.addLoader(new QtTextureLoader());
 
-    PluginManager pluginManager;
+    gloperate::PluginManager pluginManager;
     pluginManager.addSearchPath(QCoreApplication::applicationDirPath().toStdString());
     pluginManager.addSearchPath(QCoreApplication::applicationDirPath().toStdString() + "/plugins");
 
@@ -47,7 +46,7 @@ int main(int argc, char * argv[])
         std::string name = (argc > 1) ? argv[1] : "MultiFramePainter";
     #endif
 
-    Plugin * plugin = pluginManager.plugin(name);
+        gloperate::Plugin * plugin = pluginManager.plugin(name);
     if (!plugin)
     {
         globjects::fatal() << "Plugin '" << name << "' not found. Listing plugins found:";
@@ -56,7 +55,7 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    AbstractPainterPlugin * painterPlugin = dynamic_cast<AbstractPainterPlugin *>(plugin);
+    auto painterPlugin = dynamic_cast<gloperate::AbstractPainterPlugin *>(plugin);
     if (!painterPlugin)
     {
         globjects::fatal() << "Plugin '" << name << "' is not a painter plugin.";
