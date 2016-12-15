@@ -64,7 +64,7 @@ void main()
 
     float packedNormal = pack3SNToFloat(vec3(normal));
     // make sure everyone's accessing the same values
-    // gi.comp could also read the packedNormal directly and unpack it, but that's quite slow for some reason
+    // final_gathering.comp could also read the packedNormal directly and unpack it, but that's quite slow for some reason
     vec3 unpackedNormal = unpack3SNFromFloat(packedNormal);
 
     vplBuffer[resultIndex] = VPL(worldcoords.xyz, unpackedNormal, lightColor);

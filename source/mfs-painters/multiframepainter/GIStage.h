@@ -63,9 +63,9 @@ public:
 
 
 protected:
-    void render();
+    void compute_final_gathering();
     void blur();
-    void rebuildGIShader();
+    void rebuildFGShader();
     void rebuildBlurShaders();
     void resizeTexture(int width, int height);
 
@@ -73,7 +73,7 @@ protected:
     globjects::ref_ptr<globjects::Framebuffer> m_fbo;
     globjects::ref_ptr<globjects::Framebuffer> m_blurTempFbo;
     globjects::ref_ptr<globjects::Framebuffer> m_blurFinalFbo;
-    globjects::ref_ptr<globjects::Program> m_giProgram;
+    globjects::ref_ptr<globjects::Program> m_fgProgram;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_blurXScreenAlignedQuad;
     globjects::ref_ptr<gloperate::ScreenAlignedQuad> m_blurYScreenAlignedQuad;
 
@@ -99,6 +99,6 @@ protected:
     bool useInterleaving;
     bool shuffleLights;
 
-    bool giShaderRebuildRequired;
+    bool fgShaderRebuildRequired;
     bool blurShaderRebuildRequired;
 };

@@ -166,21 +166,21 @@ void GIStage::initProperties(MultiFramePainter& painter)
         [this]() { return enableShadowing; },
         [this](const bool & value) {
             enableShadowing = value;
-            giShaderRebuildRequired = true;
+            fgShaderRebuildRequired = true;
     });
 
     painter.addProperty<bool>("ShowVPLPositions",
         [this]() { return showVPLPositions; },
         [this](const bool & value) {
             showVPLPositions = value;
-            giShaderRebuildRequired = true;
+            fgShaderRebuildRequired = true;
     });
 
     painter.addProperty<bool>("UseInterleaving",
         [this]() { return useInterleaving; },
         [this](const bool & value) {
             useInterleaving = value;
-            giShaderRebuildRequired = true;
+            fgShaderRebuildRequired = true;
     });
 
     painter.addProperty<bool>("ShuffleLights",
@@ -248,7 +248,7 @@ void GIStage::initialize()
     vplProcessor = std::make_unique<VPLProcessor>();
     clusteredShading = std::make_unique<ClusteredShading>();
 
-    rebuildGIShader();
+    rebuildFGShader();
     rebuildBlurShaders();
 }
 
@@ -258,7 +258,7 @@ int divCeil(int dividend, int divisor)
     return (dividend + divisor - 1) / divisor;
 }
 
-void GIStage::render()
+void GIStage::compute_final_gathering()
 {
     lightPosition = m_lightCamera->eye();
     lightDirection = m_lightCamera->center() - m_lightCamera->eye();
@@ -277,22 +277,22 @@ void GIStage::render()
 
     vplProcessor->vplBuffer->bindBase(GL_UNIFORM_BUFFER, 0);
 
-    m_giProgram->setUniform("faceNormalSampler", 0);
-    m_giProgram->setUniform("depthSampler", 1);
-    m_giProgram->setUniform("ismDepthSampler", 2);
+    m_fgProgram->setUniform("faceNormalSampler", 0);
+    m_fgProgram->setUniform("depthSampler", 1);
+    m_fgProgram->setUniform("ismDepthSampler", 2);
 
-    m_giProgram->setUniform("projectionMatrix", projection->projection());
-    m_giProgram->setUniform("projectionInverseMatrix", projection->projectionInverted());
-    m_giProgram->setUniform("viewport", glm::ivec2(viewport->width(), viewport->height()));
-    m_giProgram->setUniform("viewMatrix", camera->view());
-    m_giProgram->setUniform("viewInvertedMatrix", camera->viewInverted());
-    m_giProgram->setUniform("viewProjectionInvertedMatrix", camera->viewInverted() * projection->projectionInverted());
-    m_giProgram->setUniform("zFar", projection->zFar());
-    m_giProgram->setUniform("zNear", projection->zNear());
-    m_giProgram->setUniform("giIntensityFactor", giIntensityFactor);
-    m_giProgram->setUniform("vplClampingValue", vplClampingValue);
-    m_giProgram->setUniform("vplStartIndex", vplStartIndex);
-    m_giProgram->setUniform("vplEndIndex", vplEndIndex);
+    m_fgProgram->setUniform("projectionMatrix", projection->projection());
+    m_fgProgram->setUniform("projectionInverseMatrix", projection->projectionInverted());
+    m_fgProgram->setUniform("viewport", glm::ivec2(viewport->width(), viewport->height()));
+    m_fgProgram->setUniform("viewMatrix", camera->view());
+    m_fgProgram->setUniform("viewInvertedMatrix", camera->viewInverted());
+    m_fgProgram->setUniform("viewProjectionInvertedMatrix", camera->viewInverted() * projection->projectionInverted());
+    m_fgProgram->setUniform("zFar", projection->zFar());
+    m_fgProgram->setUniform("zNear", projection->zNear());
+    m_fgProgram->setUniform("giIntensityFactor", giIntensityFactor);
+    m_fgProgram->setUniform("vplClampingValue", vplClampingValue);
+    m_fgProgram->setUniform("vplStartIndex", vplStartIndex);
+    m_fgProgram->setUniform("vplEndIndex", vplEndIndex);
 
     int workgroupSize = 8;
     int interleavedSize = 4;
@@ -300,14 +300,14 @@ void GIStage::render()
     int numGroupsX = divCeil(viewport->width(),  workgroupSize * interleavedSize) * interleavedSize;
     int numGroupsY = divCeil(viewport->height(), workgroupSize * interleavedSize) * interleavedSize;
 
-    m_giProgram->dispatchCompute(numGroupsX, numGroupsY, 1);
+    m_fgProgram->dispatchCompute(numGroupsX, numGroupsY, 1);
 
     giBuffer->unbindImageTexture(0);
 }
 
 void GIStage::blur()
 {
-    giBuffer->bindActive(0); 
+    giBuffer->bindActive(0);
     faceNormalBuffer->bindActive(1);
     depthBuffer->bindActive(2);
 
@@ -348,8 +348,8 @@ void GIStage::process()
     if (viewport->hasChanged())
         resizeTexture(viewport->width(), viewport->height());
 
-    if (giShaderRebuildRequired)
-        rebuildGIShader();
+    if (fgShaderRebuildRequired)
+        rebuildFGShader();
 
     if (blurShaderRebuildRequired)
         rebuildBlurShaders();
@@ -403,8 +403,8 @@ void GIStage::process()
     }
 
     {
-        AutoGLPerfCounter c("GI");
-        render();
+        AutoGLPerfCounter c("FG");
+        compute_final_gathering();
     }
 
     {
@@ -422,7 +422,7 @@ const char * const boolToString(bool b)
     return b ? "true" : "false";
 }
 
-void GIStage::rebuildGIShader()
+void GIStage::rebuildFGShader()
 {
     globjects::Shader::globalReplace("#define SHOW_VPL_POSITIONS false", std::string("#define SHOW_VPL_POSITIONS ") + boolToString(showVPLPositions));
     globjects::Shader::globalReplace("#define ENABLE_SHADOWING true", std::string("#define ENABLE_SHADOWING ") + boolToString(enableShadowing));
@@ -430,12 +430,12 @@ void GIStage::rebuildGIShader()
     globjects::Shader::globalReplace("#define SCALE_ISMS false", std::string("#define SCALE_ISMS ") + boolToString(scaleISMs));
 
 
-    auto shader = globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/gi/gi.comp");
+    auto shader = globjects::Shader::fromFile(GL_COMPUTE_SHADER, "data/shaders/gi/final_gathering.comp");
     globjects::Shader::clearGlobalReplacements();
-    m_giProgram = new globjects::Program();
-    m_giProgram->attach(shader);
+    m_fgProgram = new globjects::Program();
+    m_fgProgram->attach(shader);
 
-    giShaderRebuildRequired = false;
+    fgShaderRebuildRequired = false;
 }
 
 
@@ -473,4 +473,3 @@ void GIStage::resizeTexture(int width, int height)
     m_fbo->printStatus(true);
     clusteredShading->resizeTexture(width, height);
 }
-
