@@ -55,21 +55,26 @@ Viewer::Viewer(QWidget * parent, Qt::WindowFlags flags)
 {
     // Initialize resource manager (must be done BEFORE setupCanvas)
     m_resourceManager.reset(new ResourceManager());
+    resize(1000, 500);
 
     // Add default texture loaders/storers
     m_resourceManager->addLoader(new gloperate_qt::QtTextureLoader());
 
+    resize(1000, 500);
     // Setup UI
     setupMessageWidgets();
+    resize(1000, 500);
     setupPropertyWidget();
+    resize(1000, 500);
     setupCanvas();
+    resize(1000, 500);
 
     // Load settings
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QSettings settings;
 
     // Restore GUI state from settings
-    restoreGeometry(settings.value(SETTINGS_GEOMETRY).toByteArray());
+    //restoreGeometry(settings.value(SETTINGS_GEOMETRY).toByteArray());
     restoreState(settings.value(SETTINGS_STATE).toByteArray());
 
     connect(&m_timer, SIGNAL(timeout()), this, SLOT(onTimer()));
