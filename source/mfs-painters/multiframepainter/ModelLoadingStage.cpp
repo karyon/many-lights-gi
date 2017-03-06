@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <chrono>
 
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -103,6 +104,21 @@ void ModelLoadingStage::loadScene(Preset preset)
         (*m_drawablesMap)[m] = PolygonalDrawables{};
     }
 
+    if (preset == Preset::CrytekSponza) {
+        auto newMatIndex = assimpScene->mNumMaterials;
+        Material mat;
+        mat.addTexture(TextureType::Diffuse, loadTexture("data/crytek-sponza/textures/vase_round_bump-29.png"));
+        (*m_materialMap)[newMatIndex] = mat;
+
+        std::unique_ptr<Icosahedron> drawable = std::make_unique<Icosahedron>(4);
+        m_ico = drawable.get();
+        drawable->modelMatrix = glm::translate(drawable->modelMatrix, { 0.0f, 1.0f, -0.3f });
+
+        auto drawables = PolygonalDrawables{};
+        drawables.push_back(std::move(drawable));
+        (*m_drawablesMap)[newMatIndex] = std::move(drawables);
+    }
+
     for (size_t i = 0; i < assimpScene->mNumMeshes; ++i)
     {
         auto mesh = convertGeometry(assimpScene->mMeshes[i], m_currentPresetInformation->vertexScale);
@@ -110,21 +126,32 @@ void ModelLoadingStage::loadScene(Preset preset)
         drawables.push_back(std::make_unique<PolygonalDrawable>(*mesh.get()));
     }
 
-    if (preset == Preset::CrytekSponza) {
-        auto newMatIndex = assimpScene->mNumMaterials;
-        Material mat;
-        (*m_materialMap)[newMatIndex] = mat;
-
-        std::unique_ptr<Icosahedron> drawable = std::move(std::make_unique<Icosahedron>());
-        drawable->modelMatrix = glm::translate(drawable->modelMatrix, { 0.0f, 1.0f, -0.3f });
-
-        auto drawables = PolygonalDrawables{};
-        drawables.push_back(std::move(drawable));
-        (*m_drawablesMap)[newMatIndex] = std::move(drawables);
-
-    }
-
     aiReleaseImport(assimpScene);
+}
+
+void ModelLoadingStage::tick()
+{
+    static auto last_time = std::chrono::high_resolution_clock::now();
+
+    const auto current_time = std::chrono::high_resolution_clock::now();
+    const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(current_time - last_time).count();
+    last_time = current_time;
+
+    if (m_currentPreset != Preset::CrytekSponza)
+        return;
+
+    auto icoMat = glm::translate(glm::mat4(), { 0.0f, 1.0f, -0.3f });
+
+    static auto cyclePos = 0.0f;
+    const auto cycleSpeed = 1.0f * elapsed / 1000000 ;
+    const auto maxPos = 10.0f;
+    float pos = glm::abs(glm::mod(cyclePos, maxPos * 2) - maxPos);
+    icoMat = glm::translate(icoMat, { pos - maxPos / 2.0f, 0.0f, 0.0f });
+    if (true) {
+        cyclePos += cycleSpeed;
+        cyclePos = glm::mod(cyclePos, maxPos * 2);
+    }
+    m_ico->modelMatrix = icoMat;
 }
 
 globjects::ref_ptr<globjects::Texture> ModelLoadingStage::loadTexture(const std::string& filename) const

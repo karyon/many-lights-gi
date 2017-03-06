@@ -42,6 +42,8 @@ public:
     const IdDrawablesMap& getDrawablesMap() const;
     const IdMaterialMap& getMaterialMap() const;
 
+    void tick();
+
 
 protected:
     using StringTextureMap = std::map<std::string, globjects::ref_ptr<globjects::Texture>>;
@@ -62,4 +64,6 @@ protected:
     std::unique_ptr<PresetInformation> m_currentPresetInformation;
     std::unique_ptr<IdDrawablesMap> m_drawablesMap;
     std::unique_ptr<IdMaterialMap> m_materialMap;
+
+    Icosahedron* m_ico;
 };

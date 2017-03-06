@@ -99,6 +99,7 @@ void main()
             vec3 positionRelativeToCamera = position.xyz - vplPosition;
 
             bool cull = dot(vplNormal2, positionRelativeToCamera) < 0 || dot(pointNormal, -positionRelativeToCamera) < 0;
+            // cull = false;
 
             if (!cull && found < maxVplCollectCount) {
                 usedVplIDs[gl_LocalInvocationID.x * maxVplCollectCount + found] = i;

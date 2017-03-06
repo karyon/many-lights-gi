@@ -180,6 +180,8 @@ void MultiFramePainter::onInitialize()
 
 void MultiFramePainter::onPaint()
 {
+    modelLoadingStage->tick();
+
     if (!m_useFullHD && m_viewportCapability->hasChanged()) {
         m_virtualViewportCapability->setViewport(0, 0, m_viewportCapability->width(), m_viewportCapability->height());
     }

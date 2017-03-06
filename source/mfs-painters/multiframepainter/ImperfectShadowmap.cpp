@@ -234,6 +234,7 @@ void ImperfectShadowmap::render(const IdDrawablesMap& drawablesMap, const VPLPro
             auto& drawables = pair.second;
             for (auto& drawable : drawables)
             {
+                m_shadowmapProgram->setUniform("model", drawable->modelMatrix);
                 drawable->draw(GL_PATCHES);
             }
         }

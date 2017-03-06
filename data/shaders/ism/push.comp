@@ -81,7 +81,7 @@ void main()
             // ISMs are 64px wide, so we ignore 6 bits of texture coordinates when reading from lowest level
             // we do read from level+1
             if (origTexCoord >> (6-(level+1)) != inputPixelCoords >> (6-(level+1))) {
-                weights[i] = 0;
+                //weights[i] = 0;
             }
         }
 

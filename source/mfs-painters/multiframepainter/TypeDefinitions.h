@@ -59,8 +59,8 @@ public:
 class Icosahedron : public PolygonalDrawable
 {
 public:
-    Icosahedron() : PolygonalDrawable() {
-        ico = globjects::make_ref<gloperate::Icosahedron>(2);
+    Icosahedron(int levels) : PolygonalDrawable() {
+        ico = globjects::make_ref<gloperate::Icosahedron>(levels);
     }
 
     void draw() override {

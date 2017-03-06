@@ -266,22 +266,13 @@ void RasterizationStage::render()
         m_program->setUniform("useSpecularTexture", hasSpecularTex);
         m_program->setUniform("useEmissiveTexture", hasEmissiveTex);
         m_program->setUniform("useOpacityTexture", hasOpacityTex);
-        m_program->setUniform("model", glm::mat4());
 
         for (auto& drawable : drawables)
         {
+            m_program->setUniform("model", drawable->modelMatrix);
             drawable->draw();
         }
     }
-
-
-    auto icoMat = glm::mat4();
-    icoMat = glm::translate(icoMat, { 0.0f, 1.0f, -0.3f });
-    m_program->setUniform("model", icoMat);
-
-    auto ico = globjects::make_ref<gloperate::Icosahedron>(2);
-    ico->draw();
-
 
     m_program->release();
 
