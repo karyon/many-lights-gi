@@ -12,3 +12,16 @@ The following techniques have been implemented:
 For a more thorough documentation see the implementation chapter in [the thesis](https://github.com/karyon/masterthesis/blob/master/thesis-final.pdf).
 
 The end result is pretty fast (\<10ms for a complete frame, 6ms for the global illumination part, on a GTX 980), but the indirect shadows are of rather poor quality and are not temporally coherent, i.e. it flickers when lights or geometry moves. Again, for a more detailed analysis see the results chapter in [the thesis](https://github.com/karyon/masterthesis/blob/master/thesis-final.pdf).
+
+## Dependencies
+
+Sorry :(
+
+* [Assimp 3.3.1](https://github.com/assimp/assimp/releases/tag/v3.3.1)
+* [glbinding @ 72fae95f8939a5c253faf57bebd0915a105bc511](https://github.com/cginternals/glbinding/commit/72fae95f8939a5c253faf57bebd0915a105bc511)
+* [glkernel @ 5518736f5c701bdc7d5ff230840ba87ebec97bc8](https://github.com/cginternals/glkernel/commit/5518736f5c701bdc7d5ff230840ba87ebec97bc8)
+* [glm 0.9.7.4](https://github.com/g-truc/glm/releases/tag/0.9.7.4)
+* [globjects @ 33bdd04396ab3a4b9270a9d944ef170ce7e96adc](https://github.com/cginternals/globjects/commit/33bdd04396ab3a4b9270a9d944ef170ce7e96adc)
+* [gloperate (my fork) @ 6d2ae8ec46e44660fccb4f4fe32f1212c0b9550b](https://github.com/karyon/gloperate/commit/6d2ae8ec46e44660fccb4f4fe32f1212c0b9550b)
+* [libzeug @ 52f7a419396653a3dd05a5a43231af59d9b5051c](https://github.com/cginternals/libzeug/commit/52f7a419396653a3dd05a5a43231af59d9b5051c)
+* [Qt](https://www.qt.io/) 5.6
